@@ -77,4 +77,4 @@ app.post('/api/admin/users', needLogin, needAdmin, (req,res)=>{ const d=load(); 
 app.delete('/api/admin/users/:id', needLogin, needAdmin, (req,res)=>{ const d=load(); if(req.params.id===req.session.userId) return res.status(400).json({error:'Impossible de supprimer ton compte connecté'}); d.users=d.users.filter(u=>u.id!==req.params.id); audit(d,req,'Suppression utilisateur'); save(d); res.json({ok:true}); });
 app.post('/api/admin/lists', needLogin, needAdmin, (req,res)=>{ const d=load(); d.callsigns=Array.isArray(req.body.callsigns)?req.body.callsigns:d.callsigns; d.interventions=Array.isArray(req.body.interventions)?req.body.interventions:d.interventions; audit(d,req,'Modification listes admin'); save(d); res.json({ok:true}); });
 
-app.listen(PORT,()=>console.log('PEGASE V23 prêt sur le port '+PORT));
+app.listen(PORT,()=>console.log('PEGASE V24 prêt sur le port '+PORT));

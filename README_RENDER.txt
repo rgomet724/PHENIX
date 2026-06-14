@@ -1,21 +1,17 @@
-PEGASE V22 - Connexion corrigée
+PEGASE V24 - correctifs interface
 
-FICHIERS À METTRE À LA RACINE GITHUB :
+À mettre à la racine GitHub :
 - server.js
 - package.json
 - render.yaml
-- public/  (dossier complet)
+- README_RENDER.txt
+- public/
 
-Render :
-Build Command : npm install
-Start Command : npm start
+Corrections :
+- logo officiel intégré directement dans public/index.html
+- sélection de plusieurs matricules avec cases à cocher
+- seul Admin peut modifier le personnel
+- Admin peut modifier indicatifs et natures d'intervention dans Administration
+- bouton info i à gauche de chaque équipage : noms + observations
 
-Premier lancement :
-1. Ouvre le site Render.
-2. PEGASE affiche "Première installation".
-3. Crée le premier compte admin.
-4. Ensuite, connecte-toi avec cet identifiant.
-5. L'admin crée les autres utilisateurs dans Administration.
-
-Important : il n'y a aucun mot de passe admin préinstallé.
-Le logo est un SVG intégré dans la page, donc il s'affiche sans fichier image externe.
+Après upload sur GitHub : Render > Manual Deploy > Deploy latest commit.
