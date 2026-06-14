@@ -1,17 +1,9 @@
-PEGASE V24 - correctifs interface
+PEGASE V26 - rôle Dashboard ajouté
 
-À mettre à la racine GitHub :
-- server.js
-- package.json
-- render.yaml
-- README_RENDER.txt
-- public/
+Nouveau rôle : Dashboard
+- accès très restreint
+- lecture seule du tableau de bord
+- ne peut pas modifier les agents, les équipages, les comptes, les notes ou les paramètres
+- utile pour écran en salle de pause afin de voir les équipages disponibles / indisponibles
 
-Corrections :
-- logo officiel intégré directement dans public/index.html
-- sélection de plusieurs matricules avec cases à cocher
-- seul Admin peut modifier le personnel
-- Admin peut modifier indicatifs et natures d'intervention dans Administration
-- bouton info i à gauche de chaque équipage : noms + observations
-
-Après upload sur GitHub : Render > Manual Deploy > Deploy latest commit.
+Déploiement Render : remplacer les fichiers du dépôt par ceux de cette archive puis Manual Deploy > Deploy latest commit.
