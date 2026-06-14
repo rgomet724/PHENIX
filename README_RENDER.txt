@@ -1,9 +1,12 @@
-PEGASE V26 - rôle Dashboard ajouté
+PEGASE V27 - Dashboard simplifié
 
-Nouveau rôle : Dashboard
-- accès très restreint
-- lecture seule du tableau de bord
-- ne peut pas modifier les agents, les équipages, les comptes, les notes ou les paramètres
-- utile pour écran en salle de pause afin de voir les équipages disponibles / indisponibles
+Correctif rôle Dashboard :
+- affiche uniquement le tableau de bord opérationnel
+- masque le journal
+- masque les notes
+- masque le bouton Mot de passe
+- masque le bouton Rafraîchir
+- masque les menus de gestion
+- reste en lecture seule
 
-Déploiement Render : remplacer les fichiers du dépôt par ceux de cette archive puis Manual Deploy > Deploy latest commit.
+Déploiement : remplacer les fichiers sur GitHub puis Render > Manual Deploy > Deploy latest commit.
