@@ -59,8 +59,9 @@ animation:phenixGlow 8s ease-in-out infinite alternate}
 }
 
 .consigneNav{position:relative}
-.consigneBadge{display:none;position:absolute;right:10px;top:8px;background:#ef4444;color:#fff;border-radius:999px;min-width:20px;height:20px;padding:2px 6px;font-size:12px;font-weight:bold;text-align:center;line-height:16px}
-.consigneBadge.on{display:inline-block;animation:shake .9s infinite}
+.consigneCount{color:#eaf2ff;font-weight:bold;margin-left:4px}
+.consigneBell{display:none;position:absolute;right:10px;top:8px;color:#ef4444;font-size:18px;line-height:18px}
+.consigneBell.on{display:inline-block;animation:shake .9s infinite;text-shadow:0 0 10px rgba(239,68,68,.75)}
 @keyframes shake{0%,100%{transform:rotate(0)}20%{transform:rotate(-10deg)}40%{transform:rotate(8deg)}60%{transform:rotate(-6deg)}80%{transform:rotate(4deg)}}
 .consigneItem{border:1px solid var(--l);border-radius:14px;background:#071525;padding:14px;margin:10px 0}
 .consigneItem.unread{border-color:#ef4444;box-shadow:0 0 0 1px rgba(239,68,68,.25),0 0 22px rgba(239,68,68,.12)}
@@ -94,7 +95,7 @@ animation:phenixGlow 8s ease-in-out infinite alternate}
   <div id="msg" class="err"></div>
 </div></div>
 <div id="app" class="app"><div class="top"><div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div><div class="right"><b id="agentName">Agent</b><div class="tag" id="clock"></div><div class="row" style="justify-content:flex-end;margin-top:6px"><button id="notifBtn" class="notifSwitch" onclick="toggleNotifications()" title="Alertes sonores"><span class="notifKnob"></span><span id="notifText">ALERTES ON</span></button><button class="small" onclick="changePass()">Mot de passe</button><button class="small danger" onclick="logout()">Déconnexion</button></div></div></div>
-<div class="layout"><aside><div class="nav"><button onclick="show('dash')">Tableau de bord</button><button id="personnelBtn" onclick="show('personnel')">Personnel</button><button onclick="show('notes')">Notes privées</button><button class="consigneNav" onclick="show('consignes')">Consignes <span id="consigneBadge" class="consigneBadge">0</span></button><button id="adminBtn" onclick="show('admin')">Administration</button></div></aside><main>
+<div class="layout"><aside><div class="nav"><button onclick="show('dash')">Tableau de bord</button><button id="personnelBtn" onclick="show('personnel')">Personnel</button><button onclick="show('notes')">Notes privées</button><button class="consigneNav" onclick="show('consignes')">Consignes <span id="consigneCount" class="consigneCount">(0)</span><span id="consigneBell" class="consigneBell">🔔</span></button><button id="adminBtn" onclick="show('admin')">Administration</button></div></aside><main>
 <section id="dash"><div class="cards"><div class="card"><span>Équipages</span><br><b id="cTotal">0</b></div><div class="card green"><span>Disponibles</span><br><b id="cDispo">0</b></div><div class="card red"><span>Indisponibles</span><br><b id="cIndispo">0</b></div><div class="card"><span>Effectifs</span><br><b id="cEff">0</b></div></div><div class="section"><div class="row" style="justify-content:space-between"><h2>Tableau de bord opérationnel</h2><button id="createCrewBtn" class="primary" onclick="openCrew()">Créer équipage</button></div><table><thead><tr><th>Info</th><th>Indicatif</th><th>Matricules</th><th>Intervention</th><th>Code Blanc</th><th>Actions</th></tr></thead><tbody id="crewRows"></tbody></table></div><div id="logSection" class="section"><h2>Journal de la dernière heure</h2><div id="logs"></div></div></section>
 <section id="personnel" class="hidden"><div class="section"><div class="row" style="justify-content:space-between"><h2>Personnel</h2><button class="primary" onclick="addAgent()">Ajouter agent</button></div><p class="mut">Réservé Admin : ajout et modification des matricules, noms et prénoms. Les opérateurs sélectionnent ensuite uniquement les matricules dans les équipages.</p><table><thead><tr><th>Matricule</th><th>Nom</th><th>Prénom</th><th>Actif</th><th></th></tr></thead><tbody id="agentRows"></tbody></table><button class="primary" onclick="saveAgents()">Enregistrer le personnel</button></div></section>
 <section id="notes" class="hidden"><div class="section"><h2>Notes privées</h2><p class="mut">Chaque agent voit uniquement ses propres notes.</p><textarea id="note" oninput="noteDirty=true"></textarea><br><br><button class="primary" onclick="saveNote()">Enregistrer mes notes</button></div></section><section id="consignes" class="hidden">
@@ -172,7 +173,7 @@ function renderAdmin(force=false){if(S.user.role!=='admin')return;if(activeSecti
 
 function canManageConsignes(){return S.user&&['admin','superviseur'].includes(S.user.role)}
 function consigneUnreadCount(){return (S.consignes||[]).filter(c=>!c.read).length}
-function updateConsigneBadge(){const n=consigneUnreadCount();const b=$('consigneBadge');const t=$('consigneTitleBadge');if(b){b.textContent=n;b.classList.toggle('on',n>0)}if(t){t.textContent=n+' non lue'+(n>1?'s':'')}}
+function updateConsigneBadge(){const unread=consigneUnreadCount();const total=(S.consignes||[]).length;const c=$('consigneCount');const bell=$('consigneBell');const t=$('consigneTitleBadge');if(c)c.textContent='('+total+')';if(bell)bell.classList.toggle('on',unread>0);if(t)t.textContent=unread+' non lue'+(unread>1?'s':'')}
 function brigadeLabel(v){return v==='jour'?'Brigade de jour':v==='nuit'?'Brigade de nuit':'Toutes brigades'}
 function prioriteLabel(v){return v==='urgent'?'Urgent':v==='important'?'Important':'Information'}
 function esc(s){return String(s||'').replaceAll('<','&lt;')}
