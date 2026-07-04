@@ -227,6 +227,7 @@ function renderAdmin(force=false){if(S.user.role!=='admin')return;if(activeSecti
 
 
 
+
 function flashClassFromTitle(title){
   const t=String(title||'INFO').trim().toUpperCase();
   if(t==='ALERTE')return 'flashRed';
@@ -236,10 +237,41 @@ function flashClassFromTitle(title){
   if(t==='RAPPEL')return 'flashPurple';
   return 'flashBlue';
 }
+function cleanFlashClasses(el){
+  if(!el)return;
+  el.classList.remove('flashBlue','flashRed','flashOrange','flashGreen','flashPurple','flashUrgent');
+}
 function applyFlashStyleToBox(box,title){
   if(!box)return;
-  box.classList.remove('flashBlue','flashRed','flashOrange','flashGreen','flashPurple','flashUrgent');
+  cleanFlashClasses(box);
   box.classList.add(flashClassFromTitle(title));
+}
+function currentFlashTitle(){
+  return (($('flashTitleAdmin')&&$('flashTitleAdmin').value)||'INFO').trim()||'INFO';
+}
+function currentFlashIcon(){
+  return window._flashIcon || (S.flash&&S.flash.icon) || '📢';
+}
+function setFlashStyle(title,icon){
+  if($('flashTitleAdmin'))$('flashTitleAdmin').value=title;
+  window._flashIcon=icon||'📢';
+  updateFlashButtons();
+  renderFlashAdminPreview();
+}
+function setFlashIcon(icon){
+  window._flashIcon=icon||'📢';
+  updateFlashButtons();
+  renderFlashAdminPreview();
+}
+function updateFlashButtons(){
+  const title=currentFlashTitle().toUpperCase();
+  document.querySelectorAll('.flashStyleBtn').forEach(btn=>{
+    btn.classList.toggle('active',btn.textContent.toUpperCase().includes(title));
+  });
+  const icon=currentFlashIcon();
+  document.querySelectorAll('.iconPick button').forEach(btn=>{
+    btn.classList.toggle('active',btn.textContent.trim()===icon);
+  });
 }
 function renderFlash(){
   const f=S.flash||{};
@@ -249,43 +281,52 @@ function renderFlash(){
   const txt=$('flashLoginText');
   const title=String(f.title||'INFO').trim()||'INFO';
   const ico=String(f.icon||'📢').trim()||'📢';
+
   if(label)label.textContent=title+' :';
-  if(icon){icon.textContent=ico;icon.classList.toggle('siren',ico==='🚨'||title.toUpperCase()==='URGENT')}
+  if(icon){
+    icon.textContent=ico;
+    icon.classList.toggle('siren',ico==='🚨'||title.toUpperCase()==='URGENT');
+  }
   if(box&&txt){
     txt.textContent=f.text||'';
     applyFlashStyleToBox(box,title);
     box.classList.toggle('hidden',!(f.enabled&&String(f.text||'').trim()));
   }
+
   if(S.user&&S.user.role==='admin'){
     if($('flashTitleAdmin')&&document.activeElement.id!=='flashTitleAdmin')$('flashTitleAdmin').value=title;
     if($('flashTextAdmin')&&document.activeElement.id!=='flashTextAdmin')$('flashTextAdmin').value=f.text||'';
     if($('flashEnabledAdmin'))$('flashEnabledAdmin').checked=!!f.enabled;
+    window._flashIcon=ico;
+    updateFlashButtons();
     renderFlashAdminPreview();
   }
-}
-function setFlashStyle(title,icon){
-  if($('flashTitleAdmin'))$('flashTitleAdmin').value=title;
-  if(icon&&$('flashIconAdmin'))$('flashIconAdmin').value=icon;
-  window._flashIcon=icon||window._flashIcon||'📢';
-  renderFlashAdminPreview();
-}
-function setFlashIcon(icon){
-  window._flashIcon=icon;
-  renderFlashAdminPreview();
 }
 function renderFlashAdminPreview(){
   const p=$('flashPreview');
   if(!p)return;
-  const title=($('flashTitleAdmin')&&$('flashTitleAdmin').value)||'INFO';
+  const title=currentFlashTitle();
   const text=($('flashTextAdmin')&&$('flashTextAdmin').value)||'Aperçu du message flash';
-  const ico=window._flashIcon||(S.flash&&S.flash.icon)||'📢';
-  p.className='flashPreview';
-  p.innerHTML=`<span class="${(ico==='🚨'||String(title).toUpperCase()==='URGENT')?'flashIcon siren':'flashIcon'}">${ico}</span> <b>${title} :</b> ${text}`;
+  const icon=currentFlashIcon();
+
+  cleanFlashClasses(p);
+  p.classList.add('flashPreview',flashClassFromTitle(title));
+
+  const siren=(icon==='🚨'||title.toUpperCase()==='URGENT')?'flashIcon siren':'flashIcon';
+  p.innerHTML=`<span class="${siren}">${icon}</span> <b>${title} :</b> ${String(text).replaceAll('<','&lt;')}`;
 }
 async function saveFlashText(){
   try{
-    const icon=window._flashIcon||(S.flash&&S.flash.icon)||'📢';
-    await api('/api/admin/flash',{method:'POST',body:JSON.stringify({title:$('flashTitleAdmin').value,icon,text:$('flashTextAdmin').value,enabled:$('flashEnabledAdmin').checked})});
+    const icon=currentFlashIcon();
+    await api('/api/admin/flash',{
+      method:'POST',
+      body:JSON.stringify({
+        title:currentFlashTitle(),
+        icon,
+        text:$('flashTextAdmin').value,
+        enabled:$('flashEnabledAdmin').checked
+      })
+    });
     alert('Texte flash enregistré');
     await refresh();
   }catch(e){alert(e.message)}
@@ -323,7 +364,15 @@ function toggleLoginPassword(){
   if(!p)return;
   p.type=p.type==='password'?'text':'password';
 }
-document.addEventListener('input',e=>{if(e.target&&['flashTitleAdmin','flashTextAdmin'].includes(e.target.id))renderFlashAdminPreview()});
+document.addEventListener('input',e=>{
+  if(e.target&&['flashTitleAdmin','flashTextAdmin'].includes(e.target.id)){
+    updateFlashButtons();
+    renderFlashAdminPreview();
+  }
+});
+document.addEventListener('change',e=>{
+  if(e.target&&e.target.id==='flashEnabledAdmin')renderFlashAdminPreview();
+});
 setInterval(()=>{if($('app').style.display==='block')refreshSafe(false).catch(()=>{})},3000);init();
 </script>
 
