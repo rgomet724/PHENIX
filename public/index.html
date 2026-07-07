@@ -102,8 +102,24 @@ animation:phenixGlow 8s ease-in-out infinite alternate}
 .iconPick button.active{border-color:#3b82f6;box-shadow:0 0 14px rgba(59,130,246,.35)}
 .flashPreview{margin-top:12px;padding:12px;border-radius:14px;border:1px solid var(--l);background:#071525}
 
+
+/* V32 - Texte flash simple */
+.flashLogin{position:absolute;top:26px;left:50%;transform:translateX(-50%);z-index:2;width:min(900px,92vw);background:rgba(127,29,29,.72)!important;border:1px solid rgba(239,68,68,.75)!important;color:#fff;border-radius:16px;padding:14px 18px;box-shadow:0 0 30px rgba(239,68,68,.18),0 18px 60px #0008;backdrop-filter:blur(8px);display:flex;align-items:center;gap:12px;animation:none!important}
+.flashLogin.hidden{display:none!important}.flashIcon{font-size:24px}.flashLabel{font-weight:800;color:#fecaca;margin-right:8px;white-space:nowrap}.flashText{font-weight:700;line-height:1.35}
+.flashAdmin{border-color:rgba(239,68,68,.55);box-shadow:0 0 0 1px rgba(239,68,68,.12)}.flashAdmin textarea{min-height:130px}.flashToggleRow{display:flex;align-items:center;gap:10px;margin:10px 0}.flashToggleRow input{width:auto}
+
+/* V32 - Liens utiles */
+.linkGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.linkCard{background:#071525;border:1px solid var(--l);border-radius:16px;padding:14px;display:flex;gap:12px;align-items:flex-start}
+.linkLogo{width:44px;height:44px;border-radius:12px;background:#10223a;border:1px solid var(--l);display:grid;place-items:center;font-size:24px;object-fit:contain;flex:0 0 44px}
+.linkLogoImg{width:44px;height:44px;border-radius:12px;object-fit:contain;background:#10223a;border:1px solid var(--l)}
+.linkBody{flex:1}.linkBody h3{margin:0 0 4px 0}.linkBody p{margin:0 0 10px 0;color:var(--m);font-size:12px;line-height:1.35}
+.linkActions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.historyBox{max-height:420px;overflow:auto;border:1px solid var(--l);border-radius:12px;background:#071525;padding:10px}
+.historyItem{border-bottom:1px solid rgba(255,255,255,.07);padding:8px 0}.historyItem:last-child{border-bottom:0}
+
 </style></head><body>
-<div id="login" class="login"><div id="flashLogin" class="flashLogin hidden"><span id="flashLoginIcon" class="flashIcon">📢</span><span id="flashLoginLabel" class="flashLabel">INFO :</span><span id="flashLoginText" class="flashText"></span></div><div class="box">
+<div id="login" class="login"><div id="flashLogin" class="flashLogin hidden"><span class="flashIcon">📢</span><span id="flashLoginLabel" class="flashLabel">INFO :</span><span id="flashLoginText" class="flashText"></span></div><div class="box">
   <div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div>
   <div id="setup" class="hidden"><h2>Première installation</h2><p class="mut">Crée le premier compte admin. Ensuite, seul l'admin créera les autres accès.</p><div class="field"><input id="suName" placeholder="Nom affiché admin"></div><div class="field"><input id="suLogin" placeholder="Identifiant admin"></div><div class="field"><input id="suPass" type="password" placeholder="Mot de passe admin"></div><button class="primary" onclick="setupAdmin()">Créer le premier admin</button></div>
   <div id="logbox"><h2>Connexion</h2>
@@ -125,7 +141,7 @@ animation:phenixGlow 8s ease-in-out infinite alternate}
   <div id="msg" class="err"></div>
 </div></div>
 <div id="app" class="app"><div class="top"><div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div><div class="right"><b id="agentName">Agent</b><div class="tag" id="clock"></div><div class="row" style="justify-content:flex-end;margin-top:6px"><button id="notifBtn" class="notifSwitch" onclick="toggleNotifications()" title="Alertes sonores"><span class="notifKnob"></span><span id="notifText">ALERTES ON</span></button><button class="small" onclick="changePass()">Mot de passe</button><button class="small danger" onclick="logout()">Déconnexion</button></div></div></div>
-<div class="layout"><aside><div class="nav"><button onclick="show('dash')">Tableau de bord</button><button id="personnelBtn" onclick="show('personnel')">Personnel</button><button onclick="show('notes')">Notes privées</button><button class="consigneNav" onclick="show('consignes')">Consignes <span id="consigneCount" class="consigneCount">(0)</span><span id="consigneBell" class="consigneBell">🔔</span></button><button id="adminBtn" onclick="show('admin')">Administration</button></div></aside><main>
+<div class="layout"><aside><div class="nav"><button onclick="show('dash')">Tableau de bord</button><button id="personnelBtn" onclick="show('personnel')">Personnel</button><button onclick="show('notes')">Notes privées</button><button onclick="show('links')">Liens utiles</button><button id="historyBtn" onclick="show('history')">Historique</button><button class="consigneNav" onclick="show('consignes')">Consignes <span id="consigneCount" class="consigneCount">(0)</span><span id="consigneBell" class="consigneBell">🔔</span></button><button id="adminBtn" onclick="show('admin')">Administration</button></div></aside><main>
 <section id="dash"><div class="cards"><div class="card"><span>Équipages</span><br><b id="cTotal">0</b></div><div class="card green"><span>Disponibles</span><br><b id="cDispo">0</b></div><div class="card red"><span>Indisponibles</span><br><b id="cIndispo">0</b></div><div class="card"><span>Effectifs</span><br><b id="cEff">0</b></div></div><div class="section"><div class="row" style="justify-content:space-between"><h2>Tableau de bord opérationnel</h2><button id="createCrewBtn" class="primary" onclick="openCrew()">Créer équipage</button></div><table><thead><tr><th>Info</th><th>Indicatif</th><th>Matricules</th><th>Intervention</th><th>Code Blanc</th><th>Actions</th></tr></thead><tbody id="crewRows"></tbody></table></div><div id="logSection" class="section"><h2>Journal de la dernière heure</h2><div id="logs"></div></div></section>
 <section id="personnel" class="hidden"><div class="section"><div class="row" style="justify-content:space-between"><h2>Personnel</h2><button class="primary" onclick="addAgent()">Ajouter agent</button></div><p class="mut">Réservé Admin : ajout et modification des matricules, noms et prénoms. Les opérateurs sélectionnent ensuite uniquement les matricules dans les équipages.</p><table><thead><tr><th>Matricule</th><th>Nom</th><th>Prénom</th><th>Actif</th><th></th></tr></thead><tbody id="agentRows"></tbody></table><button class="primary" onclick="saveAgents()">Enregistrer le personnel</button></div></section>
 <section id="notes" class="hidden"><div class="section"><h2>Notes privées</h2><p class="mut">Chaque agent voit uniquement ses propres notes.</p><textarea id="note" oninput="noteDirty=true"></textarea><br><br><button class="primary" onclick="saveNote()">Enregistrer mes notes</button></div></section><section id="consignes" class="hidden">
@@ -167,29 +183,59 @@ animation:phenixGlow 8s ease-in-out infinite alternate}
     </div>
   </div>
 </section>
+
+<section id="links" class="hidden">
+  <div class="section">
+    <div class="row" style="justify-content:space-between">
+      <h2>Liens utiles</h2>
+      <button id="newLinkBtn" class="primary" onclick="openLinkForm()">Ajouter un lien</button>
+    </div>
+    <p class="mut">Accès rapide aux outils : main courante, intranet, planning, cartographie, procédures...</p>
+    <div id="linksList" class="linkGrid"></div>
+  </div>
+  <div id="linkForm" class="section hidden">
+    <h2 id="linkFormTitle">Ajouter un lien</h2>
+    <input id="linkId" type="hidden">
+    <div class="grid2">
+      <div class="field"><label>Nom</label><input id="linkName" placeholder="Exemple : Main courante"></div>
+      <div class="field"><label>URL</label><input id="linkUrl" placeholder="https://..."></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Logo / emoji</label><input id="linkLogo" placeholder="📋 ou https://.../logo.png"></div>
+      <div class="field"><label>Description</label><input id="linkDesc" placeholder="Description facultative"></div>
+    </div>
+    <div class="field">
+      <label>Visible par</label>
+      <label><input id="linkJour" type="checkbox" style="width:auto"> Brigade de jour</label>
+      <label><input id="linkNuit" type="checkbox" style="width:auto"> Brigade de nuit</label>
+    </div>
+    <div class="row">
+      <button class="primary" onclick="saveLink()">Enregistrer le lien</button>
+      <button id="deleteLinkBtn" class="danger" onclick="deleteLink()">Supprimer</button>
+      <button onclick="closeLinkForm()">Annuler</button>
+    </div>
+  </div>
+</section>
+
+<section id="history" class="hidden">
+  <div class="section">
+    <h2>Historique utilisateurs</h2>
+    <p class="mut">Accessible aux administrateurs et superviseurs. Affiche les actions des 7 derniers jours.</p>
+    <div id="historyUsers"></div>
+  </div>
+  <div class="section">
+    <h2 id="historyTitle">Historique</h2>
+    <div id="historyList" class="historyBox"><span class="mut">Sélectionne un utilisateur.</span></div>
+  </div>
+</section>
+
 <section id="admin" class="hidden"><div class="grid2"><div class="section"><h2>Utilisateurs</h2><div id="users"></div><h3>Créer / modifier</h3><input id="uId" type="hidden"><div class="field"><input id="uName" placeholder="Nom affiché"></div><div class="field"><input id="uLogin" placeholder="Identifiant"></div><div class="field"><input id="uPass" type="password" placeholder="Mot de passe / nouveau mot de passe"></div><div class="field"><select id="uRole"><option value="operateur">Opérateur</option><option value="superviseur">Superviseur</option><option value="admin">Admin</option><option value="dashboard">Dashboard</option></select></div><div class="field"><label>Brigades autorisées</label><label><input id="uBrigadeJour" type="checkbox" style="width:auto"> Brigade de jour</label><label><input id="uBrigadeNuit" type="checkbox" style="width:auto"> Brigade de nuit</label><small class="mut">Les administrateurs et superviseurs voient toutes les consignes.</small></div><button class="primary" onclick="saveUser()">Enregistrer utilisateur</button></div><div class="section"><h2>Paramètres Admin</h2><h3>Natures d'intervention</h3><textarea id="interList"></textarea><h3>Indicatifs pré-enregistrés</h3><textarea id="callList"></textarea><br><br><button class="primary" onclick="saveLists()">Enregistrer listes</button></div>
 <div class="section flashAdmin">
   <h2>Texte Flash</h2>
   <p class="mut">Texte affiché en haut de la page de connexion pour tous les utilisateurs.</p>
-  <div class="field"><label>Titre</label><input id="flashTitleAdmin" placeholder="Ex : INFO, ALERTE, NOTE..."></div>
-  <div class="field"><label>Style prédéfini</label><div class="flashStyleGrid">
-    <button type="button" class="flashStyleBtn info" onclick="setFlashStyle('INFO','📢')">ℹ️ INFO</button>
-    <button type="button" class="flashStyleBtn alerte" onclick="setFlashStyle('ALERTE','🚨')">⚠️ ALERTE</button>
-    <button type="button" class="flashStyleBtn note" onclick="setFlashStyle('NOTE','📢')">📝 NOTE</button>
-    <button type="button" class="flashStyleBtn urgent" onclick="setFlashStyle('URGENT','🚨')">🚨 URGENT</button>
-    <button type="button" class="flashStyleBtn service" onclick="setFlashStyle('SERVICE','ℹ️')">⚙️ SERVICE</button>
-    <button type="button" class="flashStyleBtn rappel" onclick="setFlashStyle('RAPPEL','🔔')">🔔 RAPPEL</button>
-  </div></div>
-  <div class="field"><label>Icône du bandeau</label><div class="iconPick">
-    <button type="button" onclick="setFlashIcon('📢')">📢</button>
-    <button type="button" onclick="setFlashIcon('🚨')">🚨</button>
-    <button type="button" onclick="setFlashIcon('⚠️')">⚠️</button>
-    <button type="button" onclick="setFlashIcon('🔔')">🔔</button>
-    <button type="button" onclick="setFlashIcon('ℹ️')">ℹ️</button>
-  </div></div>
+  <div class="field"><label>Titre</label><input id="flashTitleAdmin" placeholder="Exemple : INFO, ALERTE, NOTE..."></div>
   <div class="field"><label>Message</label><textarea id="flashTextAdmin" placeholder="Exemple : Bienvenue sur PHENIX - Restez vigilants."></textarea></div>
   <label class="flashToggleRow"><input id="flashEnabledAdmin" type="checkbox"> Activer le texte flash</label>
-  <div id="flashPreview" class="flashPreview"></div>
   <button class="primary" onclick="saveFlashText()">Enregistrer le texte flash</button>
 </div></div></section>
 </main></div></div>
@@ -198,24 +244,24 @@ animation:phenixGlow 8s ease-in-out infinite alternate}
 
 <div id="infoModal" class="modal"><div class="box"><h2 id="infoTitle">Infos équipage</h2><div id="infoBody"></div><br><button onclick="closeModal('infoModal')">Fermer</button></div></div>
 <script>
-let S={user:null,agents:[],callsigns:[],interventions:[],crews:[],logs:[],users:[],note:'',consignes:[],flash:{enabled:false,title:'INFO',icon:'📢',text:''}}; let activeSection='dash'; let noteDirty=false; let notificationsEnabled=localStorage.getItem('notificationsEnabled')!=='false'; let previousCrews=[]; const alertSound=new Audio('/alerte.wav');
+let S={user:null,agents:[],callsigns:[],interventions:[],crews:[],logs:[],users:[],note:'',consignes:[],links:[],flash:{enabled:false,title:'INFO',text:''}}; let activeSection='dash'; let noteDirty=false; let notificationsEnabled=localStorage.getItem('notificationsEnabled')!=='false'; let previousCrews=[]; const alertSound=new Audio('/alerte.wav');
 const $=id=>document.getElementById(id); async function api(url,opt={}){const r=await fetch(url,{headers:{'Content-Type':'application/json'},credentials:'same-origin',...opt});const j=await r.json().catch(()=>({}));if(!r.ok)throw Error(j.error||('Erreur '+r.status));return j}
 function tick(){$('clock')&&($('clock').textContent=new Date().toLocaleString('fr-FR'))}function err(e){$('msg').textContent=e.message||e;setTimeout(()=>{$('msg').textContent=''},7000)}
 function updateNotifButton(){const btn=$('notifBtn');const txt=$('notifText');if(!btn)return;btn.classList.toggle('off',!notificationsEnabled);if(txt)txt.textContent=notificationsEnabled?'ALERTES ON':'ALERTES OFF'}
 function toggleNotifications(){notificationsEnabled=!notificationsEnabled;localStorage.setItem('notificationsEnabled',notificationsEnabled);updateNotifButton();if(notificationsEnabled){alertSound.currentTime=0;alertSound.play().then(()=>{alertSound.pause();alertSound.currentTime=0}).catch(()=>{})}}
 function checkCrewChanges(newCrews){if(!Array.isArray(newCrews))return;if(previousCrews.length===0){previousCrews=JSON.parse(JSON.stringify(newCrews));return}let changed=false;for(const crew of newCrews){const old=previousCrews.find(c=>c.id===crew.id);if(old&&old.status!==crew.status){changed=true;break}}previousCrews=JSON.parse(JSON.stringify(newCrews));if(changed&&notificationsEnabled){alertSound.currentTime=0;alertSound.play().catch(()=>{})}}
 
-async function init(){tick();setInterval(tick,1000);try{const st=await api('/api/status');S.flash=st.flash||{enabled:false,title:'INFO',icon:'📢',text:''};renderFlash();if(st.user){$('login').style.display='none';$('app').style.display='block';await refresh()}else{$('setup').classList.toggle('hidden',!st.setupRequired);$('logbox').classList.toggle('hidden',st.setupRequired)}}catch(e){err(Error('Serveur non joignable : vérifie que Render est lancé'))}}
+async function init(){tick();setInterval(tick,1000);try{const st=await api('/api/status');S.flash=st.flash||{enabled:false,title:'INFO',text:''};renderFlash();if(st.user){$('login').style.display='none';$('app').style.display='block';await refresh()}else{$('setup').classList.toggle('hidden',!st.setupRequired);$('logbox').classList.toggle('hidden',st.setupRequired)}}catch(e){err(Error('Serveur non joignable : vérifie que Render est lancé'))}}
 async function setupAdmin(){try{await api('/api/setup',{method:'POST',body:JSON.stringify({displayName:$('suName').value,login:$('suLogin').value,password:$('suPass').value})});$('login').style.display='none';$('app').style.display='block';await refresh()}catch(e){err(e)}}
 async function login(){try{await api('/api/login',{method:'POST',body:JSON.stringify({login:$('loginId').value,password:$('loginPass').value})});$('login').style.display='none';$('app').style.display='block';await refresh()}catch(e){err(e)}}
 async function logout(){await api('/api/logout',{method:'POST'});location.reload()}async function changePass(){const oldPassword=prompt('Ancien mot de passe');if(oldPassword===null)return;const newPassword=prompt('Nouveau mot de passe');if(!newPassword)return;try{await api('/api/password',{method:'POST',body:JSON.stringify({oldPassword,newPassword})});alert('Mot de passe modifié')}catch(e){alert(e.message)}}
 async function refresh(){return refreshSafe(true)}
-async function refreshSafe(force=false){if(!force && shouldPauseRefresh()) return; S=await api('/api/data');$('agentName').textContent=S.user.displayName;const dash=S.user.role==='dashboard';document.body.classList.toggle('dashboardMode',dash);$('adminBtn').classList.toggle('hidden',S.user.role!=='admin');$('personnelBtn').classList.toggle('hidden',S.user.role!=='admin');document.querySelector('button[onclick="show(\'notes\')"]').classList.toggle('hidden',dash);$('createCrewBtn').classList.toggle('hidden',dash);if(dash&&activeSection!=='dash')activeSection='dash';checkCrewChanges(S.crews);renderAll(force);updateNotifButton()}
+async function refreshSafe(force=false){if(!force && shouldPauseRefresh()) return; S=await api('/api/data');$('agentName').textContent=S.user.displayName;const dash=S.user.role==='dashboard';document.body.classList.toggle('dashboardMode',dash);$('adminBtn').classList.toggle('hidden',S.user.role!=='admin'); if($('historyBtn'))$('historyBtn').classList.toggle('hidden',!['admin','superviseur'].includes(S.user.role));$('personnelBtn').classList.toggle('hidden',S.user.role!=='admin');document.querySelector('button[onclick="show(\'notes\')"]').classList.toggle('hidden',dash);$('createCrewBtn').classList.toggle('hidden',dash);if(dash&&activeSection!=='dash')activeSection='dash';checkCrewChanges(S.crews);renderAll(force);updateNotifButton()}
 function shouldPauseRefresh(){const el=document.activeElement; if(el && ['INPUT','TEXTAREA','SELECT'].includes(el.tagName)) return true; return ['personnel','admin','notes'].includes(activeSection)}
-function show(id){if(S.user&&S.user.role==='dashboard'){id='dash'}activeSection=id;['dash','personnel','notes','consignes','admin'].forEach(x=>$(x).classList.toggle('hidden',x!==id)); if(id==='notes') $('note').value=S.note||''; if(id==='consignes') renderConsignes()}
+function show(id){if(S.user&&S.user.role==='dashboard'){id='dash'}activeSection=id;['dash','personnel','notes','links','history','consignes','admin'].forEach(x=>$(x).classList.toggle('hidden',x!==id)); if(id==='notes') $('note').value=S.note||''; if(id==='consignes') renderConsignes(); if(id==='links') renderLinks(); if(id==='history') renderHistoryUsers()}
 function an(m){const a=S.agents.find(x=>x.matricule===m);return a?`${a.matricule} ${a.nom||''} ${a.prenom||''}`.trim():m}
 function canOperate(){return S.user && S.user.role!=='dashboard'}
-function renderAll(force=false){renderCrews();renderAgents();renderAdmin(force);renderConsignes();renderFlash();if(activeSection!=='notes' || force || !noteDirty){$('note').value=S.note||'';noteDirty=false;}const logsRecent=S.logs.filter(l=>Date.now()-new Date(l.date).getTime()<=60*60*1000);$('logs').innerHTML=logsRecent.length?logsRecent.map(l=>`<div><span class="mut">${new Date(l.date).toLocaleString('fr-FR')}</span> — <b>${l.user}</b> : ${l.msg}</div>`).join(''):'<span class="mut">Aucun événement sur la dernière heure.</span>';$('cTotal').textContent=S.crews.length;$('cDispo').textContent=S.crews.filter(c=>c.status==='DISPO').length;$('cIndispo').textContent=S.crews.filter(c=>c.status==='INDISPO').length;$('cEff').textContent=new Set(S.crews.flatMap(c=>c.matricules||[])).size}
+function renderAll(force=false){renderCrews();renderAgents();renderAdmin(force);renderConsignes();renderLinks();renderFlash();if(activeSection!=='notes' || force || !noteDirty){$('note').value=S.note||'';noteDirty=false;}const logsRecent=S.logs.filter(l=>Date.now()-new Date(l.date).getTime()<=60*60*1000);$('logs').innerHTML=logsRecent.length?logsRecent.map(l=>`<div><span class="mut">${new Date(l.date).toLocaleString('fr-FR')}</span> — <b>${l.user}</b> : ${l.msg}</div>`).join(''):'<span class="mut">Aucun événement sur la dernière heure.</span>';$('cTotal').textContent=S.crews.length;$('cDispo').textContent=S.crews.filter(c=>c.status==='DISPO').length;$('cIndispo').textContent=S.crews.filter(c=>c.status==='INDISPO').length;$('cEff').textContent=new Set(S.crews.flatMap(c=>c.matricules||[])).size}
 function renderCrews(){const readonly=!canOperate();$('crewRows').innerHTML=S.crews.map(c=>`<tr class="${c.status==='INDISPO'?'indispo':'dispo'}"><td><button class="infoBtn" title="Infos équipage" onclick='showCrewInfo(${JSON.stringify(c.id)})'>i</button></td><td><b>${c.callsign}</b><br><span class="pill">${c.status}</span></td><td>${(c.matricules||[]).map(m=>`<span class="pill">${m}</span>`).join('')}</td><td>${c.intervention||'—'}</td><td>${c.meal||'—'}</td><td>${readonly?'<span class="mut">Lecture seule</span>':`<button class="small" onclick='openCrew(${JSON.stringify(c.id)})'>Modifier</button> <button class="small ok" onclick='statusCrew(${JSON.stringify(c.id)},"DISPO")'>DISPO</button> <button class="small danger" onclick='openIndispo(${JSON.stringify(c.id)})'>INDISPO</button>`}</td></tr>`).join('')}
 function showCrewInfo(id){const c=S.crews.find(x=>x.id===id);if(!c)return;$('infoTitle').textContent='Infos '+c.callsign;const names=(c.matricules||[]).map(m=>'<div class="pill">'+an(m)+'</div>').join('')||'—';$('infoBody').innerHTML='<h3>Agents</h3>'+names+'<h3>Heure de repas</h3><div class="section">'+(c.meal||'Aucune')+'</div><h3>Observations</h3><div class="section">'+(c.observations||'Aucune observation')+'</div>';$('infoModal').style.display='grid'}
 function fillSelects(selected=[]){ $('crewCall').innerHTML=S.callsigns.map(x=>`<option>${x}</option>`).join('');$('crewAgents').innerHTML=S.agents.filter(a=>a.actif).map(a=>`<label class="agentChoice"><input type="checkbox" value="${a.matricule}" ${selected.includes(a.matricule)?'checked':''}> <span>${an(a.matricule)}</span></label>`).join('');$('indispoSelect').innerHTML=S.interventions.map(x=>`<option>${x}</option>`).join('')}
@@ -228,109 +274,76 @@ function renderAdmin(force=false){if(S.user.role!=='admin')return;if(activeSecti
 
 
 
-function flashClassFromTitle(title){
-  const t=String(title||'INFO').trim().toUpperCase();
-  if(t==='ALERTE')return 'flashRed';
-  if(t==='NOTE')return 'flashOrange';
-  if(t==='URGENT')return 'flashUrgent';
-  if(t==='SERVICE')return 'flashGreen';
-  if(t==='RAPPEL')return 'flashPurple';
-  return 'flashBlue';
-}
-function cleanFlashClasses(el){
-  if(!el)return;
-  el.classList.remove('flashBlue','flashRed','flashOrange','flashGreen','flashPurple','flashUrgent');
-}
-function applyFlashStyleToBox(box,title){
-  if(!box)return;
-  cleanFlashClasses(box);
-  box.classList.add(flashClassFromTitle(title));
-}
-function currentFlashTitle(){
-  return (($('flashTitleAdmin')&&$('flashTitleAdmin').value)||'INFO').trim()||'INFO';
-}
-function currentFlashIcon(){
-  return window._flashIcon || (S.flash&&S.flash.icon) || '📢';
-}
-function setFlashStyle(title,icon){
-  if($('flashTitleAdmin'))$('flashTitleAdmin').value=title;
-  window._flashIcon=icon||'📢';
-  updateFlashButtons();
-  renderFlashAdminPreview();
-}
-function setFlashIcon(icon){
-  window._flashIcon=icon||'📢';
-  updateFlashButtons();
-  renderFlashAdminPreview();
-}
-function updateFlashButtons(){
-  const title=currentFlashTitle().toUpperCase();
-  document.querySelectorAll('.flashStyleBtn').forEach(btn=>{
-    btn.classList.toggle('active',btn.textContent.toUpperCase().includes(title));
-  });
-  const icon=currentFlashIcon();
-  document.querySelectorAll('.iconPick button').forEach(btn=>{
-    btn.classList.toggle('active',btn.textContent.trim()===icon);
-  });
-}
+
 function renderFlash(){
   const f=S.flash||{};
   const box=$('flashLogin');
-  const icon=$('flashLoginIcon');
   const label=$('flashLoginLabel');
   const txt=$('flashLoginText');
   const title=String(f.title||'INFO').trim()||'INFO';
-  const ico=String(f.icon||'📢').trim()||'📢';
-
   if(label)label.textContent=title+' :';
-  if(icon){
-    icon.textContent=ico;
-    icon.classList.toggle('siren',ico==='🚨'||title.toUpperCase()==='URGENT');
-  }
-  if(box&&txt){
-    txt.textContent=f.text||'';
-    applyFlashStyleToBox(box,title);
-    box.classList.toggle('hidden',!(f.enabled&&String(f.text||'').trim()));
-  }
-
+  if(txt)txt.textContent=f.text||'';
+  if(box)box.classList.toggle('hidden',!(f.enabled&&String(f.text||'').trim()));
   if(S.user&&S.user.role==='admin'){
     if($('flashTitleAdmin')&&document.activeElement.id!=='flashTitleAdmin')$('flashTitleAdmin').value=title;
     if($('flashTextAdmin')&&document.activeElement.id!=='flashTextAdmin')$('flashTextAdmin').value=f.text||'';
     if($('flashEnabledAdmin'))$('flashEnabledAdmin').checked=!!f.enabled;
-    window._flashIcon=ico;
-    updateFlashButtons();
-    renderFlashAdminPreview();
   }
-}
-function renderFlashAdminPreview(){
-  const p=$('flashPreview');
-  if(!p)return;
-  const title=currentFlashTitle();
-  const text=($('flashTextAdmin')&&$('flashTextAdmin').value)||'Aperçu du message flash';
-  const icon=currentFlashIcon();
-
-  cleanFlashClasses(p);
-  p.classList.add('flashPreview',flashClassFromTitle(title));
-
-  const siren=(icon==='🚨'||title.toUpperCase()==='URGENT')?'flashIcon siren':'flashIcon';
-  p.innerHTML=`<span class="${siren}">${icon}</span> <b>${title} :</b> ${String(text).replaceAll('<','&lt;')}`;
 }
 async function saveFlashText(){
   try{
-    const icon=currentFlashIcon();
-    await api('/api/admin/flash',{
-      method:'POST',
-      body:JSON.stringify({
-        title:currentFlashTitle(),
-        icon,
-        text:$('flashTextAdmin').value,
-        enabled:$('flashEnabledAdmin').checked
-      })
-    });
+    await api('/api/admin/flash',{method:'POST',body:JSON.stringify({title:$('flashTitleAdmin').value,text:$('flashTextAdmin').value,enabled:$('flashEnabledAdmin').checked})});
     alert('Texte flash enregistré');
     await refresh();
   }catch(e){alert(e.message)}
 }
+
+
+function canManageLinks(){return S.user&&['admin','superviseur'].includes(S.user.role)}
+function linkVisible(l){
+  if(!S.user)return false;
+  if(['admin','superviseur'].includes(S.user.role))return true;
+  const b=S.user.brigades||{};
+  const v=l.visible||{};
+  return (v.jour&&b.jour)||(v.nuit&&b.nuit)||(!v.jour&&!v.nuit);
+}
+function logoHtml(l){
+  const logo=String(l.logo||'🔗').trim()||'🔗';
+  if(/^https?:\/\//i.test(logo))return `<img class="linkLogoImg" src="${logo}" alt="">`;
+  return `<div class="linkLogo">${esc(logo)}</div>`;
+}
+function renderLinks(){
+  const btn=$('newLinkBtn'); if(btn)btn.classList.toggle('hidden',!canManageLinks());
+  const list=$('linksList'); if(!list)return;
+  const arr=(S.links||[]).filter(linkVisible);
+  if(!arr.length){list.innerHTML='<span class="mut">Aucun lien utile disponible.</span>';return}
+  list.innerHTML=arr.map(l=>`<div class="linkCard">${logoHtml(l)}<div class="linkBody"><h3>${esc(l.name)}</h3><p>${esc(l.description||'')}</p><a href="${esc(l.url)}" target="_blank" rel="noopener"><button class="small primary">Ouvrir</button></a>${canManageLinks()?`<div class="linkActions"><button class="small" onclick='editLink(${JSON.stringify(l.id)})'>Modifier</button><button class="small danger" onclick='removeLink(${JSON.stringify(l.id)})'>Supprimer</button></div>`:''}</div></div>`).join('');
+}
+function openLinkForm(){if(!canManageLinks()){alert('Réservé superviseur/admin');return}$('linkForm').classList.remove('hidden');$('linkFormTitle').textContent='Ajouter un lien';$('linkId').value='';$('linkName').value='';$('linkUrl').value='';$('linkLogo').value='';$('linkDesc').value='';$('linkJour').checked=true;$('linkNuit').checked=true;$('deleteLinkBtn').classList.add('hidden')}
+function closeLinkForm(){$('linkForm').classList.add('hidden')}
+function editLink(id){const l=(S.links||[]).find(x=>x.id===id);if(!l)return;openLinkForm();$('linkFormTitle').textContent='Modifier un lien';$('linkId').value=l.id;$('linkName').value=l.name||'';$('linkUrl').value=l.url||'';$('linkLogo').value=l.logo||'';$('linkDesc').value=l.description||'';$('linkJour').checked=!!(l.visible&&l.visible.jour);$('linkNuit').checked=!!(l.visible&&l.visible.nuit);$('deleteLinkBtn').classList.remove('hidden')}
+async function saveLink(){
+  await api('/api/links',{method:'POST',body:JSON.stringify({id:$('linkId').value,name:$('linkName').value,url:$('linkUrl').value,logo:$('linkLogo').value,description:$('linkDesc').value,visible:{jour:$('linkJour').checked,nuit:$('linkNuit').checked}})});
+  closeLinkForm();await refresh();
+}
+async function deleteLink(){if(!$('linkId').value)return;if(confirm('Supprimer ce lien ?')){await removeLink($('linkId').value);closeLinkForm()}}
+async function removeLink(id){await api('/api/links/'+id,{method:'DELETE'});await refresh()}
+function renderHistoryUsers(){
+  if(!['admin','superviseur'].includes(S.user.role)){show('dash');return}
+  const box=$('historyUsers'); if(!box)return;
+  const users=S.users||[];
+  if(!users.length){box.innerHTML='<span class="mut">Aucun utilisateur chargé.</span>';return}
+  box.innerHTML=users.map(u=>`<div class="row"><b>${esc(u.displayName)}</b><span class="mut">${esc(u.login)} / ${esc(u.role)}</span><button class="small primary" onclick='loadUserHistory(${JSON.stringify(u.id)},${JSON.stringify(u.displayName)})'>Historique</button></div>`).join('');
+}
+async function loadUserHistory(id,name){
+  try{
+    const r=await api('/api/history/'+id);
+    $('historyTitle').textContent='Historique de '+name+' - 7 derniers jours';
+    const arr=r.logs||[];
+    $('historyList').innerHTML=arr.length?arr.map(l=>`<div class="historyItem"><span class="mut">${new Date(l.date).toLocaleString('fr-FR')}</span><br><b>${esc(l.user||name)}</b> : ${esc(l.msg||l.action||'')}</div>`).join(''):'<span class="mut">Aucune action sur les 7 derniers jours.</span>';
+  }catch(e){alert(e.message)}
+}
+
 
 function canManageConsignes(){return S.user&&['admin','superviseur'].includes(S.user.role)}
 function consigneUnreadCount(){return (S.consignes||[]).filter(c=>!c.read).length}
@@ -364,15 +377,6 @@ function toggleLoginPassword(){
   if(!p)return;
   p.type=p.type==='password'?'text':'password';
 }
-document.addEventListener('input',e=>{
-  if(e.target&&['flashTitleAdmin','flashTextAdmin'].includes(e.target.id)){
-    updateFlashButtons();
-    renderFlashAdminPreview();
-  }
-});
-document.addEventListener('change',e=>{
-  if(e.target&&e.target.id==='flashEnabledAdmin')renderFlashAdminPreview();
-});
 setInterval(()=>{if($('app').style.display==='block')refreshSafe(false).catch(()=>{})},3000);init();
 </script>
 
