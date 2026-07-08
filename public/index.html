@@ -109,12 +109,21 @@ animation:phenixGlow 8s ease-in-out infinite alternate}
 .flashAdmin{border-color:rgba(239,68,68,.55);box-shadow:0 0 0 1px rgba(239,68,68,.12)}.flashAdmin textarea{min-height:130px}.flashToggleRow{display:flex;align-items:center;gap:10px;margin:10px 0}.flashToggleRow input{width:auto}
 
 /* V32 - Liens utiles */
-.linkGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
-.linkCard{background:#071525;border:1px solid var(--l);border-radius:16px;padding:14px;display:flex;gap:12px;align-items:flex-start}
-.linkLogo{width:44px;height:44px;border-radius:12px;background:#10223a;border:1px solid var(--l);display:grid;place-items:center;font-size:24px;object-fit:contain;flex:0 0 44px}
-.linkLogoImg{width:44px;height:44px;border-radius:12px;object-fit:contain;background:#10223a;border:1px solid var(--l)}
-.linkBody{flex:1}.linkBody h3{margin:0 0 4px 0}.linkBody p{margin:0 0 10px 0;color:var(--m);font-size:12px;line-height:1.35}
-.linkActions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.linkGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,120px));gap:18px;align-items:start}
+.linkCard{position:relative;width:120px;min-height:132px;background:linear-gradient(145deg,#10223a,#071525);border:1px solid var(--l);border-radius:20px;padding:12px 10px 10px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease;box-shadow:0 10px 25px rgba(0,0,0,.22)}
+.linkCard:hover{transform:translateY(-3px) scale(1.03);border-color:#3b82f6;box-shadow:0 16px 36px rgba(0,0,0,.34),0 0 18px rgba(59,130,246,.18)}
+.linkCard:active{transform:scale(.97)}
+.linkLogo{width:76px;height:76px;border-radius:18px;background:#10223a;border:1px solid rgba(255,255,255,.12);display:grid;place-items:center;font-size:42px;object-fit:contain;margin-bottom:9px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}
+.linkLogoImg{width:76px;height:76px;border-radius:18px;object-fit:contain;background:#f8fafc;border:1px solid rgba(255,255,255,.12);padding:6px;margin-bottom:9px;box-shadow:0 6px 16px rgba(0,0,0,.28)}
+.linkBody{width:100%;display:flex;flex-direction:column;align-items:center}
+.linkBody h3{margin:0;color:#fff;font-size:14px;line-height:1.15;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.linkBody p,.linkBody a{display:none}
+.linkActions{position:absolute;right:6px;top:6px;display:flex;gap:4px;opacity:0;transition:.15s}
+.linkCard:hover .linkActions{opacity:1}
+.linkActions button{min-width:0;width:28px;height:28px;padding:0;border-radius:9px;font-size:0;background:rgba(32,57,92,.92)}
+.linkActions button:first-child::before{content:'✎';font-size:14px}
+.linkActions button.danger::before{content:'×';font-size:18px}
+@media(max-width:900px){.linkGrid{grid-template-columns:repeat(auto-fill,minmax(104px,104px));gap:14px}.linkCard{width:104px;min-height:122px}.linkLogo,.linkLogoImg{width:68px;height:68px}.linkBody h3{font-size:13px}.linkActions{opacity:1}}
 .historyBox{max-height:420px;overflow:auto;border:1px solid var(--l);border-radius:12px;background:#071525;padding:10px}
 .historyItem{border-bottom:1px solid rgba(255,255,255,.07);padding:8px 0}.historyItem:last-child{border-bottom:0}
 
@@ -208,7 +217,7 @@ animation:phenixGlow 8s ease-in-out infinite alternate}
       <div class="field"><label>URL</label><input id="linkUrl" placeholder="https://..."></div>
     </div>
     <div class="grid2">
-      <div class="field"><label>Logo / emoji</label><input id="linkLogo" placeholder="📋 ou /logo-maincourante.png ou https://.../logo.png"></div>
+      <div class="field"><label>Logo / emoji</label><input id="linkLogo" placeholder="Ex : logocartoweb.png ou 📋"></div>
       <div class="field"><label>Description</label><input id="linkDesc" placeholder="Description facultative"></div>
     </div>
     <div class="field">
@@ -357,7 +366,12 @@ function renderLinks(){
   const list=$('linksList'); if(!list)return;
   const arr=(S.links||[]).filter(linkVisible);
   if(!arr.length){list.innerHTML='<span class="mut">Aucun lien utile disponible.</span>';return}
-  list.innerHTML=arr.map(l=>`<div class="linkCard">${logoHtml(l)}<div class="linkBody"><h3>${esc(l.name)}</h3><p>${esc(l.description||'')}</p><a href="${esc(l.url)}" target="_blank" rel="noopener"><button class="small primary">Ouvrir</button></a>${canManageLinks()?`<div class="linkActions"><button class="small" onclick='editLink(${JSON.stringify(l.id)})'>Modifier</button><button class="small danger" onclick='removeLink(${JSON.stringify(l.id)})'>Supprimer</button></div>`:''}</div></div>`).join('');
+  list.innerHTML=arr.map(l=>`<div class="linkCard" onclick='openUsefulLink(${JSON.stringify(l.url)})'>${logoHtml(l)}<div class="linkBody"><h3 title="${esc(l.name)}">${esc(l.name)}</h3>${canManageLinks()?`<div class="linkActions" onclick="event.stopPropagation()"><button class="small" title="Modifier" onclick='editLink(${JSON.stringify(l.id)})'>Modifier</button><button class="small danger" title="Supprimer" onclick='removeLink(${JSON.stringify(l.id)})'>Supprimer</button></div>`:''}</div></div>`).join('');
+}
+function openUsefulLink(url){
+  const u=String(url||'').trim();
+  if(!u)return;
+  window.open(u,'_blank','noopener');
 }
 function openLinkForm(){if(!canManageLinks()){alert('Réservé superviseur/admin');return}$('linkForm').classList.remove('hidden');$('linkFormTitle').textContent='Ajouter un lien';$('linkId').value='';$('linkName').value='';$('linkUrl').value='';$('linkLogo').value='';$('linkDesc').value='';$('linkJour').checked=true;$('linkNuit').checked=true;$('deleteLinkBtn').classList.add('hidden')}
 function closeLinkForm(){$('linkForm').classList.add('hidden')}
