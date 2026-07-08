@@ -317,11 +317,33 @@ function linkVisible(l){
   return (v.jour&&b.jour)||(v.nuit&&b.nuit)||(!v.jour&&!v.nuit);
 }
 function logoHtml(l){
-  const logo=String(l.logo||'🔗').trim()||'🔗';
-  if(/^https?:\/\//i.test(logo) || logo.startsWith('/')){
-    return `<img class="linkLogoImg" src="${esc(logo)}" alt="" onerror="this.outerHTML='<div class=&quot;linkLogo&quot;>🔗</div>'">`;
-  }
-  return `<div class="linkLogo">${esc(logo)}</div>`;
+    let logo = String(l.logo || "🔗").trim();
+
+    if(!logo) logo = "🔗";
+
+    if(
+        !logo.includes("/") &&
+        !logo.includes(".png") &&
+        !logo.includes(".jpg") &&
+        !logo.includes(".jpeg") &&
+        !logo.includes(".svg") &&
+        !logo.includes(".webp") &&
+        !logo.startsWith("http")
+    ){
+        return `<div class="linkLogo">${esc(logo)}</div>`;
+    }
+
+    if(!logo.startsWith("/") && !logo.startsWith("http")){
+        logo = "/" + logo;
+    }
+
+    return `
+        <img
+            class="linkLogoImg"
+            src="${esc(logo)}"
+            alt=""
+            onerror="this.outerHTML='<div class=&quot;linkLogo&quot;>🔗</div>'">
+    `;
 }
 function renderLinks(){
   const btn=$('newLinkBtn'); if(btn)btn.classList.toggle('hidden',!canManageLinks());
