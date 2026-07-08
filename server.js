@@ -101,6 +101,15 @@ function linksForUser(d,u){
   return (d.links||[]).filter(l=>visibleLink(l,u));
 }
 
+function cleanLogo(v){
+  let s=String(v||'🔗').trim();
+  // Si l'utilisateur a copié/collé avec l'icône par défaut devant, on la retire
+  s=s.replace(/^🔗\s*/,'').trim();
+  if(!s) s='🔗';
+  return s;
+}
+
+
 app.use(express.json({limit:'4mb'}));
 app.use(session({
   secret: process.env.SESSION_SECRET || 'pegase-session-secret-v22',
@@ -133,7 +142,7 @@ app.post('/api/login', (req,res)=>{
   const d=load(); const {login,password}=req.body||{};
   const u=d.users.find(x=>x.login===String(login||'').trim());
   if(!u || !bcrypt.compareSync(String(password||''), u.passwordHash)) return res.status(401).json({error:'Identifiant ou mot de passe incorrect'});
-  req.session.userId=u.id; res.json({ok:true,user:safe(u)});
+  req.session.userId=u.id; audit(d,req,'Connexion'); save(d); res.json({ok:true,user:safe(u)});
 });
 
 app.post('/api/logout', (req,res)=>{ const d=load(); audit(d,req,'Déconnexion'); save(d); req.session.destroy(()=>res.json({ok:true})); });
@@ -158,13 +167,14 @@ app.get('/api/data', needLogin, (req,res)=>{
     consignes:consignesForUser(d,u),
     links:linksForUser(d,u),
     flash:d.flash||{enabled:false,title:'INFO',text:''},
-    users:u.role==='admin'?d.users.map(safe):undefined
+    users:['admin','superviseur'].includes(u.role)?d.users.map(safe):undefined
   });
 });
 
 app.post('/api/note', needLogin, needOperational, (req,res)=>{
   const d=load();
   d.notes[req.session.userId]=String(req.body.note||'');
+  audit(d,req,'Modification notes privées');
   save(d);
   res.json({ok:true});
 });
@@ -286,7 +296,7 @@ app.post('/api/links', needLogin, needConsigneManager, (req,res)=>{
   const data={
     name:String(r.name).trim(),
     url:String(r.url).trim(),
-    logo:String(r.logo||'🔗').trim()||'🔗',
+    logo:cleanLogo(r.logo),
     description:String(r.description||'').trim(),
     visible:{
       jour:!!(r.visible&&r.visible.jour),
@@ -323,6 +333,13 @@ app.get('/api/history/:userId', needLogin, (req,res)=>{
     return t>=since && (l.userId===req.params.userId || (!l.userId && d.users.find(x=>x.id===req.params.userId && x.displayName===l.user)));
   });
   res.json({logs});
+});
+
+
+app.get('/api/logo-check/:file', needLogin, (req,res)=>{
+  const file=String(req.params.file||'').replace(/[^a-zA-Z0-9_.-]/g,'');
+  const full=path.join(__dirname,'public',file);
+  res.json({file, exists:fs.existsSync(full), path:'/'.concat(file)});
 });
 
 app.post('/api/admin/users', needLogin, needAdmin, (req,res)=>{
@@ -370,4 +387,4 @@ app.post('/api/admin/lists', needLogin, needAdmin, (req,res)=>{
   res.json({ok:true});
 });
 
-app.listen(PORT,()=>console.log('PEGASE V32 liens utiles + historique prêt sur le port '+PORT));
+app.listen(PORT,()=>console.log('PEGASE V33 logos liens utiles corrigés sur le port '+PORT));
