@@ -201,7 +201,7 @@ animation:phenixGlow 8s ease-in-out infinite alternate}
       <div class="field"><label>URL</label><input id="linkUrl" placeholder="https://..."></div>
     </div>
     <div class="grid2">
-      <div class="field"><label>Logo / emoji</label><input id="linkLogo" placeholder="📋 ou https://.../logo.png"></div>
+      <div class="field"><label>Logo / emoji</label><input id="linkLogo" placeholder="📋 ou /logo-maincourante.png ou https://.../logo.png"></div>
       <div class="field"><label>Description</label><input id="linkDesc" placeholder="Description facultative"></div>
     </div>
     <div class="field">
@@ -261,7 +261,16 @@ function shouldPauseRefresh(){const el=document.activeElement; if(el && ['INPUT'
 function show(id){if(S.user&&S.user.role==='dashboard'){id='dash'}activeSection=id;['dash','personnel','notes','links','history','consignes','admin'].forEach(x=>$(x).classList.toggle('hidden',x!==id)); if(id==='notes') $('note').value=S.note||''; if(id==='consignes') renderConsignes(); if(id==='links') renderLinks(); if(id==='history') renderHistoryUsers()}
 function an(m){const a=S.agents.find(x=>x.matricule===m);return a?`${a.matricule} ${a.nom||''} ${a.prenom||''}`.trim():m}
 function canOperate(){return S.user && S.user.role!=='dashboard'}
-function renderAll(force=false){renderCrews();renderAgents();renderAdmin(force);renderConsignes();renderLinks();renderFlash();if(activeSection!=='notes' || force || !noteDirty){$('note').value=S.note||'';noteDirty=false;}const logsRecent=S.logs.filter(l=>Date.now()-new Date(l.date).getTime()<=60*60*1000);$('logs').innerHTML=logsRecent.length?logsRecent.map(l=>`<div><span class="mut">${new Date(l.date).toLocaleString('fr-FR')}</span> — <b>${l.user}</b> : ${l.msg}</div>`).join(''):'<span class="mut">Aucun événement sur la dernière heure.</span>';$('cTotal').textContent=S.crews.length;$('cDispo').textContent=S.crews.filter(c=>c.status==='DISPO').length;$('cIndispo').textContent=S.crews.filter(c=>c.status==='INDISPO').length;$('cEff').textContent=new Set(S.crews.flatMap(c=>c.matricules||[])).size}
+function renderAll(force=false){renderCrews();renderAgents();renderAdmin(force);renderConsignes();renderLinks();renderFlash();if(activeSection!=='notes' || force || !noteDirty){$('note').value=S.note||'';noteDirty=false;}const logsRecent=S.logs.filter(l=>{
+  const recent=Date.now()-new Date(l.date).getTime()<=60*60*1000;
+  const msg=String(l.msg||'');
+  const allowed=
+    msg.includes('Création équipage') ||
+    msg.includes('Suppression équipage') ||
+    msg.includes(' DISPO') ||
+    msg.includes(' INDISPO');
+  return recent && allowed;
+});$('logs').innerHTML=logsRecent.length?logsRecent.map(l=>`<div><span class="mut">${new Date(l.date).toLocaleString('fr-FR')}</span> — <b>${l.user}</b> : ${l.msg}</div>`).join(''):'<span class="mut">Aucun événement sur la dernière heure.</span>';$('cTotal').textContent=S.crews.length;$('cDispo').textContent=S.crews.filter(c=>c.status==='DISPO').length;$('cIndispo').textContent=S.crews.filter(c=>c.status==='INDISPO').length;$('cEff').textContent=new Set(S.crews.flatMap(c=>c.matricules||[])).size}
 function renderCrews(){const readonly=!canOperate();$('crewRows').innerHTML=S.crews.map(c=>`<tr class="${c.status==='INDISPO'?'indispo':'dispo'}"><td><button class="infoBtn" title="Infos équipage" onclick='showCrewInfo(${JSON.stringify(c.id)})'>i</button></td><td><b>${c.callsign}</b><br><span class="pill">${c.status}</span></td><td>${(c.matricules||[]).map(m=>`<span class="pill">${m}</span>`).join('')}</td><td>${c.intervention||'—'}</td><td>${c.meal||'—'}</td><td>${readonly?'<span class="mut">Lecture seule</span>':`<button class="small" onclick='openCrew(${JSON.stringify(c.id)})'>Modifier</button> <button class="small ok" onclick='statusCrew(${JSON.stringify(c.id)},"DISPO")'>DISPO</button> <button class="small danger" onclick='openIndispo(${JSON.stringify(c.id)})'>INDISPO</button>`}</td></tr>`).join('')}
 function showCrewInfo(id){const c=S.crews.find(x=>x.id===id);if(!c)return;$('infoTitle').textContent='Infos '+c.callsign;const names=(c.matricules||[]).map(m=>'<div class="pill">'+an(m)+'</div>').join('')||'—';$('infoBody').innerHTML='<h3>Agents</h3>'+names+'<h3>Heure de repas</h3><div class="section">'+(c.meal||'Aucune')+'</div><h3>Observations</h3><div class="section">'+(c.observations||'Aucune observation')+'</div>';$('infoModal').style.display='grid'}
 function fillSelects(selected=[]){ $('crewCall').innerHTML=S.callsigns.map(x=>`<option>${x}</option>`).join('');$('crewAgents').innerHTML=S.agents.filter(a=>a.actif).map(a=>`<label class="agentChoice"><input type="checkbox" value="${a.matricule}" ${selected.includes(a.matricule)?'checked':''}> <span>${an(a.matricule)}</span></label>`).join('');$('indispoSelect').innerHTML=S.interventions.map(x=>`<option>${x}</option>`).join('')}
@@ -309,7 +318,9 @@ function linkVisible(l){
 }
 function logoHtml(l){
   const logo=String(l.logo||'🔗').trim()||'🔗';
-  if(/^https?:\/\//i.test(logo))return `<img class="linkLogoImg" src="${logo}" alt="">`;
+  if(/^https?:\/\//i.test(logo) || logo.startsWith('/')){
+    return `<img class="linkLogoImg" src="${esc(logo)}" alt="" onerror="this.outerHTML='<div class=&quot;linkLogo&quot;>🔗</div>'">`;
+  }
   return `<div class="linkLogo">${esc(logo)}</div>`;
 }
 function renderLinks(){
@@ -332,7 +343,7 @@ function renderHistoryUsers(){
   if(!['admin','superviseur'].includes(S.user.role)){show('dash');return}
   const box=$('historyUsers'); if(!box)return;
   const users=S.users||[];
-  if(!users.length){box.innerHTML='<span class="mut">Aucun utilisateur chargé.</span>';return}
+  if(!users.length){box.innerHTML='<span class="mut">Aucun utilisateur chargé. Vérifie que ton server.js renvoie bien users pour les rôles admin/superviseur.</span>';return}
   box.innerHTML=users.map(u=>`<div class="row"><b>${esc(u.displayName)}</b><span class="mut">${esc(u.login)} / ${esc(u.role)}</span><button class="small primary" onclick='loadUserHistory(${JSON.stringify(u.id)},${JSON.stringify(u.displayName)})'>Historique</button></div>`).join('');
 }
 async function loadUserHistory(id,name){
