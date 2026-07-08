@@ -18,7 +18,8 @@ function baseData(){
     logs: [],
     notes: {},
     consignes: [],
-    flash: { enabled:false, text:'' }
+    links: [],
+    flash: { enabled:false, title:'INFO', text:'' }
   };
 }
 
@@ -31,8 +32,10 @@ function migrate(d){
   d.logs=d.logs||[];
   d.notes=d.notes||{};
   d.consignes=d.consignes||[];
-  d.flash=d.flash||{enabled:false,text:''};
+  d.links=d.links||[];
+  d.flash=d.flash||{enabled:false,title:'INFO',text:''};
   if(typeof d.flash.enabled!=='boolean') d.flash.enabled=false;
+  d.flash.title=String(d.flash.title||'INFO').trim()||'INFO';
   d.flash.text=String(d.flash.text||'');
   d.users.forEach(u=>{ if(!u.brigades) u.brigades={jour:true,nuit:true}; });
   return d;
@@ -46,7 +49,7 @@ function needLogin(req,res,next){ if(!req.session.userId) return res.status(401)
 function needAdmin(req,res,next){ const u=current(req); if(!u || u.role!=='admin') return res.status(403).json({error:'Réservé admin'}); next(); }
 function needOperational(req,res,next){ const u=current(req); if(!u || u.role==='dashboard') return res.status(403).json({error:'Accès lecture seule'}); next(); }
 function needConsigneManager(req,res,next){ const u=current(req); if(!u || !['admin','superviseur'].includes(u.role)) return res.status(403).json({error:'Réservé superviseur/admin'}); next(); }
-function audit(d, req, msg){ const u=current(req); d.logs.unshift({date:new Date().toISOString(), user:u?u.displayName:'Système', msg}); d.logs=d.logs.slice(0,500); }
+function audit(d, req, msg){ const u=current(req); d.logs.unshift({date:new Date().toISOString(), userId:u?u.id:null, user:u?u.displayName:'Système', msg}); d.logs=d.logs.slice(0,2000); }
 
 function atFour(date=new Date()){ const d=new Date(date); d.setHours(4,0,0,0); return d; }
 
@@ -86,6 +89,18 @@ function consignesForUser(d,u){
   });
 }
 
+
+function visibleLink(l,u){
+  if(['admin','superviseur'].includes(u.role)) return true;
+  const b=u.brigades||{};
+  const v=l.visible||{};
+  if(!v.jour && !v.nuit) return true;
+  return (v.jour&&b.jour)||(v.nuit&&b.nuit);
+}
+function linksForUser(d,u){
+  return (d.links||[]).filter(l=>visibleLink(l,u));
+}
+
 app.use(express.json({limit:'4mb'}));
 app.use(session({
   secret: process.env.SESSION_SECRET || 'pegase-session-secret-v22',
@@ -100,7 +115,7 @@ app.get('/api/status', (req,res)=>{
   res.json({
     setupRequired:d.users.length===0,
     user:safe(current(req)),
-    flash:d.flash||{enabled:false,text:''}
+    flash:d.flash||{enabled:false,title:'INFO',text:''}
   });
 });
 
@@ -111,7 +126,7 @@ app.post('/api/setup', (req,res)=>{
   if(!displayName || !login || !password) return res.status(400).json({error:'Nom, identifiant et mot de passe obligatoires'});
   if(String(password).length < 4) return res.status(400).json({error:'Mot de passe trop court : minimum 4 caractères'});
   const u={id:Date.now().toString(), displayName:String(displayName).trim(), login:String(login).trim(), role:'admin', brigades:{jour:true,nuit:true}, passwordHash:bcrypt.hashSync(String(password),10)};
-  d.users.push(u); audit(d,req,'Création du premier admin'); save(d); req.session.userId=u.id; res.json({ok:true,user:safe(u)});
+  d.users.push(u); audit(d,req,'Création du premier admin'); save(d); req.session.userId=u.id; audit(d,req,'Connexion'); save(d); res.json({ok:true,user:safe(u)});
 });
 
 app.post('/api/login', (req,res)=>{
@@ -121,7 +136,7 @@ app.post('/api/login', (req,res)=>{
   req.session.userId=u.id; res.json({ok:true,user:safe(u)});
 });
 
-app.post('/api/logout', (req,res)=> req.session.destroy(()=>res.json({ok:true})) );
+app.post('/api/logout', (req,res)=>{ const d=load(); audit(d,req,'Déconnexion'); save(d); req.session.destroy(()=>res.json({ok:true})); });
 
 app.post('/api/password', needLogin, (req,res)=>{
   const d=load(); const u=d.users.find(x=>x.id===req.session.userId);
@@ -141,7 +156,8 @@ app.get('/api/data', needLogin, (req,res)=>{
     logs:d.logs.slice(0,100),
     note:d.notes[u.id]||'',
     consignes:consignesForUser(d,u),
-    flash:d.flash||{enabled:false,text:''},
+    links:linksForUser(d,u),
+    flash:d.flash||{enabled:false,title:'INFO',text:''},
     users:u.role==='admin'?d.users.map(safe):undefined
   });
 });
@@ -254,11 +270,59 @@ app.post('/api/admin/flash', needLogin, needAdmin, (req,res)=>{
   const d=load();
   d.flash={
     enabled: !!req.body.enabled,
+    title: String(req.body.title||'INFO').trim() || 'INFO',
     text: String(req.body.text||'').trim()
   };
   audit(d,req,'Modification texte flash');
   save(d);
   res.json({ok:true, flash:d.flash});
+});
+
+
+app.post('/api/links', needLogin, needConsigneManager, (req,res)=>{
+  const d=load(); const r=req.body||{};
+  if(!String(r.name||'').trim()) return res.status(400).json({error:'Nom du lien obligatoire'});
+  if(!String(r.url||'').trim()) return res.status(400).json({error:'URL obligatoire'});
+  const data={
+    name:String(r.name).trim(),
+    url:String(r.url).trim(),
+    logo:String(r.logo||'🔗').trim()||'🔗',
+    description:String(r.description||'').trim(),
+    visible:{
+      jour:!!(r.visible&&r.visible.jour),
+      nuit:!!(r.visible&&r.visible.nuit)
+    },
+    updatedAt:new Date().toISOString()
+  };
+  if(r.id){
+    const l=d.links.find(x=>x.id===r.id);
+    if(!l) return res.status(404).json({error:'Lien introuvable'});
+    Object.assign(l,data);
+    audit(d,req,'Modification lien utile '+data.name);
+  } else {
+    d.links.unshift({id:Date.now().toString(), createdAt:new Date().toISOString(), ...data});
+    audit(d,req,'Création lien utile '+data.name);
+  }
+  save(d); res.json({ok:true});
+});
+
+app.delete('/api/links/:id', needLogin, needConsigneManager, (req,res)=>{
+  const d=load();
+  const l=d.links.find(x=>x.id===req.params.id);
+  d.links=d.links.filter(x=>x.id!==req.params.id);
+  if(l) audit(d,req,'Suppression lien utile '+l.name);
+  save(d); res.json({ok:true});
+});
+
+app.get('/api/history/:userId', needLogin, (req,res)=>{
+  const d=load(); const u=current(req);
+  if(!u || !['admin','superviseur'].includes(u.role)) return res.status(403).json({error:'Réservé superviseur/admin'});
+  const since=Date.now()-7*24*60*60*1000;
+  const logs=(d.logs||[]).filter(l=>{
+    const t=new Date(l.date).getTime();
+    return t>=since && (l.userId===req.params.userId || (!l.userId && d.users.find(x=>x.id===req.params.userId && x.displayName===l.user)));
+  });
+  res.json({logs});
 });
 
 app.post('/api/admin/users', needLogin, needAdmin, (req,res)=>{
@@ -306,4 +370,4 @@ app.post('/api/admin/lists', needLogin, needAdmin, (req,res)=>{
   res.json({ok:true});
 });
 
-app.listen(PORT,()=>console.log('PEGASE V29 consignes + texte flash prêt sur le port '+PORT));
+app.listen(PORT,()=>console.log('PEGASE V32 liens utiles + historique prêt sur le port '+PORT));
