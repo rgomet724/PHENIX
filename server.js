@@ -103,6 +103,18 @@ function linksForUser(d,u){
   return (d.links||[]).filter(l=>visibleLink(l,u));
 }
 
+
+function visibleEvent(ev,u){
+  if(['admin','superviseur','dashboard'].includes(u.role)) return true;
+  const v=ev.visible||{};
+  if(v.all || (!v.jour && !v.nuit)) return true;
+  const b=u.brigades||{};
+  return (v.jour&&b.jour)||(v.nuit&&b.nuit);
+}
+function eventsForUser(d,u){
+  return (d.events||[]).filter(ev=>visibleEvent(ev,u));
+}
+
 function cleanLogo(v){
   let s=String(v||'🔗').trim();
   // Si l'utilisateur a copié/collé avec l'icône par défaut devant, on la retire
@@ -168,7 +180,7 @@ app.get('/api/data', needLogin, (req,res)=>{
     note:d.notes[u.id]||'',
     consignes:consignesForUser(d,u),
     links:linksForUser(d,u),
-    events:d.events||[],
+    events:eventsForUser(d,u),
     flash:d.flash||{enabled:false,title:'INFO',text:''},
     users:['admin','superviseur'].includes(u.role)?d.users.map(safe):undefined
   });
@@ -352,7 +364,7 @@ app.post('/api/events', needLogin, needConsigneManager, (req,res)=>{
   if(!String(r.start||'').trim() || !String(r.end||'').trim()) return res.status(400).json({error:'Début et fin obligatoires'});
   const s=new Date(r.start), e=new Date(r.end);
   if(isNaN(s.getTime()) || isNaN(e.getTime()) || e<=s) return res.status(400).json({error:'Dates invalides'});
-  const data={title:String(r.title).trim(),start:String(r.start),end:String(r.end),color:String(r.color||'blue'),description:String(r.description||'').trim(),updatedAt:new Date().toISOString(),updatedBy:u.displayName};
+  const data={title:String(r.title).trim(),start:String(r.start),end:String(r.end),color:String(r.color||'blue'),location:String(r.location||'').trim(),description:String(r.description||'').trim(),visible:{jour:!!(r.visible&&r.visible.jour),nuit:!!(r.visible&&r.visible.nuit),all:!!(r.visible&&r.visible.all)},recurrence:String(r.recurrence||'none'),updatedAt:new Date().toISOString(),updatedBy:u.displayName};
   if(r.id){
     const ev=(d.events||[]).find(x=>x.id===r.id);
     if(!ev) return res.status(404).json({error:'Événement introuvable'});
@@ -418,4 +430,4 @@ app.post('/api/admin/lists', needLogin, needAdmin, (req,res)=>{
   res.json({ok:true});
 });
 
-app.listen(PORT,()=>console.log('PEGASE V37 événements prêt sur le port '+PORT));
+app.listen(PORT,()=>console.log('PEGASE V39 calendrier avancé prêt sur le port '+PORT));
