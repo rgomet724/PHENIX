@@ -166,6 +166,98 @@ animation:phenixGlow 8s ease-in-out infinite alternate}
 .crewFooter{display:flex;justify-content:flex-end;gap:8px;padding:14px 22px;background:#edf3fb;border-top:1px solid #c9d7e8}
 @media(max-width:760px){.crewFormRow{grid-template-columns:1fr;gap:6px}.crewFormRow>label{text-align:left;padding-top:0}.crewBody{padding:16px}}
 
+
+/* V41 - Fenêtre équipage alignée + thème clair/sombre */
+.themeToggle{
+  display:inline-flex;align-items:center;gap:8px;min-width:auto;
+  background:#20395c;border:1px solid var(--l);padding:8px 12px
+}
+.themeToggle .themeIcon{font-size:16px}
+
+.crewBox{
+  width:min(860px,96vw)!important;
+  max-height:92vh!important;
+  padding:0!important;
+  overflow:hidden!important;
+  border:1px solid #2f6fbf!important;
+  border-radius:16px!important;
+  background:#f7f9fc!important;
+  color:#1f2937!important
+}
+.crewHeader{
+  display:flex;align-items:center;justify-content:space-between;
+  background:linear-gradient(180deg,#3b82f6,#2563eb);
+  color:#fff;padding:16px 20px
+}
+.crewHeaderLeft{display:flex;align-items:center;gap:12px}
+.crewHeaderIcon{
+  width:38px;height:38px;border-radius:10px;display:grid;place-items:center;
+  background:rgba(255,255,255,.16);font-size:20px
+}
+.crewHeader h2{margin:0;font-size:20px}
+.crewHeaderSub{font-size:12px;color:#dbeafe;margin-top:2px}
+.crewClose{
+  width:32px;height:32px;min-width:32px;padding:0;border-radius:50%;
+  background:rgba(255,255,255,.15);font-size:20px
+}
+.crewBody{padding:22px 24px;overflow:auto;max-height:calc(92vh - 132px)}
+.crewGrid{display:grid;grid-template-columns:1fr 1fr;gap:18px 20px}
+.crewField{display:flex;flex-direction:column;gap:7px}
+.crewField.full{grid-column:1/-1}
+.crewField label{font-weight:700;color:#374151;font-size:14px}
+.crewField input,.crewField select,.crewField textarea{
+  width:100%;min-height:44px;background:#fff;color:#111827;
+  border:1px solid #b7c3d0;border-radius:8px;padding:10px 12px;
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.03)
+}
+.crewField textarea{min-height:88px;resize:vertical}
+.crewField .agentSearch{margin:0 0 8px 0}
+.crewField .agentList{
+  max-height:250px;background:#fff;border:1px solid #b7c3d0;
+  border-radius:8px;padding:0;overflow:auto
+}
+.crewField .agentChoice{
+  color:#111827;padding:9px 12px;border-bottom:1px solid #e5e7eb
+}
+.crewField .agentChoice:last-child{border-bottom:0}
+.crewField .agentChoice:hover{background:#eef5ff}
+.crewHint{color:#6b7280;font-size:12px;margin-top:6px}
+.crewFooter{
+  display:flex;justify-content:flex-end;gap:8px;
+  padding:14px 22px;background:#edf3fb;border-top:1px solid #c9d7e8
+}
+.crewFooter .primary{background:#2563eb}
+.crewFooter .danger{background:#b91c1c}
+
+body.lightMode{
+  --bg:#eef3f8;--p:#ffffff;--p2:#f6f8fb;--t:#152238;--m:#5f6f82;
+  --l:#c9d4e1;background:#edf3f8;color:var(--t)
+}
+body.lightMode .top,
+body.lightMode aside{background:#ffffff}
+body.lightMode .section,
+body.lightMode .card{background:#ffffff}
+body.lightMode .nav button{color:#152238;background:#f7f9fc}
+body.lightMode .layout{background:#edf3f8}
+body.lightMode .field input,
+body.lightMode .field select,
+body.lightMode .field textarea,
+body.lightMode td input{background:#fff;color:#152238;border-color:#c9d4e1}
+body.lightMode .historyBox,
+body.lightMode .agentList,
+body.lightMode .eventCalendar{background:#fff;color:#152238}
+body.lightMode .pill{color:#fff}
+body.lightMode .mut,
+body.lightMode .tag{color:#64748b}
+body.lightMode .themeToggle{background:#e8eef6;color:#152238}
+
+@media(max-width:760px){
+  .crewGrid{grid-template-columns:1fr}
+  .crewField.full{grid-column:auto}
+  .crewBody{padding:16px}
+  .crewFooter{flex-wrap:wrap}
+}
+
 </style></head><body>
 <div id="login" class="login"><div id="flashLogin" class="flashLogin hidden"><span class="flashIcon">📢</span><span id="flashLoginLabel" class="flashLabel">INFO :</span><span id="flashLoginText" class="flashText"></span></div><div class="box">
   <div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div>
@@ -188,7 +280,7 @@ animation:phenixGlow 8s ease-in-out infinite alternate}
 </div>
   <div id="msg" class="err"></div>
 </div></div>
-<div id="app" class="app"><div class="top"><div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div><div class="right"><b id="agentName">Agent</b><div class="tag" id="clock"></div><div class="row" style="justify-content:flex-end;margin-top:6px"><button id="notifBtn" class="notifSwitch" onclick="toggleNotifications()" title="Alertes sonores"><span class="notifKnob"></span><span id="notifText">ALERTES ON</span></button><button id="passwordBtn" class="small" onclick="changePass()">Mot de passe</button><button class="small danger" onclick="logout()">Déconnexion</button></div></div></div>
+<div id="app" class="app"><div class="top"><div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div><div class="right"><b id="agentName">Agent</b><div class="tag" id="clock"></div><div class="row" style="justify-content:flex-end;margin-top:6px"><button id="themeBtn" class="themeToggle" onclick="toggleTheme()" title="Changer le thème"><span class="themeIcon">🌙</span><span id="themeText">Thème sombre</span></button><button id="notifBtn" class="notifSwitch" onclick="toggleNotifications()" title="Alertes sonores"><span class="notifKnob"></span><span id="notifText">ALERTES ON</span></button><button id="passwordBtn" class="small" onclick="changePass()">Mot de passe</button><button class="small danger" onclick="logout()">Déconnexion</button></div></div></div>
 <div class="layout"><aside><div class="nav"><button onclick="show('dash')"><span class="navIcon">🏠</span>Tableau de bord</button><button id="personnelBtn" onclick="show('personnel')"><span class="navIcon">👮</span>Personnel</button><button onclick="show('notes')"><span class="navIcon">📝</span>Notes privées</button><button onclick="show('links')"><span class="navIcon">🔗</span>Liens utiles</button><button onclick="show('events')"><span class="navIcon">📅</span>Événements</button><button id="historyBtn" onclick="show('history')"><span class="navIcon">🕒</span>Historique</button><button class="consigneNav" onclick="show('consignes')"><span class="navIcon">📋</span>Consignes <span id="consigneCount" class="consigneCount">(0)</span><span id="consigneBell" class="consigneBell">🔔</span></button><button id="adminBtn" onclick="show('admin')"><span class="navIcon">⚙️</span>Administration</button></div><div id="eventTodayBox" class="eventTodayBox hidden"></div></aside><main>
 <section id="dash"><div class="cards"><div class="card"><span>Équipages</span><br><b id="cTotal">0</b></div><div class="card green"><span>Disponibles</span><br><b id="cDispo">0</b></div><div class="card red"><span>Indisponibles</span><br><b id="cIndispo">0</b></div><div class="card"><span>Effectifs</span><br><b id="cEff">0</b></div></div><div class="section"><div class="row" style="justify-content:space-between"><h2>Tableau de bord opérationnel</h2><button id="createCrewBtn" class="primary" onclick="openCrew()">Créer équipage</button></div><table><thead><tr><th>Info</th><th>Indicatif</th><th>Matricules</th><th>Intervention</th><th>Code Blanc</th><th>Actions</th></tr></thead><tbody id="crewRows"></tbody></table></div><div id="logSection" class="section"><h2>Journal de la dernière heure</h2><div id="logs"></div></div></section>
 <section id="personnel" class="hidden"><div class="section"><div class="row" style="justify-content:space-between"><h2>Personnel</h2><button class="primary" onclick="addAgent()">Ajouter agent</button></div><p class="mut">Réservé Admin : ajout et modification des matricules, noms et prénoms. Les opérateurs sélectionnent ensuite uniquement les matricules dans les équipages.</p><table><thead><tr><th>Matricule</th><th>Nom</th><th>Prénom</th><th>Actif</th><th></th></tr></thead><tbody id="agentRows"></tbody></table><button class="primary" onclick="saveAgents()">Enregistrer le personnel</button></div></section>
@@ -295,20 +387,64 @@ animation:phenixGlow 8s ease-in-out infinite alternate}
       <div class="crewHeaderLeft">
         <div class="crewHeaderIcon">👥</div>
         <div>
-          <h2>Création / modification d’un équipage</h2>
-          <div class="tag" style="color:#dbeafe">Renseignez l’indicatif, les effectifs et l’heure de repas</div>
+          <h2 id="crewModalTitle">Création d’un équipage</h2>
+          <div class="crewHeaderSub">Renseignez les informations de vacation et les effectifs</div>
         </div>
       </div>
       <button class="crewClose" onclick="closeModal('crewModal')" title="Fermer">×</button>
     </div>
+
     <div class="crewBody">
       <input id="crewId" type="hidden">
-      <div class="crewFormRow"><label>Indicatif</label><div class="crewControl"><select id="crewCall"></select></div></div>
-      <div class="crewFormRow"><label>Effectifs</label><div class="crewControl"><div class="agentSearch"><input id="crewAgentSearch" placeholder="Rechercher un agent..." oninput="filterCrewAgents()"></div><div id="crewAgents" class="agentList"></div><span class="crewHint">Vous pouvez sélectionner plusieurs agents.</span></div></div>
-      <div class="crewFormRow"><label>Heure de repas</label><div class="crewControl"><select id="crewMeal"><option value="">Aucune</option><option>12h00</option><option>12h30</option><option>13h00</option><option>13h30</option></select></div></div>
-      <div class="crewFormRow"><label>Observations</label><div class="crewControl"><textarea id="crewObs" placeholder="Observations facultatives"></textarea></div></div>
+
+      <div class="crewGrid">
+        <div class="crewField">
+          <label>Indicatif</label>
+          <select id="crewCall"></select>
+        </div>
+
+        <div class="crewField">
+          <label>Heure de repas</label>
+          <select id="crewMeal">
+            <option value="">Aucune</option>
+            <option>12h00</option>
+            <option>12h30</option>
+            <option>13h00</option>
+            <option>13h30</option>
+          </select>
+        </div>
+
+        <div class="crewField">
+          <label>Début de vacation</label>
+          <input id="crewShiftStart" type="datetime-local">
+        </div>
+
+        <div class="crewField">
+          <label>Fin de vacation</label>
+          <input id="crewShiftEnd" type="datetime-local">
+        </div>
+
+        <div class="crewField full">
+          <label>Effectifs</label>
+          <div class="agentSearch">
+            <input id="crewAgentSearch" placeholder="Rechercher un agent..." oninput="filterCrewAgents()">
+          </div>
+          <div id="crewAgents" class="agentList"></div>
+          <span class="crewHint">Vous pouvez sélectionner plusieurs agents.</span>
+        </div>
+
+        <div class="crewField full">
+          <label>Observations</label>
+          <textarea id="crewObs" placeholder="Observations facultatives"></textarea>
+        </div>
+      </div>
     </div>
-    <div class="crewFooter"><button id="delCrew" class="danger" onclick="deleteCrew()">Supprimer</button><button onclick="closeModal('crewModal')">Fermer</button><button class="primary" onclick="saveCrew()">Enregistrer</button></div>
+
+    <div class="crewFooter">
+      <button id="delCrew" class="danger" onclick="deleteCrew()">Supprimer</button>
+      <button onclick="closeModal('crewModal')">Fermer</button>
+      <button class="primary" onclick="saveCrew()">Enregistrer</button>
+    </div>
   </div>
 </div>
 <div id="indispoModal" class="modal"><div class="box"><h2>Choisir l'intervention</h2><input id="indispoId" type="hidden"><div class="field"><select id="indispoSelect"></select></div><div class="row"><button class="primary" onclick="setIndispo()">Valider INDISPO</button><button onclick="closeModal('indispoModal')">Annuler</button></div></div></div>
@@ -317,12 +453,25 @@ animation:phenixGlow 8s ease-in-out infinite alternate}
 <script>
 let S={user:null,agents:[],callsigns:[],interventions:[],crews:[],logs:[],users:[],note:'',consignes:[],links:[],events:[],flash:{enabled:false,title:'INFO',text:''}}; let activeSection='dash'; let calendarView='month'; let calendarDate=new Date(); let noteDirty=false; let notificationsEnabled=localStorage.getItem('notificationsEnabled')!=='false'; let previousCrews=[]; const alertSound=new Audio('/alerte.wav');
 const $=id=>document.getElementById(id); async function api(url,opt={}){const r=await fetch(url,{headers:{'Content-Type':'application/json'},credentials:'same-origin',...opt});const j=await r.json().catch(()=>({}));if(!r.ok)throw Error(j.error||('Erreur '+r.status));return j}
+
+function applyTheme(theme){
+  const light=theme==='light';
+  document.body.classList.toggle('lightMode',light);
+  const txt=$('themeText'), icon=document.querySelector('#themeBtn .themeIcon');
+  if(txt)txt.textContent=light?'Thème clair':'Thème sombre';
+  if(icon)icon.textContent=light?'☀️':'🌙';
+  localStorage.setItem('phenixTheme',light?'light':'dark');
+}
+function toggleTheme(){
+  applyTheme(document.body.classList.contains('lightMode')?'dark':'light');
+}
+
 function tick(){$('clock')&&($('clock').textContent=new Date().toLocaleString('fr-FR'))}function err(e){$('msg').textContent=e.message||e;setTimeout(()=>{$('msg').textContent=''},7000)}
 function updateNotifButton(){const btn=$('notifBtn');const txt=$('notifText');if(!btn)return;btn.classList.toggle('off',!notificationsEnabled);if(txt)txt.textContent=notificationsEnabled?'ALERTES ON':'ALERTES OFF'}
 function toggleNotifications(){notificationsEnabled=!notificationsEnabled;localStorage.setItem('notificationsEnabled',notificationsEnabled);updateNotifButton();if(notificationsEnabled){alertSound.currentTime=0;alertSound.play().then(()=>{alertSound.pause();alertSound.currentTime=0}).catch(()=>{})}}
 function checkCrewChanges(newCrews){if(!Array.isArray(newCrews))return;if(previousCrews.length===0){previousCrews=JSON.parse(JSON.stringify(newCrews));return}let changed=false;for(const crew of newCrews){const old=previousCrews.find(c=>c.id===crew.id);if(old&&old.status!==crew.status){changed=true;break}}previousCrews=JSON.parse(JSON.stringify(newCrews));if(changed&&notificationsEnabled){alertSound.currentTime=0;alertSound.play().catch(()=>{})}}
 
-async function init(){tick();setInterval(tick,1000);try{const st=await api('/api/status');S.flash=st.flash||{enabled:false,title:'INFO',text:''};renderFlash();if(st.user){$('login').style.display='none';$('app').style.display='block';await refresh()}else{$('setup').classList.toggle('hidden',!st.setupRequired);$('logbox').classList.toggle('hidden',st.setupRequired)}}catch(e){err(Error('Serveur non joignable : vérifie que Render est lancé'))}}
+async function init(){applyTheme(localStorage.getItem('phenixTheme')||'dark');tick();setInterval(tick,1000);try{const st=await api('/api/status');S.flash=st.flash||{enabled:false,title:'INFO',text:''};renderFlash();if(st.user){$('login').style.display='none';$('app').style.display='block';await refresh()}else{$('setup').classList.toggle('hidden',!st.setupRequired);$('logbox').classList.toggle('hidden',st.setupRequired)}}catch(e){err(Error('Serveur non joignable : vérifie que Render est lancé'))}}
 async function setupAdmin(){try{await api('/api/setup',{method:'POST',body:JSON.stringify({displayName:$('suName').value,login:$('suLogin').value,password:$('suPass').value})});$('login').style.display='none';$('app').style.display='block';await refresh()}catch(e){err(e)}}
 async function login(){try{await api('/api/login',{method:'POST',body:JSON.stringify({login:$('loginId').value,password:$('loginPass').value})});$('login').style.display='none';$('app').style.display='block';await refresh()}catch(e){err(e)}}
 async function logout(){await api('/api/logout',{method:'POST'});location.reload()}async function changePass(){const oldPassword=prompt('Ancien mot de passe');if(oldPassword===null)return;const newPassword=prompt('Nouveau mot de passe');if(!newPassword)return;try{await api('/api/password',{method:'POST',body:JSON.stringify({oldPassword,newPassword})});alert('Mot de passe modifié')}catch(e){alert(e.message)}}
@@ -343,7 +492,12 @@ function renderAll(force=false){renderCrews();renderAgents();renderAdmin(force);
   return recent && allowed;
 });$('logs').innerHTML=logsRecent.length?logsRecent.map(l=>`<div><span class="mut">${new Date(l.date).toLocaleString('fr-FR')}</span> — <b>${l.user}</b> : ${l.msg}</div>`).join(''):'<span class="mut">Aucun événement sur la dernière heure.</span>';$('cTotal').textContent=S.crews.length;$('cDispo').textContent=S.crews.filter(c=>c.status==='DISPO').length;$('cIndispo').textContent=S.crews.filter(c=>c.status==='INDISPO').length;$('cEff').textContent=new Set(S.crews.flatMap(c=>c.matricules||[])).size}
 function renderCrews(){const readonly=!canOperate();$('crewRows').innerHTML=S.crews.map(c=>`<tr class="${c.status==='INDISPO'?'indispo':'dispo'}"><td><button class="infoBtn" title="Infos équipage" onclick='showCrewInfo(${JSON.stringify(c.id)})'>i</button></td><td><b>${c.callsign}</b><br><span class="pill">${c.status}</span></td><td>${(c.matricules||[]).map(m=>`<span class="pill">${m}</span>`).join('')}</td><td>${c.intervention||'—'}</td><td>${c.meal||'—'}</td><td>${readonly?'<span class="mut">Lecture seule</span>':`<button class="small" onclick='openCrew(${JSON.stringify(c.id)})'>Modifier</button> <button class="small ok" onclick='statusCrew(${JSON.stringify(c.id)},"DISPO")'>DISPO</button> <button class="small danger" onclick='openIndispo(${JSON.stringify(c.id)})'>INDISPO</button>`}</td></tr>`).join('')}
-function showCrewInfo(id){const c=S.crews.find(x=>x.id===id);if(!c)return;$('infoTitle').textContent='Infos '+c.callsign;const names=(c.matricules||[]).map(m=>'<div class="pill">'+an(m)+'</div>').join('')||'—';$('infoBody').innerHTML='<h3>Agents</h3>'+names+'<h3>Heure de repas</h3><div class="section">'+(c.meal||'Aucune')+'</div><h3>Observations</h3><div class="section">'+(c.observations||'Aucune observation')+'</div>';$('infoModal').style.display='grid'}
+function formatVacation(c){
+  if(!c.shiftStart&&!c.shiftEnd)return 'Non renseignée';
+  const fmt=v=>v?new Date(v).toLocaleString('fr-FR'):'—';
+  return fmt(c.shiftStart)+' → '+fmt(c.shiftEnd);
+}
+function showCrewInfo(id){const c=S.crews.find(x=>x.id===id);if(!c)return;$('infoTitle').textContent='Infos '+c.callsign;const names=(c.matricules||[]).map(m=>'<div class="pill">'+an(m)+'</div>').join('')||'—';$('infoBody').innerHTML='<h3>Agents</h3>'+names+'<h3>Vacation</h3><div class="section">'+formatVacation(c)+'</div><h3>Heure de repas</h3><div class="section">'+(c.meal||'Aucune')+'</div><h3>Observations</h3><div class="section">'+(c.observations||'Aucune observation')+'</div>';$('infoModal').style.display='grid'}
 function fillSelects(selected=[]){
   $('crewCall').innerHTML=S.callsigns.map(x=>`<option>${x}</option>`).join('');
   $('crewAgents').innerHTML=S.agents.filter(a=>a.actif).map(a=>{
@@ -361,8 +515,54 @@ function filterCrewAgents(){
     row.classList.toggle('hiddenBySearch',q && !text.includes(q));
   });
 }
-function openCrew(id){const c=S.crews.find(x=>x.id===id)||{matricules:[],observations:'',meal:'',callsign:S.callsigns[0]};fillSelects(c.matricules||[]);$('crewId').value=id||'';$('crewCall').value=c.callsign;$('crewMeal').value=c.meal||'';$('crewObs').value=c.observations||'';$('delCrew').classList.toggle('hidden',!id);$('crewModal').style.display='grid'}function closeModal(id){$(id).style.display='none'}
-async function saveCrew(){const matricules=Array.from(document.querySelectorAll('#crewAgents input:checked')).map(o=>o.value);await api('/api/crew',{method:'POST',body:JSON.stringify({crew:{id:$('crewId').value,callsign:$('crewCall').value,matricules,meal:$('crewMeal').value,observations:$('crewObs').value}})});closeModal('crewModal');refresh()}async function deleteCrew(){if(confirm('Supprimer cet équipage ?')){await api('/api/crew/'+$('crewId').value,{method:'DELETE'});closeModal('crewModal');refresh()}}
+function openCrew(id){
+  const c=S.crews.find(x=>x.id===id)||{
+    matricules:[],observations:'',meal:'',callsign:S.callsigns[0],shiftStart:'',shiftEnd:''
+  };
+  fillSelects(c.matricules||[]);
+  $('crewId').value=id||'';
+  $('crewCall').value=c.callsign||S.callsigns[0]||'';
+  $('crewMeal').value=c.meal||'';
+  $('crewObs').value=c.observations||'';
+  $('crewShiftStart').value=c.shiftStart||defaultShiftDate(8);
+  $('crewShiftEnd').value=c.shiftEnd||defaultShiftDate(16);
+  $('crewModalTitle').textContent=id?'Modification d’un équipage':'Création d’un équipage';
+  $('delCrew').classList.toggle('hidden',!id);
+  $('crewModal').style.display='grid';
+}
+function defaultShiftDate(hour){
+  const d=new Date();
+  d.setHours(hour,0,0,0);
+  d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
+  return d.toISOString().slice(0,16);
+}
+function closeModal(id){$(id).style.display='none'}
+async function saveCrew(){
+  const matricules=Array.from(document.querySelectorAll('#crewAgents input:checked')).map(o=>o.value);
+  const shiftStart=$('crewShiftStart').value;
+  const shiftEnd=$('crewShiftEnd').value;
+  if(shiftStart&&shiftEnd&&new Date(shiftEnd)<=new Date(shiftStart)){
+    alert('La fin de vacation doit être après le début.');
+    return;
+  }
+  await api('/api/crew',{
+    method:'POST',
+    body:JSON.stringify({
+      crew:{
+        id:$('crewId').value,
+        callsign:$('crewCall').value,
+        matricules,
+        meal:$('crewMeal').value,
+        observations:$('crewObs').value,
+        shiftStart,
+        shiftEnd
+      }
+    })
+  });
+  closeModal('crewModal');
+  refresh();
+}
+async function deleteCrew(){if(confirm('Supprimer cet équipage ?')){await api('/api/crew/'+$('crewId').value,{method:'DELETE'});closeModal('crewModal');refresh()}}
 async function statusCrew(id,status){if(!canOperate()){alert('Accès lecture seule');return}await api('/api/crew/'+id+'/status',{method:'POST',body:JSON.stringify({status})});refresh()}function openIndispo(id){if(!canOperate()){alert('Accès lecture seule');return}fillSelects();$('indispoId').value=id;$('indispoModal').style.display='grid'}async function setIndispo(){await api('/api/crew/'+$('indispoId').value+'/status',{method:'POST',body:JSON.stringify({status:'INDISPO',intervention:$('indispoSelect').value})});closeModal('indispoModal');refresh()}
 function renderAgents(){$('agentRows').innerHTML=S.agents.map((a,i)=>`<tr><td><input value="${a.matricule}" onchange="S.agents[${i}].matricule=this.value"></td><td><input value="${a.nom||''}" onchange="S.agents[${i}].nom=this.value"></td><td><input value="${a.prenom||''}" onchange="S.agents[${i}].prenom=this.value"></td><td><input type="checkbox" ${a.actif?'checked':''} onchange="S.agents[${i}].actif=this.checked"></td><td><button class="small danger" onclick="S.agents.splice(${i},1);renderAgents()">Retirer</button></td></tr>`).join('')}function addAgent(){if(S.user.role!=='admin'){alert('Réservé admin');return}S.agents.push({matricule:'',nom:'',prenom:'',actif:true});renderAgents()}async function saveAgents(){if(S.user.role!=='admin'){alert('Réservé admin');return}await api('/api/agents',{method:'POST',body:JSON.stringify({agents:S.agents})});alert('Personnel enregistré');refresh()}async function saveNote(){await api('/api/note',{method:'POST',body:JSON.stringify({note:$('note').value})});noteDirty=false;S.note=$('note').value;alert('Notes enregistrées')}
 function renderAdmin(force=false){if(S.user.role!=='admin')return;if(activeSection!=='admin'||force||document.activeElement.id!=='interList')$('interList').value=S.interventions.join('\n');if(activeSection!=='admin'||force||document.activeElement.id!=='callList')$('callList').value=S.callsigns.join('\n');$('users').innerHTML=(S.users||[]).map(u=>`<div class="row"><b>${u.displayName}</b><span class="mut">${u.login} / ${u.role}</span><button class="small" onclick='editUser(${JSON.stringify(u)})'>Modifier</button><button class="small danger" onclick='delUser(${JSON.stringify(u.id)})'>Supprimer</button></div>`).join('')}function editUser(u){$('uId').value=u.id;$('uName').value=u.displayName;$('uLogin').value=u.login;$('uRole').value=u.role;$('uPass').value='';$('uBrigadeJour').checked=!!(u.brigades&&u.brigades.jour);$('uBrigadeNuit').checked=!!(u.brigades&&u.brigades.nuit)}async function saveUser(){try{await api('/api/admin/users',{method:'POST',body:JSON.stringify({id:$('uId').value,displayName:$('uName').value,login:$('uLogin').value,password:$('uPass').value,role:$('uRole').value,brigades:{jour:$('uBrigadeJour').checked,nuit:$('uBrigadeNuit').checked}})});['uId','uName','uLogin','uPass'].forEach(id=>$(id).value='');$('uBrigadeJour').checked=false;$('uBrigadeNuit').checked=false;refresh()}catch(e){alert(e.message)}}async function delUser(id){if(confirm('Supprimer utilisateur ?')){await api('/api/admin/users/'+id,{method:'DELETE'});refresh()}}async function saveLists(){await api('/api/admin/lists',{method:'POST',body:JSON.stringify({interventions:$('interList').value.split('\n').map(x=>x.trim()).filter(Boolean),callsigns:$('callList').value.split('\n').map(x=>x.trim()).filter(Boolean)})});refresh()}
