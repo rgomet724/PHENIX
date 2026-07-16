@@ -759,6 +759,22 @@ body.lightMode tr.indispo:hover{background:#f8cdcd!important}
 body.lightMode #crewRows tr.dispo td{border-bottom-color:#a9d8b6!important}
 body.lightMode #crewRows tr.indispo td{border-bottom-color:#e7a1a1!important}
 
+
+/* V47 - Vacation minimaliste et recherche agents fonctionnelle */
+.vacationOnly{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  white-space:nowrap;
+  font-size:13px;
+}
+.vacationOnly b:first-child{color:#22c55e}
+.vacationOnly b:last-child{color:#ef4444}
+.vacationOnly span{color:var(--m)}
+#crewAgents .agentChoice.hiddenBySearch{
+  display:none!important;
+}
+
 </style></head><body>
 <div id="login" class="login"><div id="flashLogin" class="flashLogin hidden"><span class="flashIcon">📢</span><span id="flashLoginLabel" class="flashLabel">INFO :</span><span id="flashLoginText" class="flashText"></span></div><div class="box">
   <div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div>
@@ -1002,9 +1018,10 @@ function formatVacationCell(c){
     if(isNaN(d.getTime()))return '—';
     return d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
   };
-  return `<div class="vacationCell">
-    <div class="vacLine vacStart"><span>Début</span><b>${fmtTime(c.shiftStart)}</b></div>
-    <div class="vacLine vacEnd"><span>Fin</span><b>${fmtTime(c.shiftEnd)}</b></div>
+  return `<div class="vacationOnly">
+    <b>${fmtTime(c.shiftStart)}</b>
+    <span>→</span>
+    <b>${fmtTime(c.shiftEnd)}</b>
   </div>`;
 }
 
@@ -1037,8 +1054,7 @@ function filterCrewAgents(){
   const q=normalizeAgentSearch(input?input.value:'');
   document.querySelectorAll('#crewAgents .agentChoice').forEach(row=>{
     const text=normalizeAgentSearch(row.dataset.search||row.textContent||'');
-    const visible=!q||text.includes(q);
-    row.style.display=visible?'grid':'none';
+    row.classList.toggle('hiddenBySearch',!!q && !text.includes(q));
   });
 }
 function openCrew(id){
