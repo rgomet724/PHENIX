@@ -143,6 +143,29 @@ animation:phenixGlow 8s ease-in-out infinite alternate}
 
 .eventToolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:12px}.eventCalendar{border:1px solid var(--l);border-radius:16px;overflow:hidden;background:#071525}.eventCalHead{display:grid;grid-template-columns:repeat(7,1fr);background:#0d1b2e;border-bottom:1px solid var(--l)}.eventCalHead div{padding:10px;text-align:center;font-weight:bold;color:#9bb0c9}.eventGridMonth{display:grid;grid-template-columns:repeat(7,1fr)}.eventDay{min-height:118px;border-right:1px solid rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.06);padding:8px;background:rgba(7,21,37,.72)}.eventDay:nth-child(7n){border-right:0}.eventDay.otherMonth{opacity:.42}.eventDay.today{box-shadow:inset 0 0 0 2px #3b82f6;background:rgba(59,130,246,.08)}.eventDayNum{font-weight:bold;margin-bottom:6px}.eventPill{display:block;width:100%;text-align:left;border-radius:8px;padding:4px 6px;margin:3px 0;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#2563eb}.eventPill.red{background:#dc2626}.eventPill.green{background:#16a34a}.eventPill.orange{background:#ea580c}.eventPill.purple{background:#9333ea}.eventPill.gray{background:#475569}.eventWeekDay{display:grid;grid-template-columns:130px 1fr;border-bottom:1px solid rgba(255,255,255,.07);min-height:82px}.eventWeekDate{background:#0d1b2e;padding:12px;border-right:1px solid var(--l);font-weight:bold}.eventWeekEvents{padding:10px}.eventTodayBox{margin-top:16px;background:rgba(13,27,46,.92);border:1px solid #3b82f6;border-radius:14px;padding:12px;box-shadow:0 0 20px rgba(59,130,246,.15)}.eventTodayBox.hidden{display:none!important}.eventTodayTitle{font-weight:bold;margin-bottom:8px;color:#eaf2ff}.eventTodayEntry{font-size:12px;line-height:1.35;margin-top:8px}.eventTodayEntry b{display:block;margin-top:4px}.colorPick{display:flex;gap:8px;flex-wrap:wrap}.colorPick label{display:inline-flex;align-items:center;gap:6px}.colorPick input{width:auto}.colorDot{width:18px;height:18px;border-radius:50%;display:inline-block;background:#2563eb}.colorDot.red{background:#dc2626}.colorDot.green{background:#16a34a}.colorDot.orange{background:#ea580c}.colorDot.purple{background:#9333ea}.colorDot.gray{background:#475569}
 
+
+/* V40 - Icônes du menu et fenêtre équipage modernisée */
+.nav button{display:flex;align-items:center;gap:10px}
+.navIcon{width:18px;height:18px;flex:0 0 18px;display:inline-grid;place-items:center;font-size:16px;line-height:1}
+.crewBox{width:min(820px,96vw)!important;padding:0!important;overflow:hidden!important;border-color:#2f6fbf!important;background:#f7f9fc!important;color:#1f2937!important}
+.crewHeader{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,#3b82f6,#2563eb);color:#fff;padding:16px 20px}
+.crewHeaderLeft{display:flex;align-items:center;gap:12px}
+.crewHeaderIcon{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:rgba(255,255,255,.16);font-size:18px}
+.crewHeader h2{margin:0;font-size:20px}
+.crewClose{width:30px;height:30px;min-width:30px;padding:0;border-radius:50%;background:rgba(255,255,255,.14);font-size:18px}
+.crewBody{padding:22px}
+.crewFormRow{display:grid;grid-template-columns:170px 1fr;gap:16px;align-items:start;margin:14px 0}
+.crewFormRow>label{font-weight:bold;color:#4b5563;padding-top:11px;text-align:right}
+.crewControl input,.crewControl select,.crewControl textarea{width:100%;background:#fff;color:#111827;border:1px solid #b7c3d0;border-radius:8px;padding:11px 12px;box-shadow:inset 0 1px 2px rgba(0,0,0,.03)}
+.crewControl textarea{min-height:90px}
+.crewControl .agentSearch{margin-bottom:8px}
+.crewControl .agentList{max-height:260px;background:#fff;border:1px solid #b7c3d0;border-radius:8px;padding:0}
+.crewControl .agentChoice{color:#111827;padding:9px 12px;border-bottom:1px solid #e5e7eb}
+.crewControl .agentChoice:hover{background:#eef5ff}
+.crewHint{display:block;color:#6b7280;font-size:12px;margin-top:6px}
+.crewFooter{display:flex;justify-content:flex-end;gap:8px;padding:14px 22px;background:#edf3fb;border-top:1px solid #c9d7e8}
+@media(max-width:760px){.crewFormRow{grid-template-columns:1fr;gap:6px}.crewFormRow>label{text-align:left;padding-top:0}.crewBody{padding:16px}}
+
 </style></head><body>
 <div id="login" class="login"><div id="flashLogin" class="flashLogin hidden"><span class="flashIcon">📢</span><span id="flashLoginLabel" class="flashLabel">INFO :</span><span id="flashLoginText" class="flashText"></span></div><div class="box">
   <div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div>
@@ -166,7 +189,7 @@ animation:phenixGlow 8s ease-in-out infinite alternate}
   <div id="msg" class="err"></div>
 </div></div>
 <div id="app" class="app"><div class="top"><div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div><div class="right"><b id="agentName">Agent</b><div class="tag" id="clock"></div><div class="row" style="justify-content:flex-end;margin-top:6px"><button id="notifBtn" class="notifSwitch" onclick="toggleNotifications()" title="Alertes sonores"><span class="notifKnob"></span><span id="notifText">ALERTES ON</span></button><button id="passwordBtn" class="small" onclick="changePass()">Mot de passe</button><button class="small danger" onclick="logout()">Déconnexion</button></div></div></div>
-<div class="layout"><aside><div class="nav"><button onclick="show('dash')">Tableau de bord</button><button id="personnelBtn" onclick="show('personnel')">Personnel</button><button onclick="show('notes')">Notes privées</button><button onclick="show('links')">Liens utiles</button><button onclick="show('events')">Événements</button><button id="historyBtn" onclick="show('history')">Historique</button><button class="consigneNav" onclick="show('consignes')">Consignes <span id="consigneCount" class="consigneCount">(0)</span><span id="consigneBell" class="consigneBell">🔔</span></button><button id="adminBtn" onclick="show('admin')">Administration</button></div><div id="eventTodayBox" class="eventTodayBox hidden"></div></aside><main>
+<div class="layout"><aside><div class="nav"><button onclick="show('dash')"><span class="navIcon">🏠</span>Tableau de bord</button><button id="personnelBtn" onclick="show('personnel')"><span class="navIcon">👮</span>Personnel</button><button onclick="show('notes')"><span class="navIcon">📝</span>Notes privées</button><button onclick="show('links')"><span class="navIcon">🔗</span>Liens utiles</button><button onclick="show('events')"><span class="navIcon">📅</span>Événements</button><button id="historyBtn" onclick="show('history')"><span class="navIcon">🕒</span>Historique</button><button class="consigneNav" onclick="show('consignes')"><span class="navIcon">📋</span>Consignes <span id="consigneCount" class="consigneCount">(0)</span><span id="consigneBell" class="consigneBell">🔔</span></button><button id="adminBtn" onclick="show('admin')"><span class="navIcon">⚙️</span>Administration</button></div><div id="eventTodayBox" class="eventTodayBox hidden"></div></aside><main>
 <section id="dash"><div class="cards"><div class="card"><span>Équipages</span><br><b id="cTotal">0</b></div><div class="card green"><span>Disponibles</span><br><b id="cDispo">0</b></div><div class="card red"><span>Indisponibles</span><br><b id="cIndispo">0</b></div><div class="card"><span>Effectifs</span><br><b id="cEff">0</b></div></div><div class="section"><div class="row" style="justify-content:space-between"><h2>Tableau de bord opérationnel</h2><button id="createCrewBtn" class="primary" onclick="openCrew()">Créer équipage</button></div><table><thead><tr><th>Info</th><th>Indicatif</th><th>Matricules</th><th>Intervention</th><th>Code Blanc</th><th>Actions</th></tr></thead><tbody id="crewRows"></tbody></table></div><div id="logSection" class="section"><h2>Journal de la dernière heure</h2><div id="logs"></div></div></section>
 <section id="personnel" class="hidden"><div class="section"><div class="row" style="justify-content:space-between"><h2>Personnel</h2><button class="primary" onclick="addAgent()">Ajouter agent</button></div><p class="mut">Réservé Admin : ajout et modification des matricules, noms et prénoms. Les opérateurs sélectionnent ensuite uniquement les matricules dans les équipages.</p><table><thead><tr><th>Matricule</th><th>Nom</th><th>Prénom</th><th>Actif</th><th></th></tr></thead><tbody id="agentRows"></tbody></table><button class="primary" onclick="saveAgents()">Enregistrer le personnel</button></div></section>
 <section id="notes" class="hidden"><div class="section"><h2>Notes privées</h2><p class="mut">Chaque agent voit uniquement ses propres notes.</p><textarea id="note" oninput="noteDirty=true"></textarea><br><br><button class="primary" onclick="saveNote()">Enregistrer mes notes</button></div></section><section id="consignes" class="hidden">
@@ -266,7 +289,28 @@ animation:phenixGlow 8s ease-in-out infinite alternate}
   <button class="primary" onclick="saveFlashText()">Enregistrer le texte flash</button>
 </div></div></section>
 </main></div></div>
-<div id="crewModal" class="modal"><div class="box"><h2>Équipage</h2><input id="crewId" type="hidden"><div class="field"><label>Indicatif</label><select id="crewCall"></select></div><div class="field"><label>Effectifs</label><div class="agentSearch"><input id="crewAgentSearch" placeholder="Rechercher un agent..." oninput="filterCrewAgents()"></div><div id="crewAgents" class="agentList"></div><small class="mut">Coche plusieurs matricules si besoin.</small></div><div class="field"><label>Heure de Repas</label><select id="crewMeal"><option value="">Aucune</option><option>12h00</option><option>12h30</option><option>13h00</option><option>13h30</option></select></div><div class="field"><label>Observations</label><textarea id="crewObs"></textarea></div><div class="row"><button class="primary" onclick="saveCrew()">Enregistrer</button><button id="delCrew" class="danger" onclick="deleteCrew()">Supprimer</button><button onclick="closeModal('crewModal')">Fermer</button></div></div></div>
+<div id="crewModal" class="modal">
+  <div class="box crewBox">
+    <div class="crewHeader">
+      <div class="crewHeaderLeft">
+        <div class="crewHeaderIcon">👥</div>
+        <div>
+          <h2>Création / modification d’un équipage</h2>
+          <div class="tag" style="color:#dbeafe">Renseignez l’indicatif, les effectifs et l’heure de repas</div>
+        </div>
+      </div>
+      <button class="crewClose" onclick="closeModal('crewModal')" title="Fermer">×</button>
+    </div>
+    <div class="crewBody">
+      <input id="crewId" type="hidden">
+      <div class="crewFormRow"><label>Indicatif</label><div class="crewControl"><select id="crewCall"></select></div></div>
+      <div class="crewFormRow"><label>Effectifs</label><div class="crewControl"><div class="agentSearch"><input id="crewAgentSearch" placeholder="Rechercher un agent..." oninput="filterCrewAgents()"></div><div id="crewAgents" class="agentList"></div><span class="crewHint">Vous pouvez sélectionner plusieurs agents.</span></div></div>
+      <div class="crewFormRow"><label>Heure de repas</label><div class="crewControl"><select id="crewMeal"><option value="">Aucune</option><option>12h00</option><option>12h30</option><option>13h00</option><option>13h30</option></select></div></div>
+      <div class="crewFormRow"><label>Observations</label><div class="crewControl"><textarea id="crewObs" placeholder="Observations facultatives"></textarea></div></div>
+    </div>
+    <div class="crewFooter"><button id="delCrew" class="danger" onclick="deleteCrew()">Supprimer</button><button onclick="closeModal('crewModal')">Fermer</button><button class="primary" onclick="saveCrew()">Enregistrer</button></div>
+  </div>
+</div>
 <div id="indispoModal" class="modal"><div class="box"><h2>Choisir l'intervention</h2><input id="indispoId" type="hidden"><div class="field"><select id="indispoSelect"></select></div><div class="row"><button class="primary" onclick="setIndispo()">Valider INDISPO</button><button onclick="closeModal('indispoModal')">Annuler</button></div></div></div>
 
 <div id="infoModal" class="modal"><div class="box"><h2 id="infoTitle">Infos équipage</h2><div id="infoBody"></div><br><button onclick="closeModal('infoModal')">Fermer</button></div></div>
