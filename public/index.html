@@ -775,6 +775,83 @@ body.lightMode #crewRows tr.indispo td{border-bottom-color:#e7a1a1!important}
   display:none!important;
 }
 
+
+/* V48 - Dashboard compact et zoomable */
+.dashTableWrap{
+  width:100%;
+  max-height:58vh;
+  overflow:auto;
+  border:1px solid var(--l);
+  border-radius:12px;
+}
+.dashTableWrap table{
+  min-width:980px;
+}
+.dashTableWrap thead th{
+  position:sticky;
+  top:0;
+  z-index:3;
+  background:var(--p);
+  box-shadow:0 1px 0 var(--l);
+}
+.dashTools{justify-content:flex-end}
+#crewTable{
+  transform-origin:top left;
+  transition:font-size .15s ease;
+}
+body.dashCompact #crewTable th,
+body.dashCompact #crewTable td{
+  padding:6px 7px!important;
+  font-size:12px!important;
+  line-height:1.15!important;
+}
+body.dashCompact #crewTable .pill{
+  padding:2px 6px!important;
+  font-size:11px!important;
+}
+body.dashCompact #crewTable button.small{
+  min-width:65px!important;
+  padding:4px 6px!important;
+  font-size:10px!important;
+}
+body.dashCompact #crewTable .infoBtn{
+  width:22px!important;
+  height:22px!important;
+  font-size:11px!important;
+}
+body.dashCompact .cards{
+  gap:8px!important;
+  margin-bottom:10px!important;
+}
+body.dashCompact .card{
+  padding:10px 12px!important;
+}
+body.dashCompact .card b{
+  font-size:22px!important;
+}
+body.dashCompact #logSection{
+  padding:12px!important;
+}
+body.dashUltraCompact #crewTable th,
+body.dashUltraCompact #crewTable td{
+  padding:4px 5px!important;
+  font-size:10px!important;
+}
+body.dashUltraCompact #crewTable button.small{
+  min-width:56px!important;
+  padding:3px 5px!important;
+  font-size:9px!important;
+}
+body.dashUltraCompact .vacationOnly{
+  font-size:10px!important;
+  gap:4px!important;
+}
+@media(max-width:900px){
+  .dashTableHeader{align-items:flex-start}
+  .dashTools{justify-content:flex-start}
+  .dashTableWrap{max-height:62vh}
+}
+
 </style></head><body>
 <div id="login" class="login"><div id="flashLogin" class="flashLogin hidden"><span class="flashIcon">📢</span><span id="flashLoginLabel" class="flashLabel">INFO :</span><span id="flashLoginText" class="flashText"></span></div><div class="box">
   <div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div>
@@ -799,7 +876,7 @@ body.lightMode #crewRows tr.indispo td{border-bottom-color:#e7a1a1!important}
 </div></div>
 <div id="app" class="app"><div class="top"><div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div><div class="right"><b id="agentName">Agent</b><div class="tag" id="clock"></div><div class="row" style="justify-content:flex-end;margin-top:6px"><button id="themeBtn" class="themeToggle" onclick="toggleTheme()" title="Changer le thème"><span class="themeIcon">🌙</span><span id="themeText">Thème sombre</span></button><button id="notifBtn" class="notifSwitch" onclick="toggleNotifications()" title="Alertes sonores"><span class="notifKnob"></span><span id="notifText">ALERTES ON</span></button><button id="passwordBtn" class="small" onclick="changePass()">Mot de passe</button><button class="small danger" onclick="logout()">Déconnexion</button></div></div></div>
 <div class="layout"><aside><div class="nav"><button onclick="show('dash')"><span class="navIcon">⌂</span>Tableau de bord</button><button id="personnelBtn" onclick="show('personnel')"><span class="navIcon">♙</span>Personnel</button><button onclick="show('notes')"><span class="navIcon">▤</span>Notes privées</button><button onclick="show('links')"><span class="navIcon">⛓</span>Liens utiles</button><button onclick="show('events')"><span class="navIcon">▦</span>Événements</button><button id="historyBtn" onclick="show('history')"><span class="navIcon">◷</span>Historique</button><button class="consigneNav" onclick="show('consignes')"><span class="navIcon">▣</span>Consignes <span id="consigneCount" class="consigneCount">(0)</span><span id="consigneBell" class="consigneBell">🔔</span></button><button id="adminBtn" onclick="show('admin')"><span class="navIcon">⚙</span>Administration</button></div><div id="eventTodayBox" class="eventTodayBox hidden"></div></aside><main>
-<section id="dash"><div class="cards"><div class="card"><span>Équipages</span><br><b id="cTotal">0</b></div><div class="card green"><span>Disponibles</span><br><b id="cDispo">0</b></div><div class="card red"><span>Indisponibles</span><br><b id="cIndispo">0</b></div><div class="card"><span>Effectifs</span><br><b id="cEff">0</b></div></div><div class="section"><div class="row" style="justify-content:space-between"><h2>Tableau de bord opérationnel</h2><button id="createCrewBtn" class="primary" onclick="openCrew()">Créer équipage</button></div><table><thead><tr><th>Info</th><th>Indicatif</th><th>Matricules</th><th>Intervention</th><th>Code Blanc</th><th>Vacation</th><th>Actions</th></tr></thead><tbody id="crewRows"></tbody></table></div><div id="logSection" class="section"><h2>Journal de la dernière heure</h2><div id="logs"></div></div></section>
+<section id="dash"><div class="cards"><div class="card"><span>Équipages</span><br><b id="cTotal">0</b></div><div class="card green"><span>Disponibles</span><br><b id="cDispo">0</b></div><div class="card red"><span>Indisponibles</span><br><b id="cIndispo">0</b></div><div class="card"><span>Effectifs</span><br><b id="cEff">0</b></div></div><div class="section"><div class="row dashTableHeader" style="justify-content:space-between"><h2>Tableau de bord opérationnel</h2><div class="row dashTools"><button class="small" onclick="setDashZoom(-1)" title="Réduire l'affichage">Zoom −</button><button class="small" onclick="resetDashZoom()" title="Réinitialiser le zoom">100 %</button><button class="small" onclick="setDashZoom(1)" title="Agrandir l'affichage">Zoom +</button><button id="compactDashBtn" class="small" onclick="toggleDashCompact()">Mode compact</button><button id="createCrewBtn" class="primary" onclick="openCrew()">Créer équipage</button></div></div><div id="dashTableWrap" class="dashTableWrap"><table id="crewTable"><thead><tr><th>Info</th><th>Indicatif</th><th>Matricules</th><th>Intervention</th><th>Code Blanc</th><th>Vacation</th><th>Actions</th></tr></thead><tbody id="crewRows"></tbody></table></div></div><div id="logSection" class="section"><h2>Journal de la dernière heure</h2><div id="logs"></div></div></section>
 <section id="personnel" class="hidden"><div class="section"><div class="row" style="justify-content:space-between"><h2>Personnel</h2><button class="primary" onclick="addAgent()">Ajouter agent</button></div><p class="mut">Réservé Admin : ajout et modification des matricules, noms et prénoms. Les opérateurs sélectionnent ensuite uniquement les matricules dans les équipages.</p><table><thead><tr><th>Matricule</th><th>Nom</th><th>Prénom</th><th>Actif</th><th></th></tr></thead><tbody id="agentRows"></tbody></table><button class="primary" onclick="saveAgents()">Enregistrer le personnel</button></div></section>
 <section id="notes" class="hidden"><div class="section"><h2>Notes privées</h2><p class="mut">Chaque agent voit uniquement ses propres notes.</p><textarea id="note" oninput="noteDirty=true"></textarea><br><br><button class="primary" onclick="saveNote()">Enregistrer mes notes</button></div></section><section id="consignes" class="hidden">
   <div class="section">
@@ -983,12 +1060,48 @@ function toggleTheme(){
   applyTheme(document.body.classList.contains('lightMode')?'dark':'light');
 }
 
+
+let dashZoom=Number(localStorage.getItem('dashZoom')||100);
+let dashCompact=localStorage.getItem('dashCompact')==='true';
+
+function applyDashDisplay(){
+  dashZoom=Math.max(70,Math.min(120,dashZoom));
+  document.documentElement.style.setProperty('--dashZoom',dashZoom+'%');
+  const table=$('crewTable');
+  if(table)table.style.fontSize=dashZoom+'%';
+  document.body.classList.toggle('dashCompact',dashCompact);
+  const btn=$('compactDashBtn');
+  if(btn)btn.textContent=dashCompact?'Mode normal':'Mode compact';
+  localStorage.setItem('dashZoom',String(dashZoom));
+  localStorage.setItem('dashCompact',String(dashCompact));
+}
+function setDashZoom(step){
+  dashZoom+=step*10;
+  applyDashDisplay();
+}
+function resetDashZoom(){
+  dashZoom=100;
+  applyDashDisplay();
+}
+function toggleDashCompact(){
+  dashCompact=!dashCompact;
+  applyDashDisplay();
+}
+function autoCompactDashboard(){
+  const count=(S.crews||[]).length;
+  document.body.classList.toggle('dashUltraCompact',count>=16);
+  if(count>=10 && localStorage.getItem('dashCompact')===null){
+    dashCompact=true;
+  }
+  applyDashDisplay();
+}
+
 function tick(){$('clock')&&($('clock').textContent=new Date().toLocaleString('fr-FR'))}function err(e){$('msg').textContent=e.message||e;setTimeout(()=>{$('msg').textContent=''},7000)}
 function updateNotifButton(){const btn=$('notifBtn');const txt=$('notifText');if(!btn)return;btn.classList.toggle('off',!notificationsEnabled);if(txt)txt.textContent=notificationsEnabled?'ALERTES ON':'ALERTES OFF'}
 function toggleNotifications(){notificationsEnabled=!notificationsEnabled;localStorage.setItem('notificationsEnabled',notificationsEnabled);updateNotifButton();if(notificationsEnabled){alertSound.currentTime=0;alertSound.play().then(()=>{alertSound.pause();alertSound.currentTime=0}).catch(()=>{})}}
 function checkCrewChanges(newCrews){if(!Array.isArray(newCrews))return;if(previousCrews.length===0){previousCrews=JSON.parse(JSON.stringify(newCrews));return}let changed=false;for(const crew of newCrews){const old=previousCrews.find(c=>c.id===crew.id);if(old&&old.status!==crew.status){changed=true;break}}previousCrews=JSON.parse(JSON.stringify(newCrews));if(changed&&notificationsEnabled){alertSound.currentTime=0;alertSound.play().catch(()=>{})}}
 
-async function init(){applyTheme(localStorage.getItem('phenixTheme')||'dark');tick();setInterval(tick,1000);try{const st=await api('/api/status');S.flash=st.flash||{enabled:false,title:'INFO',text:''};renderFlash();if(st.user){$('login').style.display='none';$('app').style.display='block';await refresh();document.querySelector('.nav button[onclick="show(\'dash\')"]')?.classList.add('activeNav')}else{$('setup').classList.toggle('hidden',!st.setupRequired);$('logbox').classList.toggle('hidden',st.setupRequired)}}catch(e){err(Error('Serveur non joignable : vérifie que Render est lancé'))}}
+async function init(){applyTheme(localStorage.getItem('phenixTheme')||'dark');applyDashDisplay();tick();setInterval(tick,1000);try{const st=await api('/api/status');S.flash=st.flash||{enabled:false,title:'INFO',text:''};renderFlash();if(st.user){$('login').style.display='none';$('app').style.display='block';await refresh();document.querySelector('.nav button[onclick="show(\'dash\')"]')?.classList.add('activeNav')}else{$('setup').classList.toggle('hidden',!st.setupRequired);$('logbox').classList.toggle('hidden',st.setupRequired)}}catch(e){err(Error('Serveur non joignable : vérifie que Render est lancé'))}}
 async function setupAdmin(){try{await api('/api/setup',{method:'POST',body:JSON.stringify({displayName:$('suName').value,login:$('suLogin').value,password:$('suPass').value})});$('login').style.display='none';$('app').style.display='block';await refresh()}catch(e){err(e)}}
 async function login(){try{await api('/api/login',{method:'POST',body:JSON.stringify({login:$('loginId').value,password:$('loginPass').value})});$('login').style.display='none';$('app').style.display='block';await refresh()}catch(e){err(e)}}
 async function logout(){await api('/api/logout',{method:'POST'});location.reload()}async function changePass(){const oldPassword=prompt('Ancien mot de passe');if(oldPassword===null)return;const newPassword=prompt('Nouveau mot de passe');if(!newPassword)return;try{await api('/api/password',{method:'POST',body:JSON.stringify({oldPassword,newPassword})});alert('Mot de passe modifié')}catch(e){alert(e.message)}}
@@ -1009,7 +1122,7 @@ function renderAll(force=false){renderCrews();renderAgents();renderAdmin(force);
     msg.includes(' DISPO') ||
     msg.includes(' INDISPO');
   return recent && allowed;
-});$('logs').innerHTML=logsRecent.length?logsRecent.map(l=>`<div><span class="mut">${new Date(l.date).toLocaleString('fr-FR')}</span> — <b>${l.user}</b> : ${l.msg}</div>`).join(''):'<span class="mut">Aucun événement sur la dernière heure.</span>';$('cTotal').textContent=S.crews.length;$('cDispo').textContent=S.crews.filter(c=>c.status==='DISPO').length;$('cIndispo').textContent=S.crews.filter(c=>c.status==='INDISPO').length;$('cEff').textContent=new Set(S.crews.flatMap(c=>c.matricules||[])).size}
+});$('logs').innerHTML=logsRecent.length?logsRecent.map(l=>`<div><span class="mut">${new Date(l.date).toLocaleString('fr-FR')}</span> — <b>${l.user}</b> : ${l.msg}</div>`).join(''):'<span class="mut">Aucun événement sur la dernière heure.</span>';$('cTotal').textContent=S.crews.length;$('cDispo').textContent=S.crews.filter(c=>c.status==='DISPO').length;$('cIndispo').textContent=S.crews.filter(c=>c.status==='INDISPO').length;$('cEff').textContent=new Set(S.crews.flatMap(c=>c.matricules||[])).size;autoCompactDashboard()}
 
 function formatVacationCell(c){
   const fmtTime=v=>{
