@@ -258,6 +258,164 @@ body.lightMode .themeToggle{background:#e8eef6;color:#152238}
   .crewFooter{flex-wrap:wrap}
 }
 
+
+/* V42 - Ajustements effectifs + vrai thème clair */
+.crewField .agentList{
+  max-height:145px!important;
+  min-height:0!important;
+}
+.crewField.full:has(#crewAgents){
+  max-width:100%;
+}
+.crewField .agentChoice{
+  min-height:34px;
+  padding:7px 10px!important;
+}
+.crewField .agentSearch input{
+  min-height:40px!important;
+}
+
+/* Bouton de thème compact et lisible */
+.themeToggle{
+  border-radius:999px!important;
+  padding:7px 11px!important;
+  min-width:112px!important;
+  justify-content:center;
+}
+.themeToggle .themeIcon{font-size:15px}
+.themeToggle #themeText{font-size:12px;font-weight:700}
+
+/* Thème clair global complet */
+body.lightMode{
+  background:#edf3f8!important;
+  color:#172033!important;
+}
+body.lightMode .app,
+body.lightMode main,
+body.lightMode .layout{
+  background:#edf3f8!important;
+  color:#172033!important;
+}
+body.lightMode .top{
+  background:#ffffff!important;
+  border-bottom-color:#cbd5e1!important;
+}
+body.lightMode aside{
+  background:#f8fafc!important;
+  border-right-color:#cbd5e1!important;
+}
+body.lightMode .nav button{
+  background:#ffffff!important;
+  color:#1e293b!important;
+  border-color:#cbd5e1!important;
+}
+body.lightMode .nav button:hover{
+  background:#eaf2ff!important;
+}
+body.lightMode .section,
+body.lightMode .card{
+  background:#ffffff!important;
+  color:#172033!important;
+  border-color:#cbd5e1!important;
+  box-shadow:0 6px 18px rgba(15,23,42,.06);
+}
+body.lightMode .card.green{
+  background:#eaf8ef!important;
+  border-color:#86c99b!important;
+  color:#14532d!important;
+}
+body.lightMode .card.red{
+  background:#fff0f0!important;
+  border-color:#e7a1a1!important;
+  color:#7f1d1d!important;
+}
+body.lightMode tr.dispo{
+  background:#e8f7ee!important;
+  color:#173b27!important;
+}
+body.lightMode tr.indispo{
+  background:#fff0f0!important;
+  color:#5f1f1f!important;
+}
+body.lightMode th,
+body.lightMode td{
+  border-bottom-color:#d8e1ea!important;
+}
+body.lightMode .pill{
+  background:#dbeafe!important;
+  color:#1e3a8a!important;
+}
+body.lightMode .mut,
+body.lightMode .tag{
+  color:#64748b!important;
+}
+body.lightMode input,
+body.lightMode select,
+body.lightMode textarea{
+  background:#ffffff!important;
+  color:#172033!important;
+  border-color:#b9c6d4!important;
+}
+body.lightMode .historyBox,
+body.lightMode .agentList,
+body.lightMode .eventCalendar,
+body.lightMode .linkCard,
+body.lightMode .linkLogo{
+  background:#ffffff!important;
+  color:#172033!important;
+  border-color:#cbd5e1!important;
+}
+body.lightMode .linkBody h3{
+  color:#172033!important;
+}
+body.lightMode .eventCalHead,
+body.lightMode .eventWeekDate{
+  background:#eef4fa!important;
+  color:#334155!important;
+}
+body.lightMode .eventDay{
+  background:#ffffff!important;
+  color:#172033!important;
+  border-color:#dbe3ec!important;
+}
+body.lightMode .eventDay.today{
+  background:#eaf2ff!important;
+}
+body.lightMode .eventTodayBox{
+  background:#ffffff!important;
+  color:#172033!important;
+  border-color:#8ab4f8!important;
+}
+body.lightMode .modal{
+  background:rgba(30,41,59,.35)!important;
+}
+body.lightMode .modal .box:not(.crewBox){
+  background:#ffffff!important;
+  color:#172033!important;
+  border-color:#cbd5e1!important;
+}
+body.lightMode .notifSwitch{
+  box-shadow:none!important;
+}
+body.lightMode .themeToggle{
+  background:#ffffff!important;
+  color:#172033!important;
+  border-color:#cbd5e1!important;
+}
+body.lightMode .crewBox{
+  background:#f8fafc!important;
+}
+body.lightMode .crewFooter{
+  background:#eef3f8!important;
+}
+body.lightMode .crewField .agentChoice{
+  background:#ffffff!important;
+  color:#172033!important;
+}
+body.lightMode .crewField .agentChoice:hover{
+  background:#edf5ff!important;
+}
+
 </style></head><body>
 <div id="login" class="login"><div id="flashLogin" class="flashLogin hidden"><span class="flashIcon">📢</span><span id="flashLoginLabel" class="flashLabel">INFO :</span><span id="flashLoginText" class="flashText"></span></div><div class="box">
   <div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div>
@@ -458,7 +616,7 @@ function applyTheme(theme){
   const light=theme==='light';
   document.body.classList.toggle('lightMode',light);
   const txt=$('themeText'), icon=document.querySelector('#themeBtn .themeIcon');
-  if(txt)txt.textContent=light?'Thème clair':'Thème sombre';
+  if(txt)txt.textContent=light?'Mode clair':'Mode sombre';
   if(icon)icon.textContent=light?'☀️':'🌙';
   localStorage.setItem('phenixTheme',light?'light':'dark');
 }
