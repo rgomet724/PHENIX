@@ -19,7 +19,6 @@ function baseData(){
     notes: {},
     consignes: [],
     links: [],
-    events: [],
     flash: { enabled:false, title:'INFO', text:'' }
   };
 }
@@ -34,7 +33,6 @@ function migrate(d){
   d.notes=d.notes||{};
   d.consignes=d.consignes||[];
   d.links=d.links||[];
-  d.events=d.events||[];
   d.flash=d.flash||{enabled:false,title:'INFO',text:''};
   if(typeof d.flash.enabled!=='boolean') d.flash.enabled=false;
   d.flash.title=String(d.flash.title||'INFO').trim()||'INFO';
@@ -103,18 +101,6 @@ function linksForUser(d,u){
   return (d.links||[]).filter(l=>visibleLink(l,u));
 }
 
-
-function visibleEvent(ev,u){
-  if(['admin','superviseur','dashboard'].includes(u.role)) return true;
-  const v=ev.visible||{};
-  if(v.all || (!v.jour && !v.nuit)) return true;
-  const b=u.brigades||{};
-  return (v.jour&&b.jour)||(v.nuit&&b.nuit);
-}
-function eventsForUser(d,u){
-  return (d.events||[]).filter(ev=>visibleEvent(ev,u));
-}
-
 function cleanLogo(v){
   let s=String(v||'🔗').trim();
   // Si l'utilisateur a copié/collé avec l'icône par défaut devant, on la retire
@@ -180,7 +166,6 @@ app.get('/api/data', needLogin, (req,res)=>{
     note:d.notes[u.id]||'',
     consignes:consignesForUser(d,u),
     links:linksForUser(d,u),
-    events:eventsForUser(d,u),
     flash:d.flash||{enabled:false,title:'INFO',text:''},
     users:['admin','superviseur'].includes(u.role)?d.users.map(safe):undefined
   });
@@ -209,10 +194,10 @@ app.post('/api/crew', needLogin, needOperational, (req,res)=>{
   if(c.id){
     const i=d.crews.findIndex(x=>x.id===c.id);
     if(i<0) return res.status(404).json({error:'Équipage introuvable'});
-    d.crews[i]={...d.crews[i], callsign:c.callsign, matricules:c.matricules||[], observations:c.observations||'', meal:c.meal||''};
+    d.crews[i]={...d.crews[i], callsign:c.callsign, matricules:c.matricules||[], observations:c.observations||'', meal:c.meal||'', shiftStart:String(c.shiftStart||''), shiftEnd:String(c.shiftEnd||'')};
     audit(d,req,'Modification équipage '+c.callsign);
   } else {
-    d.crews.push({id:Date.now().toString(), callsign:c.callsign, matricules:c.matricules||[], observations:c.observations||'', meal:c.meal||'', status:'DISPO', intervention:''});
+    d.crews.push({id:Date.now().toString(), callsign:c.callsign, matricules:c.matricules||[], observations:c.observations||'', meal:c.meal||'', shiftStart:String(c.shiftStart||''), shiftEnd:String(c.shiftEnd||''), status:'DISPO', intervention:''});
     audit(d,req,'Création équipage '+c.callsign);
   }
 
@@ -357,34 +342,6 @@ app.get('/api/logo-check/:file', needLogin, (req,res)=>{
   res.json({file, exists:fs.existsSync(full), path:'/'.concat(file)});
 });
 
-
-app.post('/api/events', needLogin, needConsigneManager, (req,res)=>{
-  const d=load(); const u=current(req); const r=req.body||{};
-  if(!String(r.title||'').trim()) return res.status(400).json({error:'Nom de l’événement obligatoire'});
-  if(!String(r.start||'').trim() || !String(r.end||'').trim()) return res.status(400).json({error:'Début et fin obligatoires'});
-  const s=new Date(r.start), e=new Date(r.end);
-  if(isNaN(s.getTime()) || isNaN(e.getTime()) || e<=s) return res.status(400).json({error:'Dates invalides'});
-  const data={title:String(r.title).trim(),start:String(r.start),end:String(r.end),color:String(r.color||'blue'),location:String(r.location||'').trim(),description:String(r.description||'').trim(),visible:{jour:!!(r.visible&&r.visible.jour),nuit:!!(r.visible&&r.visible.nuit),all:!!(r.visible&&r.visible.all)},recurrence:String(r.recurrence||'none'),updatedAt:new Date().toISOString(),updatedBy:u.displayName};
-  if(r.id){
-    const ev=(d.events||[]).find(x=>x.id===r.id);
-    if(!ev) return res.status(404).json({error:'Événement introuvable'});
-    Object.assign(ev,data); audit(d,req,'Modification événement '+data.title);
-  }else{
-    d.events=d.events||[];
-    d.events.unshift({id:Date.now().toString(),createdAt:new Date().toISOString(),createdBy:u.displayName,...data});
-    audit(d,req,'Création événement '+data.title);
-  }
-  save(d); res.json({ok:true});
-});
-
-app.delete('/api/events/:id', needLogin, needConsigneManager, (req,res)=>{
-  const d=load();
-  const ev=(d.events||[]).find(x=>x.id===req.params.id);
-  d.events=(d.events||[]).filter(x=>x.id!==req.params.id);
-  if(ev) audit(d,req,'Suppression événement '+ev.title);
-  save(d); res.json({ok:true});
-});
-
 app.post('/api/admin/users', needLogin, needAdmin, (req,res)=>{
   const d=load(); const r=req.body||{};
   if(!r.displayName||!r.login||!r.role) return res.status(400).json({error:'Nom, identifiant et rôle obligatoires'});
@@ -430,4 +387,4 @@ app.post('/api/admin/lists', needLogin, needAdmin, (req,res)=>{
   res.json({ok:true});
 });
 
-app.listen(PORT,()=>console.log('PEGASE V39 calendrier avancé prêt sur le port '+PORT));
+app.listen(PORT,()=>console.log('PEGASE V41 vacation et thème prêt sur le port '+PORT));
