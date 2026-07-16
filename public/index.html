@@ -137,7 +137,7 @@ animation:phenixGlow 8s ease-in-out infinite alternate}
 
 .agentSearch{margin-bottom:8px;position:relative}
 .agentSearch input{padding-left:34px}
-
+.agentSearch::before{content:'🔎';position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.75;z-index:1}
 .agentChoice.hiddenBySearch{display:none!important}
 
 
@@ -416,92 +416,6 @@ body.lightMode .crewField .agentChoice:hover{
   background:#edf5ff!important;
 }
 
-
-/* V43 - Correctif effectifs compacts et icônes stables */
-.crewField .agentSearch{
-  position:relative;
-  margin-bottom:8px;
-}
-.crewField .agentSearch::before{
-  content:'';
-  position:absolute;
-  left:12px;
-  top:50%;
-  transform:translateY(-50%);
-  width:15px;
-  height:15px;
-  border:2px solid #64748b;
-  border-radius:50%;
-  z-index:2;
-  pointer-events:none;
-}
-.crewField .agentSearch::after{
-  content:'';
-  position:absolute;
-  left:24px;
-  top:57%;
-  width:7px;
-  height:2px;
-  background:#64748b;
-  transform:rotate(45deg);
-  border-radius:2px;
-  z-index:2;
-  pointer-events:none;
-}
-.crewField .agentSearch input{
-  height:38px!important;
-  min-height:38px!important;
-  padding:8px 12px 8px 38px!important;
-  font-size:14px!important;
-}
-.crewField .agentList{
-  height:132px!important;
-  max-height:132px!important;
-  min-height:132px!important;
-  overflow-y:auto!important;
-  padding:0!important;
-}
-.crewField .agentChoice{
-  display:grid!important;
-  grid-template-columns:24px 1fr!important;
-  align-items:center!important;
-  gap:8px!important;
-  min-height:32px!important;
-  padding:5px 10px!important;
-  margin:0!important;
-  line-height:1.15!important;
-  font-size:13px!important;
-}
-.crewField .agentChoice input[type="checkbox"]{
-  width:16px!important;
-  height:16px!important;
-  min-height:16px!important;
-  margin:0!important;
-  padding:0!important;
-  accent-color:#2563eb;
-}
-.crewField .agentChoice span{
-  display:block!important;
-  text-align:left!important;
-  white-space:normal!important;
-  overflow:visible!important;
-  font-size:13px!important;
-  font-weight:600!important;
-}
-.crewHint{
-  margin-top:5px!important;
-  font-size:11px!important;
-}
-.navIcon{
-  font-family:Arial,Helvetica,sans-serif!important;
-  font-style:normal!important;
-}
-
-
-/* V44 - Colonne vacation */
-#crewRows td:nth-child(6){white-space:nowrap;line-height:1.25}
-#crewRows td:nth-child(6) b{font-size:12px}
-
 </style></head><body>
 <div id="login" class="login"><div id="flashLogin" class="flashLogin hidden"><span class="flashIcon">📢</span><span id="flashLoginLabel" class="flashLabel">INFO :</span><span id="flashLoginText" class="flashText"></span></div><div class="box">
   <div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div>
@@ -526,7 +440,7 @@ body.lightMode .crewField .agentChoice:hover{
 </div></div>
 <div id="app" class="app"><div class="top"><div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div><div class="right"><b id="agentName">Agent</b><div class="tag" id="clock"></div><div class="row" style="justify-content:flex-end;margin-top:6px"><button id="themeBtn" class="themeToggle" onclick="toggleTheme()" title="Changer le thème"><span class="themeIcon">🌙</span><span id="themeText">Thème sombre</span></button><button id="notifBtn" class="notifSwitch" onclick="toggleNotifications()" title="Alertes sonores"><span class="notifKnob"></span><span id="notifText">ALERTES ON</span></button><button id="passwordBtn" class="small" onclick="changePass()">Mot de passe</button><button class="small danger" onclick="logout()">Déconnexion</button></div></div></div>
 <div class="layout"><aside><div class="nav"><button onclick="show('dash')"><span class="navIcon">🏠</span>Tableau de bord</button><button id="personnelBtn" onclick="show('personnel')"><span class="navIcon">👮</span>Personnel</button><button onclick="show('notes')"><span class="navIcon">📝</span>Notes privées</button><button onclick="show('links')"><span class="navIcon">🔗</span>Liens utiles</button><button onclick="show('events')"><span class="navIcon">📅</span>Événements</button><button id="historyBtn" onclick="show('history')"><span class="navIcon">🕒</span>Historique</button><button class="consigneNav" onclick="show('consignes')"><span class="navIcon">📋</span>Consignes <span id="consigneCount" class="consigneCount">(0)</span><span id="consigneBell" class="consigneBell">🔔</span></button><button id="adminBtn" onclick="show('admin')"><span class="navIcon">⚙️</span>Administration</button></div><div id="eventTodayBox" class="eventTodayBox hidden"></div></aside><main>
-<section id="dash"><div class="cards"><div class="card"><span>Équipages</span><br><b id="cTotal">0</b></div><div class="card green"><span>Disponibles</span><br><b id="cDispo">0</b></div><div class="card red"><span>Indisponibles</span><br><b id="cIndispo">0</b></div><div class="card"><span>Effectifs</span><br><b id="cEff">0</b></div></div><div class="section"><div class="row" style="justify-content:space-between"><h2>Tableau de bord opérationnel</h2><button id="createCrewBtn" class="primary" onclick="openCrew()">Créer équipage</button></div><table><thead><tr><th>Info</th><th>Indicatif</th><th>Matricules</th><th>Intervention</th><th>Code Blanc</th><th>Vacation</th><th>Actions</th></tr></thead><tbody id="crewRows"></tbody></table></div><div id="logSection" class="section"><h2>Journal de la dernière heure</h2><div id="logs"></div></div></section>
+<section id="dash"><div class="cards"><div class="card"><span>Équipages</span><br><b id="cTotal">0</b></div><div class="card green"><span>Disponibles</span><br><b id="cDispo">0</b></div><div class="card red"><span>Indisponibles</span><br><b id="cIndispo">0</b></div><div class="card"><span>Effectifs</span><br><b id="cEff">0</b></div></div><div class="section"><div class="row" style="justify-content:space-between"><h2>Tableau de bord opérationnel</h2><button id="createCrewBtn" class="primary" onclick="openCrew()">Créer équipage</button></div><table><thead><tr><th>Info</th><th>Indicatif</th><th>Matricules</th><th>Intervention</th><th>Code Blanc</th><th>Actions</th></tr></thead><tbody id="crewRows"></tbody></table></div><div id="logSection" class="section"><h2>Journal de la dernière heure</h2><div id="logs"></div></div></section>
 <section id="personnel" class="hidden"><div class="section"><div class="row" style="justify-content:space-between"><h2>Personnel</h2><button class="primary" onclick="addAgent()">Ajouter agent</button></div><p class="mut">Réservé Admin : ajout et modification des matricules, noms et prénoms. Les opérateurs sélectionnent ensuite uniquement les matricules dans les équipages.</p><table><thead><tr><th>Matricule</th><th>Nom</th><th>Prénom</th><th>Actif</th><th></th></tr></thead><tbody id="agentRows"></tbody></table><button class="primary" onclick="saveAgents()">Enregistrer le personnel</button></div></section>
 <section id="notes" class="hidden"><div class="section"><h2>Notes privées</h2><p class="mut">Chaque agent voit uniquement ses propres notes.</p><textarea id="note" oninput="noteDirty=true"></textarea><br><br><button class="primary" onclick="saveNote()">Enregistrer mes notes</button></div></section><section id="consignes" class="hidden">
   <div class="section">
@@ -735,17 +649,7 @@ function renderAll(force=false){renderCrews();renderAgents();renderAdmin(force);
     msg.includes(' INDISPO');
   return recent && allowed;
 });$('logs').innerHTML=logsRecent.length?logsRecent.map(l=>`<div><span class="mut">${new Date(l.date).toLocaleString('fr-FR')}</span> — <b>${l.user}</b> : ${l.msg}</div>`).join(''):'<span class="mut">Aucun événement sur la dernière heure.</span>';$('cTotal').textContent=S.crews.length;$('cDispo').textContent=S.crews.filter(c=>c.status==='DISPO').length;$('cIndispo').textContent=S.crews.filter(c=>c.status==='INDISPO').length;$('cEff').textContent=new Set(S.crews.flatMap(c=>c.matricules||[])).size}
-
-function formatVacationCell(c){
-  if(!c.shiftStart)return '—';
-  const d=new Date(c.shiftStart);
-  if(isNaN(d.getTime()))return '—';
-  const date=d.toLocaleDateString('fr-FR');
-  const heure=d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-  return date+'<br><b>'+heure+'</b>';
-}
-
-function renderCrews(){const readonly=!canOperate();$('crewRows').innerHTML=S.crews.map(c=>`<tr class="${c.status==='INDISPO'?'indispo':'dispo'}"><td><button class="infoBtn" title="Infos équipage" onclick='showCrewInfo(${JSON.stringify(c.id)})'>i</button></td><td><b>${c.callsign}</b><br><span class="pill">${c.status}</span></td><td>${(c.matricules||[]).map(m=>`<span class="pill">${m}</span>`).join('')}</td><td>${c.intervention||'—'}</td><td>${c.meal||'—'}</td><td>${formatVacationCell(c)}</td><td>${readonly?'<span class="mut">Lecture seule</span>':`<button class="small" onclick='openCrew(${JSON.stringify(c.id)})'>Modifier</button> <button class="small ok" onclick='statusCrew(${JSON.stringify(c.id)},"DISPO")'>DISPO</button> <button class="small danger" onclick='openIndispo(${JSON.stringify(c.id)})'>INDISPO</button>`}</td></tr>`).join('')}
+function renderCrews(){const readonly=!canOperate();$('crewRows').innerHTML=S.crews.map(c=>`<tr class="${c.status==='INDISPO'?'indispo':'dispo'}"><td><button class="infoBtn" title="Infos équipage" onclick='showCrewInfo(${JSON.stringify(c.id)})'>i</button></td><td><b>${c.callsign}</b><br><span class="pill">${c.status}</span></td><td>${(c.matricules||[]).map(m=>`<span class="pill">${m}</span>`).join('')}</td><td>${c.intervention||'—'}</td><td>${c.meal||'—'}</td><td>${readonly?'<span class="mut">Lecture seule</span>':`<button class="small" onclick='openCrew(${JSON.stringify(c.id)})'>Modifier</button> <button class="small ok" onclick='statusCrew(${JSON.stringify(c.id)},"DISPO")'>DISPO</button> <button class="small danger" onclick='openIndispo(${JSON.stringify(c.id)})'>INDISPO</button>`}</td></tr>`).join('')}
 function formatVacation(c){
   if(!c.shiftStart&&!c.shiftEnd)return 'Non renseignée';
   const fmt=v=>v?new Date(v).toLocaleString('fr-FR'):'—';
