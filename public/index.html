@@ -695,19 +695,54 @@ body.lightMode .themeToggle{
 body.lightMode .crewBox{background:#f8fafc!important}
 body.lightMode .crewFooter{background:#edf3f8!important}
 
-/* Thème sombre harmonisé */
+/* Thème sombre : couleurs PHENIX d'origine */
 body:not(.lightMode) .top{
-  background:linear-gradient(90deg,#071a33,#0a315d)!important
+  background:#08182a!important;
+  border-bottom:1px solid #21364f!important;
 }
 body:not(.lightMode) aside{
-  background:linear-gradient(180deg,#0b57ad,#063c7f)!important
+  background:#09182a!important;
+  border-right:1px solid #21364f!important;
+  box-shadow:none!important;
 }
-body:not(.lightMode) tr.dispo{
-  background:#063c27!important
+body:not(.lightMode) .nav button{
+  background:transparent!important;
+  border:1px solid #21364f!important;
+  color:#eaf2ff!important;
 }
-body:not(.lightMode) tr.indispo{
-  background:#4b1012!important
+body:not(.lightMode) .nav button:hover,
+body:not(.lightMode) .nav button.activeNav{
+  background:#13243b!important;
+  transform:none!important;
 }
+body:not(.lightMode) .navIcon{
+  border-color:#3b82f6!important;
+  color:#93c5fd!important;
+}
+body:not(.lightMode) tr.dispo{background:#052e1a!important}
+body:not(.lightMode) tr.indispo{background:#3b0b0b!important}
+
+/* Thème clair : vert/rouge plus visibles */
+body.lightMode tr.dispo{
+  background:#d7f2df!important;
+  color:#123d24!important;
+}
+body.lightMode tr.indispo{
+  background:#ffdede!important;
+  color:#641f1f!important;
+}
+body.lightMode .card.green{
+  background:#dff4e6!important;
+  border-color:#67b982!important;
+  color:#14532d!important;
+}
+body.lightMode .card.red{
+  background:#ffe1e1!important;
+  border-color:#df7f7f!important;
+  color:#7f1d1d!important;
+}
+body.lightMode tr.dispo:hover{background:#c8ead3!important}
+body.lightMode tr.indispo:hover{background:#f8cdcd!important}
 
 @media(max-width:900px){
   .layout{grid-template-columns:1fr!important}
@@ -715,6 +750,14 @@ body:not(.lightMode) tr.indispo{
   .nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
   .eventTodayBox{grid-column:1/-1}
 }
+
+
+/* V46 - Correctifs thème, recherche et vacation */
+.vacDate{display:none!important}
+.vacationCell{min-width:96px}
+.vacLine{justify-content:space-between;gap:10px}
+body.lightMode #crewRows tr.dispo td{border-bottom-color:#a9d8b6!important}
+body.lightMode #crewRows tr.indispo td{border-bottom-color:#e7a1a1!important}
 
 </style></head><body>
 <div id="login" class="login"><div id="flashLogin" class="flashLogin hidden"><span class="flashIcon">📢</span><span id="flashLoginLabel" class="flashLabel">INFO :</span><span id="flashLoginText" class="flashText"></span></div><div class="box">
@@ -953,23 +996,15 @@ function renderAll(force=false){renderCrews();renderAgents();renderAdmin(force);
 });$('logs').innerHTML=logsRecent.length?logsRecent.map(l=>`<div><span class="mut">${new Date(l.date).toLocaleString('fr-FR')}</span> — <b>${l.user}</b> : ${l.msg}</div>`).join(''):'<span class="mut">Aucun événement sur la dernière heure.</span>';$('cTotal').textContent=S.crews.length;$('cDispo').textContent=S.crews.filter(c=>c.status==='DISPO').length;$('cIndispo').textContent=S.crews.filter(c=>c.status==='INDISPO').length;$('cEff').textContent=new Set(S.crews.flatMap(c=>c.matricules||[])).size}
 
 function formatVacationCell(c){
-  if(!c.shiftStart && !c.shiftEnd)return '—';
-  const fmtDate=v=>{
-    if(!v)return null;
+  const fmtTime=v=>{
+    if(!v)return '—';
     const d=new Date(v);
-    if(isNaN(d.getTime()))return null;
-    return {
-      date:d.toLocaleDateString('fr-FR'),
-      time:d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})
-    };
+    if(isNaN(d.getTime()))return '—';
+    return d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
   };
-  const start=fmtDate(c.shiftStart);
-  const end=fmtDate(c.shiftEnd);
-  const date=(start&&start.date)||(end&&end.date)||'';
   return `<div class="vacationCell">
-    ${date?`<div class="vacDate">${date}</div>`:''}
-    <div class="vacLine vacStart"><span>Début</span><b>${start?start.time:'—'}</b></div>
-    <div class="vacLine vacEnd"><span>Fin</span><b>${end?end.time:'—'}</b></div>
+    <div class="vacLine vacStart"><span>Début</span><b>${fmtTime(c.shiftStart)}</b></div>
+    <div class="vacLine vacEnd"><span>Fin</span><b>${fmtTime(c.shiftEnd)}</b></div>
   </div>`;
 }
 
@@ -985,16 +1020,25 @@ function fillSelects(selected=[]){
   $('crewAgents').innerHTML=S.agents.filter(a=>a.actif).map(a=>{
     const label=an(a.matricule);
     const search=(a.matricule+' '+(a.nom||'')+' '+(a.prenom||'')+' '+label).toLowerCase();
-    return `<label class="agentChoice" data-search="${esc(search)}"><input type="checkbox" value="${a.matricule}" ${selected.includes(a.matricule)?'checked':''}> <span>${esc(label)}</span></label>`;
+    return `<label class="agentChoice" data-search="${esc(search).replaceAll('"','&quot;')}"><input type="checkbox" value="${a.matricule}" ${selected.includes(a.matricule)?'checked':''}> <span>${esc(label)}</span></label>`;
   }).join('');
   $('indispoSelect').innerHTML=S.interventions.map(x=>`<option>${x}</option>`).join('');
   if($('crewAgentSearch')){$('crewAgentSearch').value='';filterCrewAgents();}
 }
+function normalizeAgentSearch(value){
+  return String(value||'')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'')
+    .toLowerCase()
+    .trim();
+}
 function filterCrewAgents(){
-  const q=($('crewAgentSearch')&&$('crewAgentSearch').value||'').toLowerCase().trim();
+  const input=$('crewAgentSearch');
+  const q=normalizeAgentSearch(input?input.value:'');
   document.querySelectorAll('#crewAgents .agentChoice').forEach(row=>{
-    const text=(row.dataset.search||row.textContent||'').toLowerCase();
-    row.classList.toggle('hiddenBySearch',q && !text.includes(q));
+    const text=normalizeAgentSearch(row.dataset.search||row.textContent||'');
+    const visible=!q||text.includes(q);
+    row.style.display=visible?'grid':'none';
   });
 }
 function openCrew(id){
