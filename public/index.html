@@ -137,7 +137,7 @@ animation:phenixGlow 8s ease-in-out infinite alternate}
 
 .agentSearch{margin-bottom:8px;position:relative}
 .agentSearch input{padding-left:34px}
-.agentSearch::before{content:'🔎';position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.75;z-index:1}
+
 .agentChoice.hiddenBySearch{display:none!important}
 
 
@@ -416,6 +416,306 @@ body.lightMode .crewField .agentChoice:hover{
   background:#edf5ff!important;
 }
 
+
+/* V43 - Correctif effectifs compacts et icônes stables */
+.crewField .agentSearch{
+  position:relative;
+  margin-bottom:8px;
+}
+.crewField .agentSearch::before{
+  content:'';
+  position:absolute;
+  left:12px;
+  top:50%;
+  transform:translateY(-50%);
+  width:15px;
+  height:15px;
+  border:2px solid #64748b;
+  border-radius:50%;
+  z-index:2;
+  pointer-events:none;
+}
+.crewField .agentSearch::after{
+  content:'';
+  position:absolute;
+  left:24px;
+  top:57%;
+  width:7px;
+  height:2px;
+  background:#64748b;
+  transform:rotate(45deg);
+  border-radius:2px;
+  z-index:2;
+  pointer-events:none;
+}
+.crewField .agentSearch input{
+  height:38px!important;
+  min-height:38px!important;
+  padding:8px 12px 8px 38px!important;
+  font-size:14px!important;
+}
+.crewField .agentList{
+  height:132px!important;
+  max-height:132px!important;
+  min-height:132px!important;
+  overflow-y:auto!important;
+  padding:0!important;
+}
+.crewField .agentChoice{
+  display:grid!important;
+  grid-template-columns:24px 1fr!important;
+  align-items:center!important;
+  gap:8px!important;
+  min-height:32px!important;
+  padding:5px 10px!important;
+  margin:0!important;
+  line-height:1.15!important;
+  font-size:13px!important;
+}
+.crewField .agentChoice input[type="checkbox"]{
+  width:16px!important;
+  height:16px!important;
+  min-height:16px!important;
+  margin:0!important;
+  padding:0!important;
+  accent-color:#2563eb;
+}
+.crewField .agentChoice span{
+  display:block!important;
+  text-align:left!important;
+  white-space:normal!important;
+  overflow:visible!important;
+  font-size:13px!important;
+  font-weight:600!important;
+}
+.crewHint{
+  margin-top:5px!important;
+  font-size:11px!important;
+}
+.navIcon{
+  font-family:Arial,Helvetica,sans-serif!important;
+  font-style:normal!important;
+}
+
+
+/* V44 - Colonne vacation */
+#crewRows td:nth-child(6){white-space:nowrap;line-height:1.25}
+#crewRows td:nth-child(6) b{font-size:12px}
+
+
+/* V45 - Interface PHENIX claire/sombre finalisée */
+:root{
+  --sidebar:#0759b7;
+  --sidebar2:#0b76df;
+  --sidebarActive:#2d8cff;
+  --softBlue:#eaf3ff;
+}
+.top{
+  background:linear-gradient(90deg,#083b81,#0869cf)!important;
+  border-bottom:0!important;
+  color:#fff!important;
+  box-shadow:0 2px 12px rgba(0,0,0,.18)
+}
+.top .tag,.top #clock{color:#dbeafe!important}
+.top .logo{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25)}
+
+.layout{grid-template-columns:220px 1fr!important}
+aside{
+  background:linear-gradient(180deg,var(--sidebar2),var(--sidebar))!important;
+  border-right:0!important;
+  padding:14px 10px!important;
+  box-shadow:3px 0 16px rgba(0,0,0,.14)
+}
+.nav{display:flex;flex-direction:column;gap:5px}
+.nav button{
+  min-height:48px!important;
+  margin:0!important;
+  padding:8px 10px!important;
+  border:0!important;
+  border-radius:9px!important;
+  background:transparent!important;
+  color:#fff!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:10px!important;
+  font-size:13px!important;
+  font-weight:600!important;
+  transition:.16s ease
+}
+.nav button:hover{
+  background:rgba(255,255,255,.13)!important;
+  transform:translateX(2px)
+}
+.nav button.activeNav{
+  background:linear-gradient(90deg,#2d8cff,#2482ed)!important;
+  box-shadow:0 7px 18px rgba(0,0,0,.16)
+}
+.navIcon{
+  width:30px!important;
+  height:30px!important;
+  flex:0 0 30px!important;
+  border:1px solid rgba(255,255,255,.68)!important;
+  border-radius:8px!important;
+  display:grid!important;
+  place-items:center!important;
+  color:#fff!important;
+  font-size:17px!important;
+  line-height:1!important;
+  font-family:Arial,Helvetica,sans-serif!important
+}
+.consigneCount{color:#fff!important}
+.consigneBell{right:7px!important;top:13px!important}
+
+.eventTodayBox{
+  background:rgba(0,39,94,.3)!important;
+  color:#fff!important;
+  border:1px solid rgba(255,255,255,.22)!important;
+  box-shadow:none!important;
+  margin-top:14px!important
+}
+.eventTodayTitle,.eventTodayBox .mut{color:#fff!important}
+
+.cards .card{
+  border-radius:14px!important;
+  box-shadow:0 8px 22px rgba(0,0,0,.12)
+}
+.section{
+  border-radius:14px!important;
+  box-shadow:0 8px 24px rgba(0,0,0,.10)
+}
+#dash table{border-radius:10px;overflow:hidden}
+#dash th{
+  background:rgba(255,255,255,.035);
+  padding-top:13px!important;
+  padding-bottom:13px!important
+}
+#crewRows tr{transition:.15s}
+#crewRows tr:hover{filter:brightness(1.05)}
+.vacationCell{min-width:112px;line-height:1.25}
+.vacDate{font-weight:700;margin-bottom:4px}
+.vacLine{display:flex;gap:7px;align-items:center;font-size:12px}
+.vacLine span{min-width:38px}
+.vacStart span,.vacStart b{color:#22c55e}
+.vacEnd span,.vacEnd b{color:#ef4444}
+
+.themeToggle{
+  min-width:82px!important;
+  height:34px!important;
+  border-radius:999px!important;
+  background:rgba(255,255,255,.14)!important;
+  color:#fff!important;
+  border:1px solid rgba(255,255,255,.25)!important
+}
+
+/* Thème clair PHENIX : bleu + surfaces claires */
+body.lightMode{
+  --t:#16233a;
+  --m:#607086;
+  --l:#d4deea;
+  background:#eef3f8!important;
+  color:#16233a!important
+}
+body.lightMode .app,
+body.lightMode main,
+body.lightMode .layout{background:#eef3f8!important;color:#16233a!important}
+body.lightMode .top{
+  background:linear-gradient(90deg,#0756b3,#0876df)!important;
+  color:#fff!important
+}
+body.lightMode aside{
+  background:linear-gradient(180deg,#0878df,#0751ad)!important
+}
+body.lightMode .section,
+body.lightMode .card{
+  background:#fff!important;
+  color:#16233a!important;
+  border-color:#d7e0ea!important;
+  box-shadow:0 8px 22px rgba(15,39,70,.08)!important
+}
+body.lightMode .card.green{
+  background:#edf9f1!important;
+  border-color:#a9d8b6!important;
+  color:#176432!important
+}
+body.lightMode .card.red{
+  background:#fff1f1!important;
+  border-color:#efb8b8!important;
+  color:#8d2424!important
+}
+body.lightMode tr.dispo{
+  background:#edf9f1!important;
+  color:#173926!important
+}
+body.lightMode tr.indispo{
+  background:#fff1f1!important;
+  color:#5f2020!important
+}
+body.lightMode #dash th{
+  background:#f5f8fc!important;
+  color:#263751!important
+}
+body.lightMode th,
+body.lightMode td{border-color:#dce5ee!important}
+body.lightMode .pill{
+  background:#dcecff!important;
+  color:#174785!important
+}
+body.lightMode input,
+body.lightMode select,
+body.lightMode textarea{
+  background:#fff!important;
+  color:#16233a!important;
+  border-color:#bcc9d8!important
+}
+body.lightMode .modal .box:not(.crewBox){
+  background:#fff!important;
+  color:#16233a!important
+}
+body.lightMode .eventCalendar,
+body.lightMode .historyBox,
+body.lightMode .linkCard,
+body.lightMode .agentList{
+  background:#fff!important;
+  color:#16233a!important;
+  border-color:#d4deea!important
+}
+body.lightMode .eventCalHead,
+body.lightMode .eventWeekDate{background:#edf4fc!important;color:#27415f!important}
+body.lightMode .eventDay{background:#fff!important;color:#16233a!important}
+body.lightMode .eventDay.today{background:#e9f3ff!important}
+body.lightMode .linkBody h3{color:#16233a!important}
+body.lightMode .mut,
+body.lightMode .tag{color:#63748a!important}
+body.lightMode .top .tag,
+body.lightMode .top #clock{color:#e5f1ff!important}
+body.lightMode .themeToggle{
+  background:rgba(255,255,255,.18)!important;
+  color:#fff!important
+}
+body.lightMode .crewBox{background:#f8fafc!important}
+body.lightMode .crewFooter{background:#edf3f8!important}
+
+/* Thème sombre harmonisé */
+body:not(.lightMode) .top{
+  background:linear-gradient(90deg,#071a33,#0a315d)!important
+}
+body:not(.lightMode) aside{
+  background:linear-gradient(180deg,#0b57ad,#063c7f)!important
+}
+body:not(.lightMode) tr.dispo{
+  background:#063c27!important
+}
+body:not(.lightMode) tr.indispo{
+  background:#4b1012!important
+}
+
+@media(max-width:900px){
+  .layout{grid-template-columns:1fr!important}
+  aside{box-shadow:none}
+  .nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .eventTodayBox{grid-column:1/-1}
+}
+
 </style></head><body>
 <div id="login" class="login"><div id="flashLogin" class="flashLogin hidden"><span class="flashIcon">📢</span><span id="flashLoginLabel" class="flashLabel">INFO :</span><span id="flashLoginText" class="flashText"></span></div><div class="box">
   <div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div>
@@ -439,8 +739,8 @@ body.lightMode .crewField .agentChoice:hover{
   <div id="msg" class="err"></div>
 </div></div>
 <div id="app" class="app"><div class="top"><div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div><div class="right"><b id="agentName">Agent</b><div class="tag" id="clock"></div><div class="row" style="justify-content:flex-end;margin-top:6px"><button id="themeBtn" class="themeToggle" onclick="toggleTheme()" title="Changer le thème"><span class="themeIcon">🌙</span><span id="themeText">Thème sombre</span></button><button id="notifBtn" class="notifSwitch" onclick="toggleNotifications()" title="Alertes sonores"><span class="notifKnob"></span><span id="notifText">ALERTES ON</span></button><button id="passwordBtn" class="small" onclick="changePass()">Mot de passe</button><button class="small danger" onclick="logout()">Déconnexion</button></div></div></div>
-<div class="layout"><aside><div class="nav"><button onclick="show('dash')"><span class="navIcon">🏠</span>Tableau de bord</button><button id="personnelBtn" onclick="show('personnel')"><span class="navIcon">👮</span>Personnel</button><button onclick="show('notes')"><span class="navIcon">📝</span>Notes privées</button><button onclick="show('links')"><span class="navIcon">🔗</span>Liens utiles</button><button onclick="show('events')"><span class="navIcon">📅</span>Événements</button><button id="historyBtn" onclick="show('history')"><span class="navIcon">🕒</span>Historique</button><button class="consigneNav" onclick="show('consignes')"><span class="navIcon">📋</span>Consignes <span id="consigneCount" class="consigneCount">(0)</span><span id="consigneBell" class="consigneBell">🔔</span></button><button id="adminBtn" onclick="show('admin')"><span class="navIcon">⚙️</span>Administration</button></div><div id="eventTodayBox" class="eventTodayBox hidden"></div></aside><main>
-<section id="dash"><div class="cards"><div class="card"><span>Équipages</span><br><b id="cTotal">0</b></div><div class="card green"><span>Disponibles</span><br><b id="cDispo">0</b></div><div class="card red"><span>Indisponibles</span><br><b id="cIndispo">0</b></div><div class="card"><span>Effectifs</span><br><b id="cEff">0</b></div></div><div class="section"><div class="row" style="justify-content:space-between"><h2>Tableau de bord opérationnel</h2><button id="createCrewBtn" class="primary" onclick="openCrew()">Créer équipage</button></div><table><thead><tr><th>Info</th><th>Indicatif</th><th>Matricules</th><th>Intervention</th><th>Code Blanc</th><th>Actions</th></tr></thead><tbody id="crewRows"></tbody></table></div><div id="logSection" class="section"><h2>Journal de la dernière heure</h2><div id="logs"></div></div></section>
+<div class="layout"><aside><div class="nav"><button onclick="show('dash')"><span class="navIcon">⌂</span>Tableau de bord</button><button id="personnelBtn" onclick="show('personnel')"><span class="navIcon">♙</span>Personnel</button><button onclick="show('notes')"><span class="navIcon">▤</span>Notes privées</button><button onclick="show('links')"><span class="navIcon">⛓</span>Liens utiles</button><button onclick="show('events')"><span class="navIcon">▦</span>Événements</button><button id="historyBtn" onclick="show('history')"><span class="navIcon">◷</span>Historique</button><button class="consigneNav" onclick="show('consignes')"><span class="navIcon">▣</span>Consignes <span id="consigneCount" class="consigneCount">(0)</span><span id="consigneBell" class="consigneBell">🔔</span></button><button id="adminBtn" onclick="show('admin')"><span class="navIcon">⚙</span>Administration</button></div><div id="eventTodayBox" class="eventTodayBox hidden"></div></aside><main>
+<section id="dash"><div class="cards"><div class="card"><span>Équipages</span><br><b id="cTotal">0</b></div><div class="card green"><span>Disponibles</span><br><b id="cDispo">0</b></div><div class="card red"><span>Indisponibles</span><br><b id="cIndispo">0</b></div><div class="card"><span>Effectifs</span><br><b id="cEff">0</b></div></div><div class="section"><div class="row" style="justify-content:space-between"><h2>Tableau de bord opérationnel</h2><button id="createCrewBtn" class="primary" onclick="openCrew()">Créer équipage</button></div><table><thead><tr><th>Info</th><th>Indicatif</th><th>Matricules</th><th>Intervention</th><th>Code Blanc</th><th>Vacation</th><th>Actions</th></tr></thead><tbody id="crewRows"></tbody></table></div><div id="logSection" class="section"><h2>Journal de la dernière heure</h2><div id="logs"></div></div></section>
 <section id="personnel" class="hidden"><div class="section"><div class="row" style="justify-content:space-between"><h2>Personnel</h2><button class="primary" onclick="addAgent()">Ajouter agent</button></div><p class="mut">Réservé Admin : ajout et modification des matricules, noms et prénoms. Les opérateurs sélectionnent ensuite uniquement les matricules dans les équipages.</p><table><thead><tr><th>Matricule</th><th>Nom</th><th>Prénom</th><th>Actif</th><th></th></tr></thead><tbody id="agentRows"></tbody></table><button class="primary" onclick="saveAgents()">Enregistrer le personnel</button></div></section>
 <section id="notes" class="hidden"><div class="section"><h2>Notes privées</h2><p class="mut">Chaque agent voit uniquement ses propres notes.</p><textarea id="note" oninput="noteDirty=true"></textarea><br><br><button class="primary" onclick="saveNote()">Enregistrer mes notes</button></div></section><section id="consignes" class="hidden">
   <div class="section">
@@ -616,7 +916,7 @@ function applyTheme(theme){
   const light=theme==='light';
   document.body.classList.toggle('lightMode',light);
   const txt=$('themeText'), icon=document.querySelector('#themeBtn .themeIcon');
-  if(txt)txt.textContent=light?'Mode clair':'Mode sombre';
+  if(txt)txt.textContent=light?'Clair':'Sombre';
   if(icon)icon.textContent=light?'☀️':'🌙';
   localStorage.setItem('phenixTheme',light?'light':'dark');
 }
@@ -629,14 +929,16 @@ function updateNotifButton(){const btn=$('notifBtn');const txt=$('notifText');if
 function toggleNotifications(){notificationsEnabled=!notificationsEnabled;localStorage.setItem('notificationsEnabled',notificationsEnabled);updateNotifButton();if(notificationsEnabled){alertSound.currentTime=0;alertSound.play().then(()=>{alertSound.pause();alertSound.currentTime=0}).catch(()=>{})}}
 function checkCrewChanges(newCrews){if(!Array.isArray(newCrews))return;if(previousCrews.length===0){previousCrews=JSON.parse(JSON.stringify(newCrews));return}let changed=false;for(const crew of newCrews){const old=previousCrews.find(c=>c.id===crew.id);if(old&&old.status!==crew.status){changed=true;break}}previousCrews=JSON.parse(JSON.stringify(newCrews));if(changed&&notificationsEnabled){alertSound.currentTime=0;alertSound.play().catch(()=>{})}}
 
-async function init(){applyTheme(localStorage.getItem('phenixTheme')||'dark');tick();setInterval(tick,1000);try{const st=await api('/api/status');S.flash=st.flash||{enabled:false,title:'INFO',text:''};renderFlash();if(st.user){$('login').style.display='none';$('app').style.display='block';await refresh()}else{$('setup').classList.toggle('hidden',!st.setupRequired);$('logbox').classList.toggle('hidden',st.setupRequired)}}catch(e){err(Error('Serveur non joignable : vérifie que Render est lancé'))}}
+async function init(){applyTheme(localStorage.getItem('phenixTheme')||'dark');tick();setInterval(tick,1000);try{const st=await api('/api/status');S.flash=st.flash||{enabled:false,title:'INFO',text:''};renderFlash();if(st.user){$('login').style.display='none';$('app').style.display='block';await refresh();document.querySelector('.nav button[onclick="show(\'dash\')"]')?.classList.add('activeNav')}else{$('setup').classList.toggle('hidden',!st.setupRequired);$('logbox').classList.toggle('hidden',st.setupRequired)}}catch(e){err(Error('Serveur non joignable : vérifie que Render est lancé'))}}
 async function setupAdmin(){try{await api('/api/setup',{method:'POST',body:JSON.stringify({displayName:$('suName').value,login:$('suLogin').value,password:$('suPass').value})});$('login').style.display='none';$('app').style.display='block';await refresh()}catch(e){err(e)}}
 async function login(){try{await api('/api/login',{method:'POST',body:JSON.stringify({login:$('loginId').value,password:$('loginPass').value})});$('login').style.display='none';$('app').style.display='block';await refresh()}catch(e){err(e)}}
 async function logout(){await api('/api/logout',{method:'POST'});location.reload()}async function changePass(){const oldPassword=prompt('Ancien mot de passe');if(oldPassword===null)return;const newPassword=prompt('Nouveau mot de passe');if(!newPassword)return;try{await api('/api/password',{method:'POST',body:JSON.stringify({oldPassword,newPassword})});alert('Mot de passe modifié')}catch(e){alert(e.message)}}
 async function refresh(){return refreshSafe(true)}
 async function refreshSafe(force=false){if(!force && shouldPauseRefresh()) return; S=await api('/api/data');$('agentName').textContent=S.user.displayName;const dash=S.user.role==='dashboard';document.body.classList.toggle('dashboardMode',dash);$('adminBtn').classList.toggle('hidden',S.user.role!=='admin'); if($('historyBtn'))$('historyBtn').classList.toggle('hidden',!['admin','superviseur'].includes(S.user.role));$('personnelBtn').classList.toggle('hidden',S.user.role!=='admin');document.querySelector('button[onclick="show(\'notes\')"]').classList.toggle('hidden',dash);$('createCrewBtn').classList.toggle('hidden',dash);if(dash&&!['dash','consignes','events'].includes(activeSection))activeSection='dash';checkCrewChanges(S.crews);renderAll(force);updateNotifButton()}
 function shouldPauseRefresh(){const el=document.activeElement; if(el && ['INPUT','TEXTAREA','SELECT'].includes(el.tagName)) return true; return ['personnel','admin','notes'].includes(activeSection)}
-function show(id){if(S.user&&S.user.role==='dashboard' && !['dash','consignes','events'].includes(id)){id='dash'}activeSection=id;['dash','personnel','notes','links','events','history','consignes','admin'].forEach(x=>$(x).classList.toggle('hidden',x!==id)); if(id==='notes') $('note').value=S.note||''; if(id==='consignes') renderConsignes(); if(id==='links') renderLinks(); if(id==='events') renderEvents(); if(id==='history') renderHistoryUsers()}
+function show(id){
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('activeNav',b.getAttribute('onclick')===`show('${id}')`));
+  if(S.user&&S.user.role==='dashboard' && !['dash','consignes','events'].includes(id)){id='dash'}activeSection=id;['dash','personnel','notes','links','events','history','consignes','admin'].forEach(x=>$(x).classList.toggle('hidden',x!==id)); if(id==='notes') $('note').value=S.note||''; if(id==='consignes') renderConsignes(); if(id==='links') renderLinks(); if(id==='events') renderEvents(); if(id==='history') renderHistoryUsers()}
 function an(m){const a=S.agents.find(x=>x.matricule===m);return a?`${a.matricule} ${a.nom||''} ${a.prenom||''}`.trim():m}
 function canOperate(){return S.user && S.user.role!=='dashboard'}
 function renderAll(force=false){renderCrews();renderAgents();renderAdmin(force);renderConsignes();renderLinks();renderEvents();renderFlash();if(activeSection!=='notes' || force || !noteDirty){$('note').value=S.note||'';noteDirty=false;}const logsRecent=S.logs.filter(l=>{
@@ -649,7 +951,29 @@ function renderAll(force=false){renderCrews();renderAgents();renderAdmin(force);
     msg.includes(' INDISPO');
   return recent && allowed;
 });$('logs').innerHTML=logsRecent.length?logsRecent.map(l=>`<div><span class="mut">${new Date(l.date).toLocaleString('fr-FR')}</span> — <b>${l.user}</b> : ${l.msg}</div>`).join(''):'<span class="mut">Aucun événement sur la dernière heure.</span>';$('cTotal').textContent=S.crews.length;$('cDispo').textContent=S.crews.filter(c=>c.status==='DISPO').length;$('cIndispo').textContent=S.crews.filter(c=>c.status==='INDISPO').length;$('cEff').textContent=new Set(S.crews.flatMap(c=>c.matricules||[])).size}
-function renderCrews(){const readonly=!canOperate();$('crewRows').innerHTML=S.crews.map(c=>`<tr class="${c.status==='INDISPO'?'indispo':'dispo'}"><td><button class="infoBtn" title="Infos équipage" onclick='showCrewInfo(${JSON.stringify(c.id)})'>i</button></td><td><b>${c.callsign}</b><br><span class="pill">${c.status}</span></td><td>${(c.matricules||[]).map(m=>`<span class="pill">${m}</span>`).join('')}</td><td>${c.intervention||'—'}</td><td>${c.meal||'—'}</td><td>${readonly?'<span class="mut">Lecture seule</span>':`<button class="small" onclick='openCrew(${JSON.stringify(c.id)})'>Modifier</button> <button class="small ok" onclick='statusCrew(${JSON.stringify(c.id)},"DISPO")'>DISPO</button> <button class="small danger" onclick='openIndispo(${JSON.stringify(c.id)})'>INDISPO</button>`}</td></tr>`).join('')}
+
+function formatVacationCell(c){
+  if(!c.shiftStart && !c.shiftEnd)return '—';
+  const fmtDate=v=>{
+    if(!v)return null;
+    const d=new Date(v);
+    if(isNaN(d.getTime()))return null;
+    return {
+      date:d.toLocaleDateString('fr-FR'),
+      time:d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})
+    };
+  };
+  const start=fmtDate(c.shiftStart);
+  const end=fmtDate(c.shiftEnd);
+  const date=(start&&start.date)||(end&&end.date)||'';
+  return `<div class="vacationCell">
+    ${date?`<div class="vacDate">${date}</div>`:''}
+    <div class="vacLine vacStart"><span>Début</span><b>${start?start.time:'—'}</b></div>
+    <div class="vacLine vacEnd"><span>Fin</span><b>${end?end.time:'—'}</b></div>
+  </div>`;
+}
+
+function renderCrews(){const readonly=!canOperate();$('crewRows').innerHTML=S.crews.map(c=>`<tr class="${c.status==='INDISPO'?'indispo':'dispo'}"><td><button class="infoBtn" title="Infos équipage" onclick='showCrewInfo(${JSON.stringify(c.id)})'>i</button></td><td><b>${c.callsign}</b><br><span class="pill">${c.status}</span></td><td>${(c.matricules||[]).map(m=>`<span class="pill">${m}</span>`).join('')}</td><td>${c.intervention||'—'}</td><td>${c.meal||'—'}</td><td>${formatVacationCell(c)}</td><td>${readonly?'<span class="mut">Lecture seule</span>':`<button class="small" onclick='openCrew(${JSON.stringify(c.id)})'>Modifier</button> <button class="small ok" onclick='statusCrew(${JSON.stringify(c.id)},"DISPO")'>DISPO</button> <button class="small danger" onclick='openIndispo(${JSON.stringify(c.id)})'>INDISPO</button>`}</td></tr>`).join('')}
 function formatVacation(c){
   if(!c.shiftStart&&!c.shiftEnd)return 'Non renseignée';
   const fmt=v=>v?new Date(v).toLocaleString('fr-FR'):'—';
