@@ -444,4 +444,4 @@ app.post('/api/admin/lists', needLogin, needAdmin, (req,res)=>{
   res.json({ok:true});
 });
 
-app.listen(PORT,()=>console.log('PHENIX V55 création équipage réparée sur le port '+PORT));
+app.listen(PORT,()=>console.log('PHENIX V56 création et modification équipages réparées sur le port '+PORT));
