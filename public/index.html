@@ -864,6 +864,24 @@ body:not(.dashboardMode) #dashZoomTools{display:none!important}
 body.dashboardMode #createCrewBtn{display:none!important}
 body:not(.dashboardMode) #createCrewBtn{display:inline-block!important}
 
+
+/* V51.1 - Affichage simplifié INDISPO */
+.indispoTitle{
+  font-size:18px!important;
+  line-height:1.25!important;
+  margin:0 0 14px!important;
+}
+#indispoCode{
+  font-size:16px!important;
+  font-weight:400!important;
+  letter-spacing:0!important;
+  text-transform:uppercase;
+}
+#indispoPreview b{
+  font-size:14px!important;
+  font-weight:600!important;
+}
+
 </style></head><body>
 <div id="login" class="login"><div id="flashLogin" class="flashLogin hidden"><span class="flashIcon">📢</span><span id="flashLoginLabel" class="flashLabel">INFO :</span><span id="flashLoginText" class="flashText"></span></div><div class="box">
   <div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div>
@@ -1053,7 +1071,7 @@ body:not(.dashboardMode) #createCrewBtn{display:inline-block!important}
     </div>
   </div>
 </div>
-<div id="indispoModal" class="modal"><div class="box"><h2>Passer l’équipage en INDISPO</h2><input id="indispoId" type="hidden"><div class="field"><label>Code intervention</label><input id="indispoCode" autocomplete="off" placeholder="Tapez un code puis Entrée"><small class="mut">Le curseur est placé automatiquement ici.</small></div><div class="field"><label>Nature d’intervention</label><select id="indispoSelect"></select></div><div class="field"><label>Ou événement du calendrier</label><select id="indispoEvent"><option value="">Aucun événement</option></select></div><div id="indispoPreview" class="section" style="margin:8px 0;padding:10px"><span class="mut">Saisissez un code ou choisissez une nature / un événement.</span></div><div class="row"><button class="primary" onclick="setIndispo()">Valider INDISPO</button><button onclick="closeModal('indispoModal')">Annuler</button></div></div></div>
+<div id="indispoModal" class="modal"><div class="box"><h2 class="indispoTitle">Passer l’équipage en INDISPO</h2><input id="indispoId" type="hidden"><div class="field"><label>Code</label><input id="indispoCode" autocomplete="off" placeholder=""><small class="mut">Saisissez le code puis appuyez sur Entrée.</small></div><div class="field"><label>Nature d’intervention</label><select id="indispoSelect"></select></div><div class="field"><label>Événement du calendrier</label><select id="indispoEvent"><option value="">Aucun événement</option></select></div><div id="indispoPreview" class="section" style="margin:8px 0;padding:10px"><span class="mut">Saisissez un code ou choisissez une nature / un événement.</span></div><div class="row"><button class="primary" onclick="setIndispo()">Valider INDISPO</button><button onclick="closeModal('indispoModal')">Annuler</button></div></div></div>
 
 <div id="infoModal" class="modal"><div class="box"><h2 id="infoTitle">Infos équipage</h2><div id="infoBody"></div><br><button onclick="closeModal('infoModal')">Fermer</button></div></div>
 <script>
@@ -1157,7 +1175,7 @@ function formatVacationCell(c){
   </div>`;
 }
 
-function renderCrews(){const readonly=!canOperate();$('crewRows').innerHTML=S.crews.map(c=>`<tr class="${c.status==='INDISPO'?'indispo':'dispo'}"><td><button class="infoBtn" title="Infos équipage" onclick='showCrewInfo(${JSON.stringify(c.id)})'>i</button></td><td><b>${c.callsign}</b><br><span class="pill">${c.status}</span></td><td>${(c.matricules||[]).map(m=>`<span class="pill">${m}</span>`).join('')}</td><td>${c.interventionCode?`<span class="pill">${esc(c.interventionCode)}</span><br>`:''}${esc(c.intervention||'—')}</td><td>${c.meal||'—'}</td><td>${formatVacationCell(c)}</td><td>${readonly?'<span class="mut">Lecture seule</span>':`<button class="small" onclick='openCrew(${JSON.stringify(c.id)})'>Modifier</button> <button class="small ok" onclick='statusCrew(${JSON.stringify(c.id)},"DISPO")'>DISPO</button> <button class="small danger" onclick='openIndispo(${JSON.stringify(c.id)})'>INDISPO</button>`}</td></tr>`).join('')}
+function renderCrews(){const readonly=!canOperate();$('crewRows').innerHTML=S.crews.map(c=>`<tr class="${c.status==='INDISPO'?'indispo':'dispo'}"><td><button class="infoBtn" title="Infos équipage" onclick='showCrewInfo(${JSON.stringify(c.id)})'>i</button></td><td><b>${c.callsign}</b><br><span class="pill">${c.status}</span></td><td>${(c.matricules||[]).map(m=>`<span class="pill">${m}</span>`).join('')}</td><td>${esc(c.intervention||'—')}</td><td>${c.meal||'—'}</td><td>${formatVacationCell(c)}</td><td>${readonly?'<span class="mut">Lecture seule</span>':`<button class="small" onclick='openCrew(${JSON.stringify(c.id)})'>Modifier</button> <button class="small ok" onclick='statusCrew(${JSON.stringify(c.id)},"DISPO")'>DISPO</button> <button class="small danger" onclick='openIndispo(${JSON.stringify(c.id)})'>INDISPO</button>`}</td></tr>`).join('')}
 function formatVacation(c){
   if(!c.shiftStart&&!c.shiftEnd)return 'Non renseignée';
   const fmt=v=>v?new Date(v).toLocaleString('fr-FR'):'—';
@@ -1174,7 +1192,7 @@ function fillIndispoChoices(){
   if(sel){
     sel.innerHTML=(S.interventions||[]).map(line=>{
       const p=parseInterventionLine(line);
-      return `<option value="${esc(p.raw).replaceAll('"','&quot;')}" data-code="${esc(p.code)}">${p.code?p.code+' — ':''}${esc(p.label)}</option>`;
+      return `<option value="${esc(p.raw).replaceAll('"','&quot;')}" data-code="${esc(p.code)}">${esc(p.label)}</option>`;
     }).join('');
   }
   const evSel=$('indispoEvent');
@@ -1184,7 +1202,7 @@ function fillIndispoChoices(){
       const d=new Date(ev.start);
       const date=isNaN(d.getTime())?'':d.toLocaleDateString('fr-FR');
       const code=String(ev.code||'').trim().toUpperCase();
-      return `<option value="${esc(ev.id)}" data-code="${esc(code)}">${code?code+' — ':''}${esc(ev.title)}${date?' ('+date+')':''}</option>`;
+      return `<option value="${esc(ev.id)}" data-code="${esc(code)}">${esc(ev.title)}${date?' ('+date+')':''}</option>`;
     }).join('');
   }
 }
@@ -1275,9 +1293,9 @@ function updateIndispoPreview(){
   const ev=(S.events||[]).find(x=>x.id===eventId);
   const nature=parseInterventionLine($('indispoSelect')?.value||'');
   let text='';
-  if(found)text=`${found.code} — ${found.intervention}`;
-  else if(ev)text=`${ev.code?ev.code+' — ':''}${ev.title}`;
-  else if(nature.label)text=`${nature.code?nature.code+' — ':''}${nature.label}`;
+  if(found)text=found.intervention;
+  else if(ev)text=ev.title;
+  else if(nature.label)text=nature.label;
   $('indispoPreview').innerHTML=text?`<b>${esc(text)}</b>`:'<span class="mut">Saisissez un code ou choisissez une nature / un événement.</span>';
 }
 function openIndispo(id){
