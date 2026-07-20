@@ -19,6 +19,7 @@ function baseData(){
     notes: {},
     consignes: [],
     links: [],
+    events: [],
     flash: { enabled:false, title:'INFO', text:'' }
   };
 }
@@ -33,6 +34,7 @@ function migrate(d){
   d.notes=d.notes||{};
   d.consignes=d.consignes||[];
   d.links=d.links||[];
+  d.events=d.events||[];
   d.flash=d.flash||{enabled:false,title:'INFO',text:''};
   if(typeof d.flash.enabled!=='boolean') d.flash.enabled=false;
   d.flash.title=String(d.flash.title||'INFO').trim()||'INFO';
@@ -166,6 +168,7 @@ app.get('/api/data', needLogin, (req,res)=>{
     note:d.notes[u.id]||'',
     consignes:consignesForUser(d,u),
     links:linksForUser(d,u),
+    events:d.events||[],
     flash:d.flash||{enabled:false,title:'INFO',text:''},
     users:['admin','superviseur'].includes(u.role)?d.users.map(safe):undefined
   });
@@ -219,8 +222,19 @@ app.post('/api/crew/:id/status', needLogin, needOperational, (req,res)=>{
   const c=d.crews.find(x=>x.id===req.params.id);
   if(!c) return res.status(404).json({error:'Équipage introuvable'});
   c.status=req.body.status==='INDISPO'?'INDISPO':'DISPO';
-  c.intervention=c.status==='INDISPO'?String(req.body.intervention||'Intervention'):'';
-  audit(d,req,`${c.callsign} ${c.status}${c.intervention?' - '+c.intervention:''}`);
+  if(c.status==='INDISPO'){
+    c.intervention=String(req.body.intervention||'Intervention');
+    c.interventionCode=String(req.body.code||'').trim().toUpperCase();
+    c.interventionSource=String(req.body.source||'nature');
+    c.eventId=String(req.body.eventId||'');
+  }else{
+    c.intervention='';
+    c.interventionCode='';
+    c.interventionSource='';
+    c.eventId='';
+  }
+  const codeTxt=c.interventionCode?' ['+c.interventionCode+']':'';
+  audit(d,req,`${c.callsign} ${c.status}${codeTxt}${c.intervention?' - '+c.intervention:''}`);
   save(d);
   res.json({ok:true});
 });
@@ -342,6 +356,39 @@ app.get('/api/logo-check/:file', needLogin, (req,res)=>{
   res.json({file, exists:fs.existsSync(full), path:'/'.concat(file)});
 });
 
+
+app.post('/api/events', needLogin, needConsigneManager, (req,res)=>{
+  const d=load(); const u=current(req); const r=req.body||{};
+  const title=String(r.title||'').trim();
+  const code=String(r.code||'').trim().toUpperCase();
+  const start=String(r.start||'').trim();
+  const end=String(r.end||'').trim();
+  if(!title) return res.status(400).json({error:'Nom de l’événement obligatoire'});
+  if(!start || !end) return res.status(400).json({error:'Début et fin obligatoires'});
+  const sd=new Date(start), ed=new Date(end);
+  if(isNaN(sd.getTime()) || isNaN(ed.getTime()) || ed<=sd) return res.status(400).json({error:'Dates invalides'});
+  const data={title,code,start,end,description:String(r.description||'').trim(),color:['blue','red','green','orange','purple','gray'].includes(r.color)?r.color:'blue',updatedAt:new Date().toISOString(),updatedBy:u.displayName};
+  if(r.id){
+    const ev=(d.events||[]).find(x=>x.id===r.id);
+    if(!ev) return res.status(404).json({error:'Événement introuvable'});
+    Object.assign(ev,data);
+    audit(d,req,'Modification événement '+title);
+  }else{
+    d.events=d.events||[];
+    d.events.unshift({id:Date.now().toString(),createdAt:new Date().toISOString(),createdBy:u.displayName,...data});
+    audit(d,req,'Création événement '+title);
+  }
+  save(d); res.json({ok:true});
+});
+
+app.delete('/api/events/:id', needLogin, needConsigneManager, (req,res)=>{
+  const d=load();
+  const ev=(d.events||[]).find(x=>x.id===req.params.id);
+  d.events=(d.events||[]).filter(x=>x.id!==req.params.id);
+  if(ev) audit(d,req,'Suppression événement '+ev.title);
+  save(d); res.json({ok:true});
+});
+
 app.post('/api/admin/users', needLogin, needAdmin, (req,res)=>{
   const d=load(); const r=req.body||{};
   if(!r.displayName||!r.login||!r.role) return res.status(400).json({error:'Nom, identifiant et rôle obligatoires'});
@@ -381,10 +428,10 @@ app.delete('/api/admin/users/:id', needLogin, needAdmin, (req,res)=>{
 app.post('/api/admin/lists', needLogin, needAdmin, (req,res)=>{
   const d=load();
   d.callsigns=Array.isArray(req.body.callsigns)?req.body.callsigns:d.callsigns;
-  d.interventions=Array.isArray(req.body.interventions)?req.body.interventions:d.interventions;
+  d.interventions=Array.isArray(req.body.interventions)?req.body.interventions.map(x=>String(x||'').trim()).filter(Boolean):d.interventions;
   audit(d,req,'Modification listes admin');
   save(d);
   res.json({ok:true});
 });
 
-app.listen(PORT,()=>console.log('PEGASE V41 vacation et thème prêt sur le port '+PORT));
+app.listen(PORT,()=>console.log('PHENIX V51 prêt sur le port '+PORT));
