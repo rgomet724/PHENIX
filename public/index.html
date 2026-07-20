@@ -857,9 +857,12 @@ body.dashUltraCompact .vacationOnly{
 body:not(.dashboardMode) #dashZoomTools{display:none!important}
 
 
-/* V50 - Création équipage rétablie pour les rôles opérationnels */
+/* V51 - Réparation consignes, flash, événements et codes */
+#indispoCode{font-size:22px;font-weight:800;letter-spacing:1px;text-transform:uppercase;border-color:#3b82f6}
+#indispoPreview{min-height:42px}
 body:not(.dashboardMode) #dashZoomTools{display:none!important}
 body.dashboardMode #createCrewBtn{display:none!important}
+body:not(.dashboardMode) #createCrewBtn{display:inline-block!important}
 
 </style></head><body>
 <div id="login" class="login"><div id="flashLogin" class="flashLogin hidden"><span class="flashIcon">📢</span><span id="flashLoginLabel" class="flashLabel">INFO :</span><span id="flashLoginText" class="flashText"></span></div><div class="box">
@@ -885,15 +888,7 @@ body.dashboardMode #createCrewBtn{display:none!important}
 </div></div>
 <div id="app" class="app"><div class="top"><div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div><div class="right"><b id="agentName">Agent</b><div class="tag" id="clock"></div><div class="row" style="justify-content:flex-end;margin-top:6px"><button id="themeBtn" class="themeToggle" onclick="toggleTheme()" title="Changer le thème"><span class="themeIcon">🌙</span><span id="themeText">Thème sombre</span></button><button id="notifBtn" class="notifSwitch" onclick="toggleNotifications()" title="Alertes sonores"><span class="notifKnob"></span><span id="notifText">ALERTES ON</span></button><button id="passwordBtn" class="small" onclick="changePass()">Mot de passe</button><button class="small danger" onclick="logout()">Déconnexion</button></div></div></div>
 <div class="layout"><aside><div class="nav"><button onclick="show('dash')"><span class="navIcon">⌂</span>Tableau de bord</button><button id="personnelBtn" onclick="show('personnel')"><span class="navIcon">♙</span>Personnel</button><button onclick="show('notes')"><span class="navIcon">▤</span>Notes privées</button><button onclick="show('links')"><span class="navIcon">⛓</span>Liens utiles</button><button onclick="show('events')"><span class="navIcon">▦</span>Événements</button><button id="historyBtn" onclick="show('history')"><span class="navIcon">◷</span>Historique</button><button class="consigneNav" onclick="show('consignes')"><span class="navIcon">▣</span>Consignes <span id="consigneCount" class="consigneCount">(0)</span><span id="consigneBell" class="consigneBell">🔔</span></button><button id="adminBtn" onclick="show('admin')"><span class="navIcon">⚙</span>Administration</button></div><div id="eventTodayBox" class="eventTodayBox hidden"></div></aside><main>
-<section id="dash"><div class="cards"><div class="card"><span>Équipages</span><br><b id="cTotal">0</b></div><div class="card green"><span>Disponibles</span><br><b id="cDispo">0</b></div><div class="card red"><span>Indisponibles</span><br><b id="cIndispo">0</b></div><div class="card"><span>Effectifs</span><br><b id="cEff">0</b></div></div><div class="section"><div class="row dashTableHeader" style="justify-content:space-between"><h2>Tableau de bord opérationnel</h2><div class="row dashTools">
-  <div id="dashZoomTools" class="row">
-    <button class="small" onclick="setDashZoom(-1)" title="Réduire l'affichage">Zoom −</button>
-    <button class="small" onclick="resetDashZoom()" title="Réinitialiser le zoom">100 %</button>
-    <button class="small" onclick="setDashZoom(1)" title="Agrandir l'affichage">Zoom +</button>
-    <button id="compactDashBtn" class="small" onclick="toggleDashCompact()">Mode compact</button>
-  </div>
-  <button id="createCrewBtn" class="primary" onclick="openCrew()">Créer équipage</button>
-</div></div><div id="dashTableWrap" class="dashTableWrap"><table id="crewTable"><thead><tr><th>Info</th><th>Indicatif</th><th>Matricules</th><th>Intervention</th><th>Code Blanc</th><th>Vacation</th><th>Actions</th></tr></thead><tbody id="crewRows"></tbody></table></div></div><div id="logSection" class="section"><h2>Journal de la dernière heure</h2><div id="logs"></div></div></section>
+<section id="dash"><div class="cards"><div class="card"><span>Équipages</span><br><b id="cTotal">0</b></div><div class="card green"><span>Disponibles</span><br><b id="cDispo">0</b></div><div class="card red"><span>Indisponibles</span><br><b id="cIndispo">0</b></div><div class="card"><span>Effectifs</span><br><b id="cEff">0</b></div></div><div class="section"><div class="row dashTableHeader" style="justify-content:space-between"><h2>Tableau de bord opérationnel</h2><div class="row dashTools"><div id="dashZoomTools" class="row"><button class="small" onclick="setDashZoom(-1)" title="Réduire l'affichage">Zoom −</button><button class="small" onclick="resetDashZoom()" title="Réinitialiser le zoom">100 %</button><button class="small" onclick="setDashZoom(1)" title="Agrandir l'affichage">Zoom +</button><button id="compactDashBtn" class="small" onclick="toggleDashCompact()">Mode compact</button></div><button id="createCrewBtn" class="primary" onclick="openCrew()">Créer équipage</button></div></div><div id="dashTableWrap" class="dashTableWrap"><table id="crewTable"><thead><tr><th>Info</th><th>Indicatif</th><th>Matricules</th><th>Intervention</th><th>Code Blanc</th><th>Vacation</th><th>Actions</th></tr></thead><tbody id="crewRows"></tbody></table></div></div><div id="logSection" class="section"><h2>Journal de la dernière heure</h2><div id="logs"></div></div></section>
 <section id="personnel" class="hidden"><div class="section"><div class="row" style="justify-content:space-between"><h2>Personnel</h2><button class="primary" onclick="addAgent()">Ajouter agent</button></div><p class="mut">Réservé Admin : ajout et modification des matricules, noms et prénoms. Les opérateurs sélectionnent ensuite uniquement les matricules dans les équipages.</p><table><thead><tr><th>Matricule</th><th>Nom</th><th>Prénom</th><th>Actif</th><th></th></tr></thead><tbody id="agentRows"></tbody></table><button class="primary" onclick="saveAgents()">Enregistrer le personnel</button></div></section>
 <section id="notes" class="hidden"><div class="section"><h2>Notes privées</h2><p class="mut">Chaque agent voit uniquement ses propres notes.</p><textarea id="note" oninput="noteDirty=true"></textarea><br><br><button class="primary" onclick="saveNote()">Enregistrer mes notes</button></div></section><section id="consignes" class="hidden">
   <div class="section">
@@ -970,7 +965,7 @@ body.dashboardMode #createCrewBtn{display:none!important}
 
 
 <section id="events" class="hidden"><div class="section"><div class="eventToolbar"><div class="row"><h2>Événements</h2><button class="small" onclick="moveCalendar(-1)">◀</button><button class="small" onclick="goTodayCalendar()">Aujourd’hui</button><button class="small" onclick="moveCalendar(1)">▶</button><span id="calendarTitle" class="pill"></span></div><div class="row"><button class="small" onclick="setCalendarView('month')">Mois</button><button class="small" onclick="setCalendarView('week')">Semaine</button><button id="newEventBtn" class="primary" onclick="openEventForm()">Nouvel événement</button></div></div><div id="eventCalendar" class="eventCalendar"></div></div></section>
-<div id="eventModal" class="modal"><div class="box"><h2 id="eventFormTitle">Nouvel événement</h2><input id="eventId" type="hidden"><div class="field"><label>Nom de l’événement</label><input id="eventTitle" placeholder="Ex : Réunion, formation, cérémonie..."></div><div class="grid2"><div class="field"><label>Début</label><input id="eventStart" type="datetime-local"></div><div class="field"><label>Fin</label><input id="eventEnd" type="datetime-local"></div></div><div class="field"><label>Description</label><textarea id="eventDesc" placeholder="Détails facultatifs"></textarea></div><div class="field"><label>Couleur</label><div class="colorPick"><label><input type="radio" name="eventColor" value="blue" checked><span class="colorDot"></span> Bleu</label><label><input type="radio" name="eventColor" value="red"><span class="colorDot red"></span> Rouge</label><label><input type="radio" name="eventColor" value="green"><span class="colorDot green"></span> Vert</label><label><input type="radio" name="eventColor" value="orange"><span class="colorDot orange"></span> Orange</label><label><input type="radio" name="eventColor" value="purple"><span class="colorDot purple"></span> Violet</label><label><input type="radio" name="eventColor" value="gray"><span class="colorDot gray"></span> Gris</label></div></div><div class="row"><button class="primary" onclick="saveEvent()">Enregistrer l’événement</button><button id="deleteEventBtn" class="danger" onclick="deleteEvent()">Supprimer</button><button onclick="closeEventForm()">Annuler</button></div></div></div><section id="history" class="hidden">
+<div id="eventModal" class="modal"><div class="box"><h2 id="eventFormTitle">Nouvel événement</h2><input id="eventId" type="hidden"><div class="grid2"><div class="field"><label>Nom de l’événement</label><input id="eventTitle" placeholder="Ex : Réunion, formation, cérémonie..."></div><div class="field"><label>Code événement</label><input id="eventCode" maxlength="20" placeholder="Ex : EV12"></div></div><div class="grid2"><div class="field"><label>Début</label><input id="eventStart" type="datetime-local"></div><div class="field"><label>Fin</label><input id="eventEnd" type="datetime-local"></div></div><div class="field"><label>Description</label><textarea id="eventDesc" placeholder="Détails facultatifs"></textarea></div><div class="field"><label>Couleur</label><div class="colorPick"><label><input type="radio" name="eventColor" value="blue" checked><span class="colorDot"></span> Bleu</label><label><input type="radio" name="eventColor" value="red"><span class="colorDot red"></span> Rouge</label><label><input type="radio" name="eventColor" value="green"><span class="colorDot green"></span> Vert</label><label><input type="radio" name="eventColor" value="orange"><span class="colorDot orange"></span> Orange</label><label><input type="radio" name="eventColor" value="purple"><span class="colorDot purple"></span> Violet</label><label><input type="radio" name="eventColor" value="gray"><span class="colorDot gray"></span> Gris</label></div></div><div class="row"><button class="primary" onclick="saveEvent()">Enregistrer l’événement</button><button id="deleteEventBtn" class="danger" onclick="deleteEvent()">Supprimer</button><button onclick="closeEventForm()">Annuler</button></div></div></div><section id="history" class="hidden">
   <div class="section">
     <h2>Historique utilisateurs</h2>
     <p class="mut">Accessible aux administrateurs et superviseurs. Affiche les actions des 7 derniers jours.</p>
@@ -982,7 +977,7 @@ body.dashboardMode #createCrewBtn{display:none!important}
   </div>
 </section>
 
-<section id="admin" class="hidden"><div class="grid2"><div class="section"><h2>Utilisateurs</h2><div id="users"></div><h3>Créer / modifier</h3><input id="uId" type="hidden"><div class="field"><input id="uName" placeholder="Nom affiché"></div><div class="field"><input id="uLogin" placeholder="Identifiant"></div><div class="field"><input id="uPass" type="password" placeholder="Mot de passe / nouveau mot de passe"></div><div class="field"><select id="uRole"><option value="operateur">Opérateur</option><option value="superviseur">Superviseur</option><option value="admin">Admin</option><option value="dashboard">Dashboard</option></select></div><div class="field"><label>Brigades autorisées</label><label><input id="uBrigadeJour" type="checkbox" style="width:auto"> Brigade de jour</label><label><input id="uBrigadeNuit" type="checkbox" style="width:auto"> Brigade de nuit</label><small class="mut">Les administrateurs et superviseurs voient toutes les consignes.</small></div><button class="primary" onclick="saveUser()">Enregistrer utilisateur</button></div><div class="section"><h2>Paramètres Admin</h2><h3>Natures d'intervention</h3><textarea id="interList"></textarea><h3>Indicatifs pré-enregistrés</h3><textarea id="callList"></textarea><br><br><button class="primary" onclick="saveLists()">Enregistrer listes</button></div>
+<section id="admin" class="hidden"><div class="grid2"><div class="section"><h2>Utilisateurs</h2><div id="users"></div><h3>Créer / modifier</h3><input id="uId" type="hidden"><div class="field"><input id="uName" placeholder="Nom affiché"></div><div class="field"><input id="uLogin" placeholder="Identifiant"></div><div class="field"><input id="uPass" type="password" placeholder="Mot de passe / nouveau mot de passe"></div><div class="field"><select id="uRole"><option value="operateur">Opérateur</option><option value="superviseur">Superviseur</option><option value="admin">Admin</option><option value="dashboard">Dashboard</option></select></div><div class="field"><label>Brigades autorisées</label><label><input id="uBrigadeJour" type="checkbox" style="width:auto"> Brigade de jour</label><label><input id="uBrigadeNuit" type="checkbox" style="width:auto"> Brigade de nuit</label><small class="mut">Les administrateurs et superviseurs voient toutes les consignes.</small></div><button class="primary" onclick="saveUser()">Enregistrer utilisateur</button></div><div class="section"><h2>Paramètres Admin</h2><h3>Natures d'intervention</h3><p class="mut">Format : CODE | Intitulé (ex. A01 | Accident)</p><textarea id="interList"></textarea><h3>Indicatifs pré-enregistrés</h3><textarea id="callList"></textarea><br><br><button class="primary" onclick="saveLists()">Enregistrer listes</button></div>
 <div class="section flashAdmin">
   <h2>Texte Flash</h2>
   <p class="mut">Texte affiché en haut de la page de connexion pour tous les utilisateurs.</p>
@@ -1058,7 +1053,7 @@ body.dashboardMode #createCrewBtn{display:none!important}
     </div>
   </div>
 </div>
-<div id="indispoModal" class="modal"><div class="box"><h2>Choisir l'intervention</h2><input id="indispoId" type="hidden"><div class="field"><select id="indispoSelect"></select></div><div class="row"><button class="primary" onclick="setIndispo()">Valider INDISPO</button><button onclick="closeModal('indispoModal')">Annuler</button></div></div></div>
+<div id="indispoModal" class="modal"><div class="box"><h2>Passer l’équipage en INDISPO</h2><input id="indispoId" type="hidden"><div class="field"><label>Code intervention</label><input id="indispoCode" autocomplete="off" placeholder="Tapez un code puis Entrée"><small class="mut">Le curseur est placé automatiquement ici.</small></div><div class="field"><label>Nature d’intervention</label><select id="indispoSelect"></select></div><div class="field"><label>Ou événement du calendrier</label><select id="indispoEvent"><option value="">Aucun événement</option></select></div><div id="indispoPreview" class="section" style="margin:8px 0;padding:10px"><span class="mut">Saisissez un code ou choisissez une nature / un événement.</span></div><div class="row"><button class="primary" onclick="setIndispo()">Valider INDISPO</button><button onclick="closeModal('indispoModal')">Annuler</button></div></div></div>
 
 <div id="infoModal" class="modal"><div class="box"><h2 id="infoTitle">Infos équipage</h2><div id="infoBody"></div><br><button onclick="closeModal('infoModal')">Fermer</button></div></div>
 <script>
@@ -1162,29 +1157,46 @@ function formatVacationCell(c){
   </div>`;
 }
 
-function renderCrews(){const readonly=!canOperate();$('crewRows').innerHTML=S.crews.map(c=>`<tr class="${c.status==='INDISPO'?'indispo':'dispo'}"><td><button class="infoBtn" title="Infos équipage" onclick='showCrewInfo(${JSON.stringify(c.id)})'>i</button></td><td><b>${c.callsign}</b><br><span class="pill">${c.status}</span></td><td>${(c.matricules||[]).map(m=>`<span class="pill">${m}</span>`).join('')}</td><td>${c.intervention||'—'}</td><td>${c.meal||'—'}</td><td>${formatVacationCell(c)}</td><td>${readonly?'<span class="mut">Lecture seule</span>':`<button class="small" onclick='openCrew(${JSON.stringify(c.id)})'>Modifier</button> <button class="small ok" onclick='statusCrew(${JSON.stringify(c.id)},"DISPO")'>DISPO</button> <button class="small danger" onclick='openIndispo(${JSON.stringify(c.id)})'>INDISPO</button>`}</td></tr>`).join('')}
+function renderCrews(){const readonly=!canOperate();$('crewRows').innerHTML=S.crews.map(c=>`<tr class="${c.status==='INDISPO'?'indispo':'dispo'}"><td><button class="infoBtn" title="Infos équipage" onclick='showCrewInfo(${JSON.stringify(c.id)})'>i</button></td><td><b>${c.callsign}</b><br><span class="pill">${c.status}</span></td><td>${(c.matricules||[]).map(m=>`<span class="pill">${m}</span>`).join('')}</td><td>${c.interventionCode?`<span class="pill">${esc(c.interventionCode)}</span><br>`:''}${esc(c.intervention||'—')}</td><td>${c.meal||'—'}</td><td>${formatVacationCell(c)}</td><td>${readonly?'<span class="mut">Lecture seule</span>':`<button class="small" onclick='openCrew(${JSON.stringify(c.id)})'>Modifier</button> <button class="small ok" onclick='statusCrew(${JSON.stringify(c.id)},"DISPO")'>DISPO</button> <button class="small danger" onclick='openIndispo(${JSON.stringify(c.id)})'>INDISPO</button>`}</td></tr>`).join('')}
 function formatVacation(c){
   if(!c.shiftStart&&!c.shiftEnd)return 'Non renseignée';
   const fmt=v=>v?new Date(v).toLocaleString('fr-FR'):'—';
   return fmt(c.shiftStart)+' → '+fmt(c.shiftEnd);
 }
 function showCrewInfo(id){const c=S.crews.find(x=>x.id===id);if(!c)return;$('infoTitle').textContent='Infos '+c.callsign;const names=(c.matricules||[]).map(m=>'<div class="pill">'+an(m)+'</div>').join('')||'—';$('infoBody').innerHTML='<h3>Agents</h3>'+names+'<h3>Vacation</h3><div class="section">'+formatVacation(c)+'</div><h3>Heure de repas</h3><div class="section">'+(c.meal||'Aucune')+'</div><h3>Observations</h3><div class="section">'+(c.observations||'Aucune observation')+'</div>';$('infoModal').style.display='grid'}
+function parseInterventionLine(line){
+  const raw=String(line||'').trim();
+  const m=raw.match(/^([^|:-]{1,20})\s*[|:-]\s*(.+)$/);
+  return m?{code:m[1].trim().toUpperCase(),label:m[2].trim(),raw}:{code:'',label:raw,raw};
+}
+function fillIndispoChoices(){
+  const sel=$('indispoSelect');
+  if(sel){
+    sel.innerHTML=(S.interventions||[]).map(line=>{
+      const p=parseInterventionLine(line);
+      return `<option value="${esc(p.raw).replaceAll('"','&quot;')}" data-code="${esc(p.code)}">${p.code?p.code+' — ':''}${esc(p.label)}</option>`;
+    }).join('');
+  }
+  const evSel=$('indispoEvent');
+  if(evSel){
+    const events=(S.events||[]).slice().sort((a,b)=>new Date(a.start)-new Date(b.start));
+    evSel.innerHTML='<option value="">Aucun événement</option>'+events.map(ev=>{
+      const d=new Date(ev.start);
+      const date=isNaN(d.getTime())?'':d.toLocaleDateString('fr-FR');
+      const code=String(ev.code||'').trim().toUpperCase();
+      return `<option value="${esc(ev.id)}" data-code="${esc(code)}">${code?code+' — ':''}${esc(ev.title)}${date?' ('+date+')':''}</option>`;
+    }).join('');
+  }
+}
 function fillSelects(selected=[]){
-  $('crewCall').innerHTML=S.callsigns.map(x=>`<option>${x}</option>`).join('');
+  $('crewCall').innerHTML=S.callsigns.map(x=>`<option>${esc(x)}</option>`).join('');
   $('crewAgents').innerHTML=S.agents.filter(a=>a.actif).map(a=>{
     const label=an(a.matricule);
     const search=(a.matricule+' '+(a.nom||'')+' '+(a.prenom||'')+' '+label).toLowerCase();
-    return `<label class="agentChoice" data-search="${esc(search).replaceAll('"','&quot;')}"><input type="checkbox" value="${a.matricule}" ${selected.includes(a.matricule)?'checked':''}> <span>${esc(label)}</span></label>`;
+    return `<label class="agentChoice" data-search="${esc(search).replaceAll('"','&quot;')}"><input type="checkbox" value="${esc(a.matricule)}" ${selected.includes(a.matricule)?'checked':''}> <span>${esc(label)}</span></label>`;
   }).join('');
-  $('indispoSelect').innerHTML=S.interventions.map(x=>`<option>${x}</option>`).join('');
+  fillIndispoChoices();
   if($('crewAgentSearch')){$('crewAgentSearch').value='';filterCrewAgents();}
-}
-function normalizeAgentSearch(value){
-  return String(value||'')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g,'')
-    .toLowerCase()
-    .trim();
 }
 function filterCrewAgents(){
   const input=$('crewAgentSearch');
@@ -1242,7 +1254,61 @@ async function saveCrew(){
   refresh();
 }
 async function deleteCrew(){if(confirm('Supprimer cet équipage ?')){await api('/api/crew/'+$('crewId').value,{method:'DELETE'});closeModal('crewModal');refresh()}}
-async function statusCrew(id,status){if(!canOperate()){alert('Accès lecture seule');return}await api('/api/crew/'+id+'/status',{method:'POST',body:JSON.stringify({status})});refresh()}function openIndispo(id){if(!canOperate()){alert('Accès lecture seule');return}fillSelects();$('indispoId').value=id;$('indispoModal').style.display='grid'}async function setIndispo(){await api('/api/crew/'+$('indispoId').value+'/status',{method:'POST',body:JSON.stringify({status:'INDISPO',intervention:$('indispoSelect').value})});closeModal('indispoModal');refresh()}
+async function statusCrew(id,status){
+  if(!canOperate()){alert('Accès lecture seule');return}
+  await api('/api/crew/'+id+'/status',{method:'POST',body:JSON.stringify({status:'DISPO'})});
+  await refresh();
+}
+function findChoiceByCode(code){
+  const q=String(code||'').trim().toUpperCase();
+  if(!q)return null;
+  const nature=(S.interventions||[]).map(parseInterventionLine).find(x=>x.code===q);
+  if(nature)return {source:'nature',code:q,intervention:nature.label,eventId:''};
+  const ev=(S.events||[]).find(x=>String(x.code||'').trim().toUpperCase()===q);
+  if(ev)return {source:'event',code:q,intervention:ev.title,eventId:ev.id};
+  return null;
+}
+function updateIndispoPreview(){
+  const code=String($('indispoCode')?.value||'').trim().toUpperCase();
+  const found=findChoiceByCode(code);
+  const eventId=$('indispoEvent')?.value||'';
+  const ev=(S.events||[]).find(x=>x.id===eventId);
+  const nature=parseInterventionLine($('indispoSelect')?.value||'');
+  let text='';
+  if(found)text=`${found.code} — ${found.intervention}`;
+  else if(ev)text=`${ev.code?ev.code+' — ':''}${ev.title}`;
+  else if(nature.label)text=`${nature.code?nature.code+' — ':''}${nature.label}`;
+  $('indispoPreview').innerHTML=text?`<b>${esc(text)}</b>`:'<span class="mut">Saisissez un code ou choisissez une nature / un événement.</span>';
+}
+function openIndispo(id){
+  if(!canOperate()){alert('Accès lecture seule');return}
+  fillIndispoChoices();
+  $('indispoId').value=id;
+  $('indispoCode').value='';
+  $('indispoEvent').value='';
+  updateIndispoPreview();
+  $('indispoModal').style.display='grid';
+  setTimeout(()=>{$('indispoCode')?.focus();},60);
+}
+async function setIndispo(){
+  const id=$('indispoId').value;
+  const typed=String($('indispoCode').value||'').trim().toUpperCase();
+  const found=findChoiceByCode(typed);
+  const eventId=$('indispoEvent').value||'';
+  const ev=(S.events||[]).find(x=>x.id===eventId);
+  const nature=parseInterventionLine($('indispoSelect').value||'');
+  let payload;
+  if(found){
+    payload={status:'INDISPO',code:found.code,intervention:found.intervention,source:found.source,eventId:found.eventId};
+  }else if(ev){
+    payload={status:'INDISPO',code:String(ev.code||'').trim().toUpperCase(),intervention:ev.title,source:'event',eventId:ev.id};
+  }else{
+    payload={status:'INDISPO',code:typed||nature.code,intervention:nature.label||'Intervention',source:'nature',eventId:''};
+  }
+  await api('/api/crew/'+id+'/status',{method:'POST',body:JSON.stringify(payload)});
+  closeModal('indispoModal');
+  await refresh();
+}
 function renderAgents(){$('agentRows').innerHTML=S.agents.map((a,i)=>`<tr><td><input value="${a.matricule}" onchange="S.agents[${i}].matricule=this.value"></td><td><input value="${a.nom||''}" onchange="S.agents[${i}].nom=this.value"></td><td><input value="${a.prenom||''}" onchange="S.agents[${i}].prenom=this.value"></td><td><input type="checkbox" ${a.actif?'checked':''} onchange="S.agents[${i}].actif=this.checked"></td><td><button class="small danger" onclick="S.agents.splice(${i},1);renderAgents()">Retirer</button></td></tr>`).join('')}function addAgent(){if(S.user.role!=='admin'){alert('Réservé admin');return}S.agents.push({matricule:'',nom:'',prenom:'',actif:true});renderAgents()}async function saveAgents(){if(S.user.role!=='admin'){alert('Réservé admin');return}await api('/api/agents',{method:'POST',body:JSON.stringify({agents:S.agents})});alert('Personnel enregistré');refresh()}async function saveNote(){await api('/api/note',{method:'POST',body:JSON.stringify({note:$('note').value})});noteDirty=false;S.note=$('note').value;alert('Notes enregistrées')}
 function renderAdmin(force=false){if(S.user.role!=='admin')return;if(activeSection!=='admin'||force||document.activeElement.id!=='interList')$('interList').value=S.interventions.join('\n');if(activeSection!=='admin'||force||document.activeElement.id!=='callList')$('callList').value=S.callsigns.join('\n');$('users').innerHTML=(S.users||[]).map(u=>`<div class="row"><b>${u.displayName}</b><span class="mut">${u.login} / ${u.role}</span><button class="small" onclick='editUser(${JSON.stringify(u)})'>Modifier</button><button class="small danger" onclick='delUser(${JSON.stringify(u.id)})'>Supprimer</button></div>`).join('')}function editUser(u){$('uId').value=u.id;$('uName').value=u.displayName;$('uLogin').value=u.login;$('uRole').value=u.role;$('uPass').value='';$('uBrigadeJour').checked=!!(u.brigades&&u.brigades.jour);$('uBrigadeNuit').checked=!!(u.brigades&&u.brigades.nuit)}async function saveUser(){try{await api('/api/admin/users',{method:'POST',body:JSON.stringify({id:$('uId').value,displayName:$('uName').value,login:$('uLogin').value,password:$('uPass').value,role:$('uRole').value,brigades:{jour:$('uBrigadeJour').checked,nuit:$('uBrigadeNuit').checked}})});['uId','uName','uLogin','uPass'].forEach(id=>$(id).value='');$('uBrigadeJour').checked=false;$('uBrigadeNuit').checked=false;refresh()}catch(e){alert(e.message)}}async function delUser(id){if(confirm('Supprimer utilisateur ?')){await api('/api/admin/users/'+id,{method:'DELETE'});refresh()}}async function saveLists(){await api('/api/admin/lists',{method:'POST',body:JSON.stringify({interventions:$('interList').value.split('\n').map(x=>x.trim()).filter(Boolean),callsigns:$('callList').value.split('\n').map(x=>x.trim()).filter(Boolean)})});refresh()}
 
@@ -1360,10 +1426,10 @@ function renderEvents(){if($('newEventBtn'))$('newEventBtn').classList.toggle('h
 function renderMonthEvents(){const cal=$('eventCalendar');const y=calendarDate.getFullYear(),m=calendarDate.getMonth();$('calendarTitle').textContent=calendarDate.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});const first=new Date(y,m,1),start=new Date(first);start.setDate(first.getDate()-((first.getDay()+6)%7));const days=[];for(let i=0;i<42;i++){const d=new Date(start);d.setDate(start.getDate()+i);days.push(d)}const head=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(x=>`<div>${x}</div>`).join('');cal.innerHTML=`<div class="eventCalHead">${head}</div><div class="eventGridMonth">${days.map(d=>{const evs=(S.events||[]).filter(ev=>eventOnDay(ev,d)).sort((a,b)=>new Date(a.start)-new Date(b.start));return `<div class="eventDay ${d.getMonth()!==m?'otherMonth':''} ${sameDay(d,new Date())?'today':''}"><div class="eventDayNum">${d.getDate()}</div>${evs.map(ev=>`<button class="eventPill ${eventColorClass(ev.color)}" onclick='editEvent(${JSON.stringify(ev.id)})'>${esc(ev.title)}</button>`).join('')}</div>`}).join('')}</div>`}
 function renderWeekEvents(){const cal=$('eventCalendar');const base=new Date(calendarDate),mon=new Date(base);mon.setDate(base.getDate()-((base.getDay()+6)%7));const days=[];for(let i=0;i<7;i++){const d=new Date(mon);d.setDate(mon.getDate()+i);days.push(d)}$('calendarTitle').textContent='Semaine du '+mon.toLocaleDateString('fr-FR');cal.innerHTML=`${days.map(d=>{const evs=(S.events||[]).filter(ev=>eventOnDay(ev,d)).sort((a,b)=>new Date(a.start)-new Date(b.start));return `<div class="eventWeekDay"><div class="eventWeekDate">${d.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'2-digit'})}</div><div class="eventWeekEvents">${evs.length?evs.map(ev=>`<button class="eventPill ${eventColorClass(ev.color)}" onclick='editEvent(${JSON.stringify(ev.id)})'>${fmtTimeRange(ev)} — ${esc(ev.title)}</button>`).join(''):'<span class="mut">Aucun événement</span>'}</div></div>`}).join('')}`}
 function setCalendarView(v){calendarView=v;renderEvents()}function moveCalendar(d){if(calendarView==='week')calendarDate.setDate(calendarDate.getDate()+d*7);else calendarDate.setMonth(calendarDate.getMonth()+d);renderEvents()}function goTodayCalendar(){calendarDate=new Date();renderEvents()}
-function openEventForm(){if(!canManageEvents()){alert('Réservé superviseur/admin');return}$('eventModal').style.display='grid';$('eventFormTitle').textContent='Nouvel événement';$('eventId').value='';$('eventTitle').value='';const s=new Date();s.setMinutes(0,0,0);const e=new Date(s);e.setHours(e.getHours()+1);$('eventStart').value=dtLocal(s);$('eventEnd').value=dtLocal(e);$('eventDesc').value='';document.querySelectorAll('input[name="eventColor"]').forEach(x=>x.checked=x.value==='blue');$('deleteEventBtn').classList.add('hidden')}
+function openEventForm(){if(!canManageEvents()){alert('Réservé superviseur/admin');return}$('eventModal').style.display='grid';$('eventFormTitle').textContent='Nouvel événement';$('eventId').value='';$('eventTitle').value='';$('eventCode').value='';const s=new Date();s.setMinutes(0,0,0);const e=new Date(s);e.setHours(e.getHours()+1);$('eventStart').value=dtLocal(s);$('eventEnd').value=dtLocal(e);$('eventDesc').value='';document.querySelectorAll('input[name="eventColor"]').forEach(x=>x.checked=x.value==='blue');$('deleteEventBtn').classList.add('hidden')}
 function closeEventForm(){$('eventModal').style.display='none'}
-function editEvent(id){const ev=(S.events||[]).find(x=>x.id===id);if(!ev)return;if(!canManageEvents()){alert(ev.title+'\n'+fmtTimeRange(ev)+(ev.description?'\n\n'+ev.description:''));return}openEventForm();$('eventFormTitle').textContent='Modifier un événement';$('eventId').value=ev.id;$('eventTitle').value=ev.title||'';$('eventStart').value=dtLocal(ev.start);$('eventEnd').value=dtLocal(ev.end);$('eventDesc').value=ev.description||'';document.querySelectorAll('input[name="eventColor"]').forEach(x=>x.checked=x.value===(ev.color||'blue'));$('deleteEventBtn').classList.remove('hidden')}
-async function saveEvent(){const color=(document.querySelector('input[name="eventColor"]:checked')||{}).value||'blue';await api('/api/events',{method:'POST',body:JSON.stringify({id:$('eventId').value,title:$('eventTitle').value,start:$('eventStart').value,end:$('eventEnd').value,description:$('eventDesc').value,color})});closeEventForm();await refresh()}
+function editEvent(id){const ev=(S.events||[]).find(x=>x.id===id);if(!ev)return;if(!canManageEvents()){alert(ev.title+'\n'+fmtTimeRange(ev)+(ev.description?'\n\n'+ev.description:''));return}openEventForm();$('eventFormTitle').textContent='Modifier un événement';$('eventId').value=ev.id;$('eventTitle').value=ev.title||'';$('eventCode').value=ev.code||'';$('eventStart').value=dtLocal(ev.start);$('eventEnd').value=dtLocal(ev.end);$('eventDesc').value=ev.description||'';document.querySelectorAll('input[name="eventColor"]').forEach(x=>x.checked=x.value===(ev.color||'blue'));$('deleteEventBtn').classList.remove('hidden')}
+async function saveEvent(){const color=(document.querySelector('input[name="eventColor"]:checked')||{}).value||'blue';await api('/api/events',{method:'POST',body:JSON.stringify({id:$('eventId').value,title:$('eventTitle').value,code:$('eventCode').value,start:$('eventStart').value,end:$('eventEnd').value,description:$('eventDesc').value,color})});closeEventForm();await refresh()}
 async function deleteEvent(){if(!$('eventId').value)return;if(confirm('Supprimer cet événement ?')){await api('/api/events/'+$('eventId').value,{method:'DELETE'});closeEventForm();await refresh()}}
 function renderTodayEventsBox(){const box=$('eventTodayBox');if(!box)return;const arr=(S.events||[]).filter(ev=>eventOnDay(ev,new Date())).sort((a,b)=>new Date(a.start)-new Date(b.start));if(!arr.length){box.classList.add('hidden');box.innerHTML='';return}box.classList.remove('hidden');box.innerHTML='<div class="eventTodayTitle">📅 Aujourd’hui</div>'+arr.map(ev=>`<div class="eventTodayEntry"><span class="pill">${fmtTimeRange(ev)}</span><b>${esc(ev.title)}</b>${ev.description?`<span class="mut">${esc(ev.description)}</span>`:''}</div>`).join('')}
 
@@ -1399,6 +1465,31 @@ function toggleLoginPassword(){
   if(!p)return;
   p.type=p.type==='password'?'text':'password';
 }
+
+document.addEventListener('keydown',e=>{
+  if(e.target&&e.target.id==='indispoCode'&&e.key==='Enter'){
+    e.preventDefault();
+    setIndispo().catch(x=>alert(x.message||x));
+  }
+});
+document.addEventListener('input',e=>{
+  if(e.target&&e.target.id==='indispoCode')updateIndispoPreview();
+});
+document.addEventListener('change',e=>{
+  if(e.target&&['indispoSelect','indispoEvent'].includes(e.target.id)){
+    if(e.target.id==='indispoEvent'&&e.target.value){
+      const ev=(S.events||[]).find(x=>x.id===e.target.value);
+      if(ev&&ev.code)$('indispoCode').value=String(ev.code).toUpperCase();
+    }
+    if(e.target.id==='indispoSelect'){
+      const p=parseInterventionLine(e.target.value);
+      if(p.code)$('indispoCode').value=p.code;
+    }
+    updateIndispoPreview();
+    setTimeout(()=>$('indispoCode')?.focus(),0);
+  }
+});
+
 setInterval(()=>{if($('app').style.display==='block')refreshSafe(false).catch(()=>{})},3000);init();
 </script>
 
