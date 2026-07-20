@@ -882,6 +882,20 @@ body:not(.dashboardMode) #createCrewBtn{display:inline-block!important}
   font-weight:600!important;
 }
 
+
+/* V52 - Déblocage des rôles et champ code visible */
+#indispoCode{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  min-height:42px!important;
+  width:100%!important;
+  font-size:14px!important;
+  font-weight:400!important;
+  letter-spacing:0!important;
+}
+button:disabled{cursor:not-allowed}
+
 </style></head><body>
 <div id="login" class="login"><div id="flashLogin" class="flashLogin hidden"><span class="flashIcon">📢</span><span id="flashLoginLabel" class="flashLabel">INFO :</span><span id="flashLoginText" class="flashText"></span></div><div class="box">
   <div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div>
@@ -1071,7 +1085,7 @@ body:not(.dashboardMode) #createCrewBtn{display:inline-block!important}
     </div>
   </div>
 </div>
-<div id="indispoModal" class="modal"><div class="box"><h2 class="indispoTitle">Passer l’équipage en INDISPO</h2><input id="indispoId" type="hidden"><div class="field"><label>Code</label><input id="indispoCode" autocomplete="off" placeholder=""><small class="mut">Saisissez le code puis appuyez sur Entrée.</small></div><div class="field"><label>Nature d’intervention</label><select id="indispoSelect"></select></div><div class="field"><label>Événement du calendrier</label><select id="indispoEvent"><option value="">Aucun événement</option></select></div><div id="indispoPreview" class="section" style="margin:8px 0;padding:10px"><span class="mut">Saisissez un code ou choisissez une nature / un événement.</span></div><div class="row"><button class="primary" onclick="setIndispo()">Valider INDISPO</button><button onclick="closeModal('indispoModal')">Annuler</button></div></div></div>
+<div id="indispoModal" class="modal"><div class="box"><h2 class="indispoTitle">Choisir l’intervention</h2><input id="indispoId" type="hidden"><div class="field"><label>Code</label><input id="indispoCode" autocomplete="off" inputmode="text" placeholder="Code"><small class="mut">Tapez le code puis appuyez sur Entrée.</small></div><div class="field"><label>Nature d’intervention</label><select id="indispoSelect"></select></div><div class="field"><label>Événement du calendrier</label><select id="indispoEvent"><option value="">Aucun événement</option></select></div><div id="indispoPreview" class="section" style="margin:8px 0;padding:10px"><span class="mut">Saisissez un code ou choisissez une nature / un événement.</span></div><div class="row"><button class="primary" onclick="setIndispo()">Valider INDISPO</button><button onclick="closeModal('indispoModal')">Annuler</button></div></div></div>
 
 <div id="infoModal" class="modal"><div class="box"><h2 id="infoTitle">Infos équipage</h2><div id="infoBody"></div><br><button onclick="closeModal('infoModal')">Fermer</button></div></div>
 <script>
@@ -1118,7 +1132,7 @@ function toggleDashCompact(){
   applyDashDisplay();
 }
 function autoCompactDashboard(){
-  const isDashboard=!!(S.user&&S.user.role==='dashboard');
+  const isDashboard=!!(S.user&&normalizeClientRole(S.user.role)==='dashboard');
   if(!isDashboard){
     document.body.classList.remove('dashCompact','dashUltraCompact');
     return;
@@ -1141,15 +1155,23 @@ async function setupAdmin(){try{await api('/api/setup',{method:'POST',body:JSON.
 async function login(){try{await api('/api/login',{method:'POST',body:JSON.stringify({login:$('loginId').value,password:$('loginPass').value})});$('login').style.display='none';$('app').style.display='block';await refresh()}catch(e){err(e)}}
 async function logout(){await api('/api/logout',{method:'POST'});location.reload()}async function changePass(){const oldPassword=prompt('Ancien mot de passe');if(oldPassword===null)return;const newPassword=prompt('Nouveau mot de passe');if(!newPassword)return;try{await api('/api/password',{method:'POST',body:JSON.stringify({oldPassword,newPassword})});alert('Mot de passe modifié')}catch(e){alert(e.message)}}
 async function refresh(){return refreshSafe(true)}
-async function refreshSafe(force=false){if(!force && shouldPauseRefresh()) return; S=await api('/api/data');$('agentName').textContent=S.user.displayName;const dash=S.user.role==='dashboard';
+async function refreshSafe(force=false){if(!force && shouldPauseRefresh()) return; S=await api('/api/data');$('agentName').textContent=S.user.displayName;const dash=normalizeClientRole(S.user.role)==='dashboard';
 document.body.classList.toggle('dashboardMode',dash);
-if($('dashZoomTools'))$('dashZoomTools').classList.toggle('hidden',!dash);$('adminBtn').classList.toggle('hidden',S.user.role!=='admin'); if($('historyBtn'))$('historyBtn').classList.toggle('hidden',!['admin','superviseur'].includes(S.user.role));$('personnelBtn').classList.toggle('hidden',S.user.role!=='admin');document.querySelector('button[onclick="show(\'notes\')"]').classList.toggle('hidden',dash);$('createCrewBtn').classList.toggle('hidden',dash);if(dash&&!['dash','consignes','events'].includes(activeSection))activeSection='dash';checkCrewChanges(S.crews);renderAll(force);updateNotifButton()}
+if($('dashZoomTools'))$('dashZoomTools').classList.toggle('hidden',!dash);$('adminBtn').classList.toggle('hidden',S.user.role!=='admin'); if($('historyBtn'))$('historyBtn').classList.toggle('hidden',!['admin','superviseur'].includes(normalizeClientRole(S.user.role)));$('personnelBtn').classList.toggle('hidden',S.user.role!=='admin');document.querySelector('button[onclick="show(\'notes\')"]').classList.toggle('hidden',dash);$('createCrewBtn').classList.toggle('hidden',dash);if(dash&&!['dash','consignes','events'].includes(activeSection))activeSection='dash';checkCrewChanges(S.crews);renderAll(force);updateNotifButton()}
 function shouldPauseRefresh(){const el=document.activeElement; if(el && ['INPUT','TEXTAREA','SELECT'].includes(el.tagName)) return true; return ['personnel','admin','notes'].includes(activeSection)}
 function show(id){
   document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('activeNav',b.getAttribute('onclick')===`show('${id}')`));
-  if(S.user&&S.user.role==='dashboard' && !['dash','consignes','events'].includes(id)){id='dash'}activeSection=id;['dash','personnel','notes','links','events','history','consignes','admin'].forEach(x=>$(x).classList.toggle('hidden',x!==id)); if(id==='notes') $('note').value=S.note||''; if(id==='consignes') renderConsignes(); if(id==='links') renderLinks(); if(id==='events') renderEvents(); if(id==='history') renderHistoryUsers()}
+  if(S.user&&normalizeClientRole(S.user.role)==='dashboard' && !['dash','consignes','events'].includes(id)){id='dash'}activeSection=id;['dash','personnel','notes','links','events','history','consignes','admin'].forEach(x=>$(x).classList.toggle('hidden',x!==id)); if(id==='notes') $('note').value=S.note||''; if(id==='consignes') renderConsignes(); if(id==='links') renderLinks(); if(id==='events') renderEvents(); if(id==='history') renderHistoryUsers()}
 function an(m){const a=S.agents.find(x=>x.matricule===m);return a?`${a.matricule} ${a.nom||''} ${a.prenom||''}`.trim():m}
-function canOperate(){return S.user && S.user.role!=='dashboard'}
+function normalizeClientRole(role){
+  const r=String(role||'').trim().toLowerCase();
+  if(['admin','administrateur','administrator'].includes(r))return 'admin';
+  if(['superviseur','supervisor'].includes(r))return 'superviseur';
+  if(['operateur','opérateur','operator'].includes(r))return 'operateur';
+  if(['dashboard','tableau de bord','lecture'].includes(r))return 'dashboard';
+  return r;
+}
+function canOperate(){return !!(S.user && normalizeClientRole(S.user.role)!=='dashboard')}
 function renderAll(force=false){renderCrews();renderAgents();renderAdmin(force);renderConsignes();renderLinks();renderEvents();renderFlash();if(activeSection!=='notes' || force || !noteDirty){$('note').value=S.note||'';noteDirty=false;}const logsRecent=S.logs.filter(l=>{
   const recent=Date.now()-new Date(l.date).getTime()<=60*60*1000;
   const msg=String(l.msg||'');
@@ -1343,7 +1365,7 @@ function renderFlash(){
   if(label)label.textContent=title+' :';
   if(txt)txt.textContent=f.text||'';
   if(box)box.classList.toggle('hidden',!(f.enabled&&String(f.text||'').trim()));
-  if(S.user&&S.user.role==='admin'){
+  if(S.user&&normalizeClientRole(S.user.role)==='admin'){
     if($('flashTitleAdmin')&&document.activeElement.id!=='flashTitleAdmin')$('flashTitleAdmin').value=title;
     if($('flashTextAdmin')&&document.activeElement.id!=='flashTextAdmin')$('flashTextAdmin').value=f.text||'';
     if($('flashEnabledAdmin'))$('flashEnabledAdmin').checked=!!f.enabled;
@@ -1358,10 +1380,10 @@ async function saveFlashText(){
 }
 
 
-function canManageLinks(){return S.user&&['admin','superviseur'].includes(S.user.role)}
+function canManageLinks(){return S.user&&['admin','superviseur'].includes(normalizeClientRole(S.user.role))}
 function linkVisible(l){
   if(!S.user)return false;
-  if(['admin','superviseur'].includes(S.user.role))return true;
+  if(['admin','superviseur'].includes(normalizeClientRole(S.user.role)))return true;
   const b=S.user.brigades||{};
   const v=l.visible||{};
   return (v.jour&&b.jour)||(v.nuit&&b.nuit)||(!v.jour&&!v.nuit);
@@ -1417,7 +1439,7 @@ async function saveLink(){
 async function deleteLink(){if(!$('linkId').value)return;if(confirm('Supprimer ce lien ?')){await removeLink($('linkId').value);closeLinkForm()}}
 async function removeLink(id){await api('/api/links/'+id,{method:'DELETE'});await refresh()}
 function renderHistoryUsers(){
-  if(!['admin','superviseur'].includes(S.user.role)){show('dash');return}
+  if(!['admin','superviseur'].includes(normalizeClientRole(S.user.role))){show('dash');return}
   const box=$('historyUsers'); if(!box)return;
   const users=S.users||[];
   if(!users.length){box.innerHTML='<span class="mut">Aucun utilisateur chargé. Vérifie que ton server.js renvoie bien users pour les rôles admin/superviseur.</span>';return}
@@ -1434,7 +1456,7 @@ async function loadUserHistory(id,name){
 
 
 
-function canManageEvents(){return S.user&&['admin','superviseur'].includes(S.user.role)}
+function canManageEvents(){return S.user&&['admin','superviseur'].includes(normalizeClientRole(S.user.role))}
 function eventColorClass(c){return ['red','green','orange','purple','gray'].includes(c)?c:''}
 function dtLocal(d){const x=new Date(d);x.setMinutes(x.getMinutes()-x.getTimezoneOffset());return x.toISOString().slice(0,16)}
 function sameDay(a,b){return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate()}
@@ -1451,7 +1473,7 @@ async function saveEvent(){const color=(document.querySelector('input[name="even
 async function deleteEvent(){if(!$('eventId').value)return;if(confirm('Supprimer cet événement ?')){await api('/api/events/'+$('eventId').value,{method:'DELETE'});closeEventForm();await refresh()}}
 function renderTodayEventsBox(){const box=$('eventTodayBox');if(!box)return;const arr=(S.events||[]).filter(ev=>eventOnDay(ev,new Date())).sort((a,b)=>new Date(a.start)-new Date(b.start));if(!arr.length){box.classList.add('hidden');box.innerHTML='';return}box.classList.remove('hidden');box.innerHTML='<div class="eventTodayTitle">📅 Aujourd’hui</div>'+arr.map(ev=>`<div class="eventTodayEntry"><span class="pill">${fmtTimeRange(ev)}</span><b>${esc(ev.title)}</b>${ev.description?`<span class="mut">${esc(ev.description)}</span>`:''}</div>`).join('')}
 
-function canManageConsignes(){return S.user&&['admin','superviseur'].includes(S.user.role)}
+function canManageConsignes(){return S.user&&['admin','superviseur'].includes(normalizeClientRole(S.user.role))}
 function consigneUnreadCount(){return (S.consignes||[]).filter(c=>!c.read).length}
 function updateConsigneBadge(){const unread=consigneUnreadCount();const total=(S.consignes||[]).length;const c=$('consigneCount');const bell=$('consigneBell');const t=$('consigneTitleBadge');if(c)c.textContent='('+total+')';if(bell)bell.classList.toggle('on',unread>0);if(t)t.textContent=unread+' non lue'+(unread>1?'s':'')}
 function brigadeLabel(v){return v==='jour'?'Brigade de jour':v==='nuit'?'Brigade de nuit':'Toutes brigades'}
@@ -1513,7 +1535,7 @@ setInterval(()=>{if($('app').style.display==='block')refreshSafe(false).catch(()
 
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js');
+  navigator.serviceWorker.register('/sw.js?v=52',{updateViaCache:'none'});
 }
 </script>
 
