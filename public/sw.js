@@ -1,4 +1,4 @@
-const CACHE_NAME='phenix-v52';
+const CACHE_NAME='phenix-v53';
 self.addEventListener('install',event=>{self.skipWaiting();});
 self.addEventListener('activate',event=>{
   event.waitUntil(

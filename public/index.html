@@ -1085,7 +1085,7 @@ button:disabled{cursor:not-allowed}
     </div>
   </div>
 </div>
-<div id="indispoModal" class="modal"><div class="box"><h2 class="indispoTitle">Choisir l’intervention</h2><input id="indispoId" type="hidden"><div class="field"><label>Code</label><input id="indispoCode" autocomplete="off" inputmode="text" placeholder="Code"><small class="mut">Tapez le code puis appuyez sur Entrée.</small></div><div class="field"><label>Nature d’intervention</label><select id="indispoSelect"></select></div><div class="field"><label>Événement du calendrier</label><select id="indispoEvent"><option value="">Aucun événement</option></select></div><div id="indispoPreview" class="section" style="margin:8px 0;padding:10px"><span class="mut">Saisissez un code ou choisissez une nature / un événement.</span></div><div class="row"><button class="primary" onclick="setIndispo()">Valider INDISPO</button><button onclick="closeModal('indispoModal')">Annuler</button></div></div></div>
+<div id="indispoModal" class="modal"><div class="box"><h2 class="indispoTitle">Choisir l’intervention</h2><input id="indispoId" type="hidden"><div class="field"><label>Code</label><input id="indispoCode" autocomplete="off" inputmode="text" placeholder="Code"><small class="mut">Tapez le code puis appuyez sur Entrée.</small></div><div class="field"><label>Nature d’intervention</label><select id="indispoSelect"></select></div><div id="indispoPreview" class="section" style="margin:8px 0;padding:10px"><span class="mut">Saisissez un code ou choisissez une nature.</span></div><div class="row"><button class="primary" onclick="setIndispo()">Valider INDISPO</button><button onclick="closeModal('indispoModal')">Annuler</button></div></div></div>
 
 <div id="infoModal" class="modal"><div class="box"><h2 id="infoTitle">Infos équipage</h2><div id="infoBody"></div><br><button onclick="closeModal('infoModal')">Fermer</button></div></div>
 <script>
@@ -1217,16 +1217,6 @@ function fillIndispoChoices(){
       return `<option value="${esc(p.raw).replaceAll('"','&quot;')}" data-code="${esc(p.code)}">${esc(p.label)}</option>`;
     }).join('');
   }
-  const evSel=$('indispoEvent');
-  if(evSel){
-    const events=(S.events||[]).slice().sort((a,b)=>new Date(a.start)-new Date(b.start));
-    evSel.innerHTML='<option value="">Aucun événement</option>'+events.map(ev=>{
-      const d=new Date(ev.start);
-      const date=isNaN(d.getTime())?'':d.toLocaleDateString('fr-FR');
-      const code=String(ev.code||'').trim().toUpperCase();
-      return `<option value="${esc(ev.id)}" data-code="${esc(code)}">${esc(ev.title)}${date?' ('+date+')':''}</option>`;
-    }).join('');
-  }
 }
 function fillSelects(selected=[]){
   $('crewCall').innerHTML=S.callsigns.map(x=>`<option>${esc(x)}</option>`).join('');
@@ -1276,56 +1266,60 @@ async function saveCrew(){
     alert('La fin de vacation doit être après le début.');
     return;
   }
-  await api('/api/crew',{
-    method:'POST',
-    body:JSON.stringify({
-      crew:{
-        id:$('crewId').value,
-        callsign:$('crewCall').value,
-        matricules,
-        meal:$('crewMeal').value,
-        observations:$('crewObs').value,
-        shiftStart,
-        shiftEnd
-      }
-    })
-  });
-  closeModal('crewModal');
-  refresh();
+  try{
+    await api('/api/crew',{
+      method:'POST',
+      body:JSON.stringify({
+        crew:{
+          id:$('crewId').value,
+          callsign:$('crewCall').value,
+          matricules,
+          meal:$('crewMeal').value,
+          observations:$('crewObs').value,
+          shiftStart,
+          shiftEnd
+        }
+      })
+    });
+    closeModal('crewModal');
+    await refresh();
+  }catch(e){
+    alert(e.message||'Impossible d’enregistrer l’équipage');
+  }
 }
-async function deleteCrew(){if(confirm('Supprimer cet équipage ?')){await api('/api/crew/'+$('crewId').value,{method:'DELETE'});closeModal('crewModal');refresh()}}
+async function deleteCrew(){
+  if(!confirm('Supprimer cet équipage ?'))return;
+  try{
+    await api('/api/crew/'+$('crewId').value,{method:'DELETE'});
+    closeModal('crewModal');
+    await refresh();
+  }catch(e){alert(e.message||'Impossible de supprimer l’équipage')}
+}
 async function statusCrew(id,status){
   if(!canOperate()){alert('Accès lecture seule');return}
-  await api('/api/crew/'+id+'/status',{method:'POST',body:JSON.stringify({status:'DISPO'})});
-  await refresh();
+  try{
+    await api('/api/crew/'+id+'/status',{method:'POST',body:JSON.stringify({status:'DISPO'})});
+    await refresh();
+  }catch(e){alert(e.message||'Impossible de modifier le statut de l’équipage')}
 }
 function findChoiceByCode(code){
   const q=String(code||'').trim().toUpperCase();
   if(!q)return null;
   const nature=(S.interventions||[]).map(parseInterventionLine).find(x=>x.code===q);
-  if(nature)return {source:'nature',code:q,intervention:nature.label,eventId:''};
-  const ev=(S.events||[]).find(x=>String(x.code||'').trim().toUpperCase()===q);
-  if(ev)return {source:'event',code:q,intervention:ev.title,eventId:ev.id};
-  return null;
+  return nature?{source:'nature',code:q,intervention:nature.label,eventId:''}:null;
 }
 function updateIndispoPreview(){
   const code=String($('indispoCode')?.value||'').trim().toUpperCase();
   const found=findChoiceByCode(code);
-  const eventId=$('indispoEvent')?.value||'';
-  const ev=(S.events||[]).find(x=>x.id===eventId);
   const nature=parseInterventionLine($('indispoSelect')?.value||'');
-  let text='';
-  if(found)text=found.intervention;
-  else if(ev)text=ev.title;
-  else if(nature.label)text=nature.label;
-  $('indispoPreview').innerHTML=text?`<b>${esc(text)}</b>`:'<span class="mut">Saisissez un code ou choisissez une nature / un événement.</span>';
+  const text=found?found.intervention:nature.label;
+  $('indispoPreview').innerHTML=text?`<b>${esc(text)}</b>`:'<span class="mut">Saisissez un code ou choisissez une nature.</span>';
 }
 function openIndispo(id){
   if(!canOperate()){alert('Accès lecture seule');return}
   fillIndispoChoices();
   $('indispoId').value=id;
   $('indispoCode').value='';
-  $('indispoEvent').value='';
   updateIndispoPreview();
   $('indispoModal').style.display='grid';
   setTimeout(()=>{$('indispoCode')?.focus();},60);
@@ -1334,20 +1328,17 @@ async function setIndispo(){
   const id=$('indispoId').value;
   const typed=String($('indispoCode').value||'').trim().toUpperCase();
   const found=findChoiceByCode(typed);
-  const eventId=$('indispoEvent').value||'';
-  const ev=(S.events||[]).find(x=>x.id===eventId);
   const nature=parseInterventionLine($('indispoSelect').value||'');
-  let payload;
-  if(found){
-    payload={status:'INDISPO',code:found.code,intervention:found.intervention,source:found.source,eventId:found.eventId};
-  }else if(ev){
-    payload={status:'INDISPO',code:String(ev.code||'').trim().toUpperCase(),intervention:ev.title,source:'event',eventId:ev.id};
-  }else{
-    payload={status:'INDISPO',code:typed||nature.code,intervention:nature.label||'Intervention',source:'nature',eventId:''};
+  const payload=found
+    ? {status:'INDISPO',code:found.code,intervention:found.intervention,source:'nature',eventId:''}
+    : {status:'INDISPO',code:typed||nature.code,intervention:nature.label||'Intervention',source:'nature',eventId:''};
+  try{
+    await api('/api/crew/'+id+'/status',{method:'POST',body:JSON.stringify(payload)});
+    closeModal('indispoModal');
+    await refresh();
+  }catch(e){
+    alert(e.message||'Impossible de modifier le statut de l’équipage');
   }
-  await api('/api/crew/'+id+'/status',{method:'POST',body:JSON.stringify(payload)});
-  closeModal('indispoModal');
-  await refresh();
 }
 function renderAgents(){$('agentRows').innerHTML=S.agents.map((a,i)=>`<tr><td><input value="${a.matricule}" onchange="S.agents[${i}].matricule=this.value"></td><td><input value="${a.nom||''}" onchange="S.agents[${i}].nom=this.value"></td><td><input value="${a.prenom||''}" onchange="S.agents[${i}].prenom=this.value"></td><td><input type="checkbox" ${a.actif?'checked':''} onchange="S.agents[${i}].actif=this.checked"></td><td><button class="small danger" onclick="S.agents.splice(${i},1);renderAgents()">Retirer</button></td></tr>`).join('')}function addAgent(){if(S.user.role!=='admin'){alert('Réservé admin');return}S.agents.push({matricule:'',nom:'',prenom:'',actif:true});renderAgents()}async function saveAgents(){if(S.user.role!=='admin'){alert('Réservé admin');return}await api('/api/agents',{method:'POST',body:JSON.stringify({agents:S.agents})});alert('Personnel enregistré');refresh()}async function saveNote(){await api('/api/note',{method:'POST',body:JSON.stringify({note:$('note').value})});noteDirty=false;S.note=$('note').value;alert('Notes enregistrées')}
 function renderAdmin(force=false){if(S.user.role!=='admin')return;if(activeSection!=='admin'||force||document.activeElement.id!=='interList')$('interList').value=S.interventions.join('\n');if(activeSection!=='admin'||force||document.activeElement.id!=='callList')$('callList').value=S.callsigns.join('\n');$('users').innerHTML=(S.users||[]).map(u=>`<div class="row"><b>${u.displayName}</b><span class="mut">${u.login} / ${u.role}</span><button class="small" onclick='editUser(${JSON.stringify(u)})'>Modifier</button><button class="small danger" onclick='delUser(${JSON.stringify(u.id)})'>Supprimer</button></div>`).join('')}function editUser(u){$('uId').value=u.id;$('uName').value=u.displayName;$('uLogin').value=u.login;$('uRole').value=u.role;$('uPass').value='';$('uBrigadeJour').checked=!!(u.brigades&&u.brigades.jour);$('uBrigadeNuit').checked=!!(u.brigades&&u.brigades.nuit)}async function saveUser(){try{await api('/api/admin/users',{method:'POST',body:JSON.stringify({id:$('uId').value,displayName:$('uName').value,login:$('uLogin').value,password:$('uPass').value,role:$('uRole').value,brigades:{jour:$('uBrigadeJour').checked,nuit:$('uBrigadeNuit').checked}})});['uId','uName','uLogin','uPass'].forEach(id=>$(id).value='');$('uBrigadeJour').checked=false;$('uBrigadeNuit').checked=false;refresh()}catch(e){alert(e.message)}}async function delUser(id){if(confirm('Supprimer utilisateur ?')){await api('/api/admin/users/'+id,{method:'DELETE'});refresh()}}async function saveLists(){await api('/api/admin/lists',{method:'POST',body:JSON.stringify({interventions:$('interList').value.split('\n').map(x=>x.trim()).filter(Boolean),callsigns:$('callList').value.split('\n').map(x=>x.trim()).filter(Boolean)})});refresh()}
@@ -1516,11 +1507,7 @@ document.addEventListener('input',e=>{
   if(e.target&&e.target.id==='indispoCode')updateIndispoPreview();
 });
 document.addEventListener('change',e=>{
-  if(e.target&&['indispoSelect','indispoEvent'].includes(e.target.id)){
-    if(e.target.id==='indispoEvent'&&e.target.value){
-      const ev=(S.events||[]).find(x=>x.id===e.target.value);
-      if(ev&&ev.code)$('indispoCode').value=String(ev.code).toUpperCase();
-    }
+  if(e.target&&e.target.id==='indispoSelect'){
     if(e.target.id==='indispoSelect'){
       const p=parseInterventionLine(e.target.value);
       if(p.code)$('indispoCode').value=p.code;
@@ -1535,7 +1522,7 @@ setInterval(()=>{if($('app').style.display==='block')refreshSafe(false).catch(()
 
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js?v=52',{updateViaCache:'none'});
+  navigator.serviceWorker.register('/sw.js?v=53',{updateViaCache:'none'});
 }
 </script>
 
