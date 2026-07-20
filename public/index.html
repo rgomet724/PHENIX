@@ -920,7 +920,7 @@ button:disabled{cursor:not-allowed}
 </div></div>
 <div id="app" class="app"><div class="top"><div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div><div class="right"><b id="agentName">Agent</b><div class="tag" id="clock"></div><div class="row" style="justify-content:flex-end;margin-top:6px"><button id="themeBtn" class="themeToggle" onclick="toggleTheme()" title="Changer le thème"><span class="themeIcon">🌙</span><span id="themeText">Thème sombre</span></button><button id="notifBtn" class="notifSwitch" onclick="toggleNotifications()" title="Alertes sonores"><span class="notifKnob"></span><span id="notifText">ALERTES ON</span></button><button id="passwordBtn" class="small" onclick="changePass()">Mot de passe</button><button class="small danger" onclick="logout()">Déconnexion</button></div></div></div>
 <div class="layout"><aside><div class="nav"><button onclick="show('dash')"><span class="navIcon">⌂</span>Tableau de bord</button><button id="personnelBtn" onclick="show('personnel')"><span class="navIcon">♙</span>Personnel</button><button onclick="show('notes')"><span class="navIcon">▤</span>Notes privées</button><button onclick="show('links')"><span class="navIcon">⛓</span>Liens utiles</button><button onclick="show('events')"><span class="navIcon">▦</span>Événements</button><button id="historyBtn" onclick="show('history')"><span class="navIcon">◷</span>Historique</button><button class="consigneNav" onclick="show('consignes')"><span class="navIcon">▣</span>Consignes <span id="consigneCount" class="consigneCount">(0)</span><span id="consigneBell" class="consigneBell">🔔</span></button><button id="adminBtn" onclick="show('admin')"><span class="navIcon">⚙</span>Administration</button></div><div id="eventTodayBox" class="eventTodayBox hidden"></div></aside><main>
-<section id="dash"><div class="cards"><div class="card"><span>Équipages</span><br><b id="cTotal">0</b></div><div class="card green"><span>Disponibles</span><br><b id="cDispo">0</b></div><div class="card red"><span>Indisponibles</span><br><b id="cIndispo">0</b></div><div class="card"><span>Effectifs</span><br><b id="cEff">0</b></div></div><div class="section"><div class="row dashTableHeader" style="justify-content:space-between"><h2>Tableau de bord opérationnel</h2><div class="row dashTools"><div id="dashZoomTools" class="row"><button class="small" onclick="setDashZoom(-1)" title="Réduire l'affichage">Zoom −</button><button class="small" onclick="resetDashZoom()" title="Réinitialiser le zoom">100 %</button><button class="small" onclick="setDashZoom(1)" title="Agrandir l'affichage">Zoom +</button><button id="compactDashBtn" class="small" onclick="toggleDashCompact()">Mode compact</button></div><button id="createCrewBtn" class="primary" onclick="openCrew()">Créer équipage</button></div></div><div id="dashTableWrap" class="dashTableWrap"><table id="crewTable"><thead><tr><th>Info</th><th>Indicatif</th><th>Matricules</th><th>Intervention</th><th>Code Blanc</th><th>Vacation</th><th>Actions</th></tr></thead><tbody id="crewRows"></tbody></table></div></div><div id="logSection" class="section"><h2>Journal de la dernière heure</h2><div id="logs"></div></div></section>
+<section id="dash"><div class="cards"><div class="card"><span>Équipages</span><br><b id="cTotal">0</b></div><div class="card green"><span>Disponibles</span><br><b id="cDispo">0</b></div><div class="card red"><span>Indisponibles</span><br><b id="cIndispo">0</b></div><div class="card"><span>Effectifs</span><br><b id="cEff">0</b></div></div><div class="section"><div class="row dashTableHeader" style="justify-content:space-between"><h2>Tableau de bord opérationnel</h2><div class="row dashTools"><div id="dashZoomTools" class="row"><button class="small" onclick="setDashZoom(-1)" title="Réduire l'affichage">Zoom −</button><button class="small" onclick="resetDashZoom()" title="Réinitialiser le zoom">100 %</button><button class="small" onclick="setDashZoom(1)" title="Agrandir l'affichage">Zoom +</button><button id="compactDashBtn" class="small" onclick="toggleDashCompact()">Mode compact</button></div><button type="button" id="createCrewBtn" class="primary crewCreateBtn">Créer équipage</button></div></div><div id="dashTableWrap" class="dashTableWrap"><table id="crewTable"><thead><tr><th>Info</th><th>Indicatif</th><th>Matricules</th><th>Intervention</th><th>Code Blanc</th><th>Vacation</th><th>Actions</th></tr></thead><tbody id="crewRows"></tbody></table></div></div><div id="logSection" class="section"><h2>Journal de la dernière heure</h2><div id="logs"></div></div></section>
 <section id="personnel" class="hidden"><div class="section"><div class="row" style="justify-content:space-between"><h2>Personnel</h2><button class="primary" onclick="addAgent()">Ajouter agent</button></div><p class="mut">Réservé Admin : ajout et modification des matricules, noms et prénoms. Les opérateurs sélectionnent ensuite uniquement les matricules dans les équipages.</p><table><thead><tr><th>Matricule</th><th>Nom</th><th>Prénom</th><th>Actif</th><th></th></tr></thead><tbody id="agentRows"></tbody></table><button class="primary" onclick="saveAgents()">Enregistrer le personnel</button></div></section>
 <section id="notes" class="hidden"><div class="section"><h2>Notes privées</h2><p class="mut">Chaque agent voit uniquement ses propres notes.</p><textarea id="note" oninput="noteDirty=true"></textarea><br><br><button class="primary" onclick="saveNote()">Enregistrer mes notes</button></div></section><section id="consignes" class="hidden">
   <div class="section">
@@ -1081,7 +1081,7 @@ button:disabled{cursor:not-allowed}
     <div class="crewFooter">
       <button id="delCrew" class="danger" onclick="deleteCrew()">Supprimer</button>
       <button onclick="closeModal('crewModal')">Fermer</button>
-      <button class="primary" onclick="saveCrew()">Enregistrer</button>
+      <button type="button" class="primary" onclick="saveCrew()">Enregistrer</button>
     </div>
   </div>
 </div>
@@ -1197,7 +1197,26 @@ function formatVacationCell(c){
   </div>`;
 }
 
-function renderCrews(){const readonly=!canOperate();$('crewRows').innerHTML=S.crews.map(c=>`<tr class="${c.status==='INDISPO'?'indispo':'dispo'}"><td><button class="infoBtn" title="Infos équipage" onclick='showCrewInfo(${JSON.stringify(c.id)})'>i</button></td><td><b>${c.callsign}</b><br><span class="pill">${c.status}</span></td><td>${(c.matricules||[]).map(m=>`<span class="pill">${m}</span>`).join('')}</td><td>${esc(c.intervention||'—')}</td><td>${c.meal||'—'}</td><td>${formatVacationCell(c)}</td><td>${readonly?'<span class="mut">Lecture seule</span>':`<button class="small" onclick='openCrew(${JSON.stringify(c.id)})'>Modifier</button> <button class="small ok" onclick='statusCrew(${JSON.stringify(c.id)},"DISPO")'>DISPO</button> <button class="small danger" onclick='openIndispo(${JSON.stringify(c.id)})'>INDISPO</button>`}</td></tr>`).join('')}
+function renderCrews(){
+  const readonly=!canOperate();
+  $('crewRows').innerHTML=S.crews.map(c=>{
+    const id=esc(String(c.id)).replaceAll('"','&quot;');
+    const actions=readonly
+      ? '<span class="mut">Lecture seule</span>'
+      : `<button type="button" class="small crewEditBtn" data-id="${id}">Modifier</button>
+         <button type="button" class="small ok crewDispoBtn" data-id="${id}">DISPO</button>
+         <button type="button" class="small danger crewIndispoBtn" data-id="${id}">INDISPO</button>`;
+    return `<tr class="${c.status==='INDISPO'?'indispo':'dispo'}">
+      <td><button type="button" class="infoBtn crewInfoBtn" data-id="${id}" title="Infos équipage">i</button></td>
+      <td><b>${esc(c.callsign)}</b><br><span class="pill">${esc(c.status)}</span></td>
+      <td>${(c.matricules||[]).map(m=>`<span class="pill">${esc(m)}</span>`).join('')}</td>
+      <td>${esc(c.intervention||'—')}</td>
+      <td>${esc(c.meal||'—')}</td>
+      <td>${formatVacationCell(c)}</td>
+      <td>${actions}</td>
+    </tr>`;
+  }).join('');
+}
 function formatVacation(c){
   if(!c.shiftStart&&!c.shiftEnd)return 'Non renseignée';
   const fmt=v=>v?new Date(v).toLocaleString('fr-FR'):'—';
@@ -1236,19 +1255,21 @@ function filterCrewAgents(){
     row.classList.toggle('hiddenBySearch',!!q && !text.includes(q));
   });
 }
-function openCrew(id){
-  const c=S.crews.find(x=>x.id===id)||{
+function openCrew(id=''){
+  if(!canOperate()){alert('Accès lecture seule');return}
+  const crewId=(typeof id==='string'||typeof id==='number')?String(id):'';
+  const c=S.crews.find(x=>String(x.id)===crewId)||{
     matricules:[],observations:'',meal:'',callsign:S.callsigns[0],shiftStart:'',shiftEnd:''
   };
   fillSelects(c.matricules||[]);
-  $('crewId').value=id||'';
+  $('crewId').value=crewId;
   $('crewCall').value=c.callsign||S.callsigns[0]||'';
   $('crewMeal').value=c.meal||'';
   $('crewObs').value=c.observations||'';
   $('crewShiftStart').value=c.shiftStart||defaultShiftDate(8);
   $('crewShiftEnd').value=c.shiftEnd||defaultShiftDate(16);
-  $('crewModalTitle').textContent=id?'Modification d’un équipage':'Création d’un équipage';
-  $('delCrew').classList.toggle('hidden',!id);
+  $('crewModalTitle').textContent=crewId?'Modification d’un équipage':'Création d’un équipage';
+  $('delCrew').classList.toggle('hidden',!crewId);
   $('crewModal').style.display='grid';
 }
 function defaultShiftDate(hour){
@@ -1259,6 +1280,8 @@ function defaultShiftDate(hour){
 }
 function closeModal(id){$(id).style.display='none'}
 async function saveCrew(){
+  if(!canOperate()){alert('Accès lecture seule');return}
+  if(!$('crewCall').value){alert('Indicatif obligatoire');$('crewCall').focus();return}
   const matricules=Array.from(document.querySelectorAll('#crewAgents input:checked')).map(o=>o.value);
   const shiftStart=$('crewShiftStart').value;
   const shiftEnd=$('crewShiftEnd').value;
@@ -1497,6 +1520,39 @@ function toggleLoginPassword(){
   p.type=p.type==='password'?'text':'password';
 }
 
+
+document.addEventListener('click',e=>{
+  const create=e.target.closest('.crewCreateBtn');
+  if(create){
+    e.preventDefault();
+    openCrew('');
+    return;
+  }
+  const edit=e.target.closest('.crewEditBtn');
+  if(edit){
+    e.preventDefault();
+    openCrew(edit.dataset.id);
+    return;
+  }
+  const info=e.target.closest('.crewInfoBtn');
+  if(info){
+    e.preventDefault();
+    showCrewInfo(info.dataset.id);
+    return;
+  }
+  const dispo=e.target.closest('.crewDispoBtn');
+  if(dispo){
+    e.preventDefault();
+    statusCrew(dispo.dataset.id,'DISPO');
+    return;
+  }
+  const indispo=e.target.closest('.crewIndispoBtn');
+  if(indispo){
+    e.preventDefault();
+    openIndispo(indispo.dataset.id);
+  }
+});
+
 document.addEventListener('keydown',e=>{
   if(e.target&&e.target.id==='indispoCode'&&e.key==='Enter'){
     e.preventDefault();
@@ -1522,7 +1578,7 @@ setInterval(()=>{if($('app').style.display==='block')refreshSafe(false).catch(()
 
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js?v=53',{updateViaCache:'none'});
+  navigator.serviceWorker.register('/sw.js?v=55',{updateViaCache:'none'});
 }
 </script>
 
