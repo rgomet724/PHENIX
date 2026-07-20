@@ -200,7 +200,7 @@ app.post('/api/agents', needLogin, needAdmin, (req,res)=>{
   res.json({ok:true});
 });
 
-app.post('/api/crew', needLogin, needOperational, (req,res)=>{
+app.post('/api/crew', needLogin, (req,res)=>{
   const d=load(); const c=req.body.crew||{};
   if(!c.callsign) return res.status(400).json({error:'Indicatif obligatoire'});
 
@@ -218,7 +218,7 @@ app.post('/api/crew', needLogin, needOperational, (req,res)=>{
   res.json({ok:true});
 });
 
-app.delete('/api/crew/:id', needLogin, needOperational, (req,res)=>{
+app.delete('/api/crew/:id', needLogin, (req,res)=>{
   const d=load();
   const c=d.crews.find(x=>x.id===req.params.id);
   d.crews=d.crews.filter(x=>x.id!==req.params.id);
@@ -227,7 +227,7 @@ app.delete('/api/crew/:id', needLogin, needOperational, (req,res)=>{
   res.json({ok:true});
 });
 
-app.post('/api/crew/:id/status', needLogin, needOperational, (req,res)=>{
+app.post('/api/crew/:id/status', needLogin, (req,res)=>{
   const d=load();
   const c=d.crews.find(x=>x.id===req.params.id);
   if(!c) return res.status(404).json({error:'Équipage introuvable'});
@@ -444,4 +444,4 @@ app.post('/api/admin/lists', needLogin, needAdmin, (req,res)=>{
   res.json({ok:true});
 });
 
-app.listen(PORT,()=>console.log('PHENIX V52 rôles et saisie code prêts sur le port '+PORT));
+app.listen(PORT,()=>console.log('PHENIX V53 équipages débloqués sur le port '+PORT));
