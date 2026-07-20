@@ -1071,7 +1071,7 @@ body:not(.dashboardMode) #createCrewBtn{display:inline-block!important}
     </div>
   </div>
 </div>
-<div id="indispoModal" class="modal"><div class="box"><h2 class="indispoTitle">Passer l’équipage en INDISPO</h2><input id="indispoId" type="hidden"><div class="field"><label>Code</label><input id="indispoCode" autocomplete="off" placeholder=""><small class="mut">Saisissez le code puis appuyez sur Entrée.</small></div><div class="field"><label>Nature d’intervention</label><select id="indispoSelect"></select></div><div id="indispoPreview" class="section" style="margin:8px 0;padding:10px"><span class="mut">Saisissez un code ou choisissez une nature d’intervention.</span></div><div class="row"><button class="primary" onclick="setIndispo()">Valider INDISPO</button><button onclick="closeModal('indispoModal')">Annuler</button></div></div></div>
+<div id="indispoModal" class="modal"><div class="box"><h2 class="indispoTitle">Passer l’équipage en INDISPO</h2><input id="indispoId" type="hidden"><div class="field"><label>Code</label><input id="indispoCode" autocomplete="off" placeholder=""><small class="mut">Saisissez le code puis appuyez sur Entrée. Le code 00 supprime immédiatement l’équipage.</small></div><div class="field"><label>Nature d’intervention</label><select id="indispoSelect"></select></div><div id="indispoPreview" class="section" style="margin:8px 0;padding:10px"><span class="mut">Saisissez un code ou choisissez une nature d’intervention.</span></div><div class="row"><button class="primary" onclick="setIndispo()">Valider INDISPO</button><button onclick="closeModal('indispoModal')">Annuler</button></div></div></div>
 
 <div id="infoModal" class="modal"><div class="box"><h2 id="infoTitle">Infos équipage</h2><div id="infoBody"></div><br><button onclick="closeModal('infoModal')">Fermer</button></div></div>
 <script>
@@ -1318,6 +1318,14 @@ async function setIndispo(){
   try{
     const id=$('indispoId').value;
     const typed=String($('indispoCode').value||'').trim().toUpperCase();
+
+    if(typed==='00'){
+      await api('/api/crew/'+id,{method:'DELETE'});
+      closeModal('indispoModal');
+      await refresh();
+      return;
+    }
+
     const found=findChoiceByCode(typed);
     const nature=parseInterventionLine($('indispoSelect').value||'');
     const payload=found
