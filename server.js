@@ -8,6 +8,16 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const DB = "/var/data/data.json";
 
+
+function normalizeRole(role){
+  const r=String(role||'').trim().toLowerCase();
+  if(['admin','administrateur','administrator'].includes(r)) return 'admin';
+  if(['superviseur','supervisor'].includes(r)) return 'superviseur';
+  if(['operateur','opérateur','operator'].includes(r)) return 'operateur';
+  if(['dashboard','tableau de bord','lecture'].includes(r)) return 'dashboard';
+  return r || 'dashboard';
+}
+
 function baseData(){
   return {
     users: [],
@@ -39,24 +49,24 @@ function migrate(d){
   if(typeof d.flash.enabled!=='boolean') d.flash.enabled=false;
   d.flash.title=String(d.flash.title||'INFO').trim()||'INFO';
   d.flash.text=String(d.flash.text||'');
-  d.users.forEach(u=>{ if(!u.brigades) u.brigades={jour:true,nuit:true}; });
+  d.users.forEach(u=>{ u.role=normalizeRole(u.role); if(!u.brigades) u.brigades={jour:true,nuit:true}; });
   return d;
 }
 
 function load(){ try { return migrate(JSON.parse(fs.readFileSync(DB,'utf8'))); } catch(e){ const d=baseData(); save(d); return d; } }
 function save(d){ fs.writeFileSync(DB, JSON.stringify(d,null,2)); }
-function safe(u){ return u ? {id:u.id, login:u.login, displayName:u.displayName, role:u.role, brigades:u.brigades||{jour:true,nuit:true}} : null; }
+function safe(u){ return u ? {id:u.id, login:u.login, displayName:u.displayName, role:normalizeRole(u.role), brigades:u.brigades||{jour:true,nuit:true}} : null; }
 function current(req){ const d=load(); return d.users.find(u=>u.id===req.session.userId); }
 function needLogin(req,res,next){ if(!req.session.userId) return res.status(401).json({error:'Session expirée ou non connecté'}); next(); }
-function needAdmin(req,res,next){ const u=current(req); if(!u || u.role!=='admin') return res.status(403).json({error:'Réservé admin'}); next(); }
-function needOperational(req,res,next){ const u=current(req); if(!u || u.role==='dashboard') return res.status(403).json({error:'Accès lecture seule'}); next(); }
-function needConsigneManager(req,res,next){ const u=current(req); if(!u || !['admin','superviseur'].includes(u.role)) return res.status(403).json({error:'Réservé superviseur/admin'}); next(); }
+function needAdmin(req,res,next){ const u=current(req); if(!u || normalizeRole(u.role)!=='admin') return res.status(403).json({error:'Réservé admin'}); next(); }
+function needOperational(req,res,next){ const u=current(req); if(!u || normalizeRole(u.role)==='dashboard') return res.status(403).json({error:'Accès lecture seule'}); next(); }
+function needConsigneManager(req,res,next){ const u=current(req); if(!u || !['admin','superviseur'].includes(normalizeRole(u.role))) return res.status(403).json({error:'Réservé superviseur/admin'}); next(); }
 function audit(d, req, msg){ const u=current(req); d.logs.unshift({date:new Date().toISOString(), userId:u?u.id:null, user:u?u.displayName:'Système', msg}); d.logs=d.logs.slice(0,2000); }
 
 function atFour(date=new Date()){ const d=new Date(date); d.setHours(4,0,0,0); return d; }
 
 function visibleConsigne(c,u){
-  if(['admin','superviseur'].includes(u.role)) return true;
+  if(['admin','superviseur'].includes(normalizeRole(u.role))) return true;
   const b=u.brigades||{};
   if(c.brigade==='all') return true;
   if(c.brigade==='jour') return !!b.jour;
@@ -93,7 +103,7 @@ function consignesForUser(d,u){
 
 
 function visibleLink(l,u){
-  if(['admin','superviseur'].includes(u.role)) return true;
+  if(['admin','superviseur'].includes(normalizeRole(u.role))) return true;
   const b=u.brigades||{};
   const v=l.visible||{};
   if(!v.jour && !v.nuit) return true;
@@ -170,7 +180,7 @@ app.get('/api/data', needLogin, (req,res)=>{
     links:linksForUser(d,u),
     events:d.events||[],
     flash:d.flash||{enabled:false,title:'INFO',text:''},
-    users:['admin','superviseur'].includes(u.role)?d.users.map(safe):undefined
+    users:['admin','superviseur'].includes(normalizeRole(u.role))?d.users.map(safe):undefined
   });
 });
 
@@ -340,7 +350,7 @@ app.delete('/api/links/:id', needLogin, needConsigneManager, (req,res)=>{
 
 app.get('/api/history/:userId', needLogin, (req,res)=>{
   const d=load(); const u=current(req);
-  if(!u || !['admin','superviseur'].includes(u.role)) return res.status(403).json({error:'Réservé superviseur/admin'});
+  if(!u || !['admin','superviseur'].includes(normalizeRole(u.role))) return res.status(403).json({error:'Réservé superviseur/admin'});
   const since=Date.now()-7*24*60*60*1000;
   const logs=(d.logs||[]).filter(l=>{
     const t=new Date(l.date).getTime();
@@ -402,13 +412,13 @@ app.post('/api/admin/users', needLogin, needAdmin, (req,res)=>{
     if(!u) return res.status(404).json({error:'Utilisateur introuvable'});
     u.displayName=r.displayName;
     u.login=r.login;
-    u.role=r.role;
+    u.role=normalizeRole(r.role);
     u.brigades=brigades;
     if(r.password) u.passwordHash=bcrypt.hashSync(String(r.password),10);
   } else {
     if(!r.password) return res.status(400).json({error:'Mot de passe obligatoire pour créer'});
     if(d.users.some(u=>u.login===r.login)) return res.status(400).json({error:'Identifiant déjà utilisé'});
-    d.users.push({id:Date.now().toString(), displayName:r.displayName, login:r.login, role:r.role, brigades, passwordHash:bcrypt.hashSync(String(r.password),10)});
+    d.users.push({id:Date.now().toString(), displayName:r.displayName, login:r.login, role:normalizeRole(r.role), brigades, passwordHash:bcrypt.hashSync(String(r.password),10)});
   }
 
   audit(d,req,'Gestion utilisateur');
@@ -434,4 +444,4 @@ app.post('/api/admin/lists', needLogin, needAdmin, (req,res)=>{
   res.json({ok:true});
 });
 
-app.listen(PORT,()=>console.log('PHENIX V51 prêt sur le port '+PORT));
+app.listen(PORT,()=>console.log('PHENIX V52 rôles et saisie code prêts sur le port '+PORT));
