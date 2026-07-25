@@ -996,6 +996,33 @@ body:not(.dashboardMode) #createCrewBtn{display:inline-block!important}
   #crewTable td{grid-template-columns:82px minmax(0,1fr)}
 }
 
+/* V58 - Onglet Paramètres */
+.settingsSection{max-width:760px;margin-left:auto;margin-right:auto}
+.settingsList{display:grid;gap:12px;margin-top:18px}
+.settingsItem{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:16px;border:1px solid var(--l);border-radius:14px;background:rgba(7,21,37,.48)}
+.settingsItem>div:first-child{min-width:0}.settingsItem b{display:block;margin-bottom:5px;font-size:16px}.settingsItem .mut{line-height:1.35}
+.settingsSwitch{position:relative;display:inline-flex;align-items:center;justify-content:flex-end;width:132px;min-width:132px;height:42px;padding:4px 10px 4px 44px;border-radius:999px;background:#16a34a;font-size:12px;font-weight:800}
+.settingsSwitch.off{justify-content:flex-start;padding:4px 44px 4px 10px;background:#dc2626}
+.settingsSwitchKnob{position:absolute;left:7px;top:7px;width:28px;height:28px;border-radius:50%;background:#fff;box-shadow:0 2px 8px #0006;transition:.2s}
+.settingsSwitch.off .settingsSwitchKnob{left:97px}
+.themeChoices{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.themeChoices button{min-width:112px;border:1px solid var(--l);background:#20395c}
+.themeChoices button.active{background:#2563eb;box-shadow:0 0 0 2px rgba(96,165,250,.3)}
+.settingsAction{min-width:132px}
+body.lightMode .settingsItem{background:#f8fafc!important;border-color:#d4deea!important}
+body.lightMode .themeChoices button{background:#e8eef6;color:#16233a;border-color:#c2cedb}
+body.lightMode .themeChoices button.active{background:#2563eb;color:#fff}
+@media(max-width:700px){
+  .top .brand .tag{display:none!important}
+  .top>.brand{max-width:calc(100vw - 120px)}
+  .top .right{flex:0 0 auto}
+  .settingsSection{max-width:none}
+  .settingsItem{align-items:stretch;flex-direction:column;padding:15px;gap:13px}
+  .settingsSwitch,.settingsAction{width:100%;min-width:0}
+  .themeChoices{display:grid;grid-template-columns:1fr 1fr;width:100%}
+  .themeChoices button{min-width:0;width:100%}
+}
+
 </style></head><body>
 <div id="login" class="login"><div id="flashLogin" class="flashLogin hidden"><span class="flashIcon">📢</span><span id="flashLoginLabel" class="flashLabel">INFO :</span><span id="flashLoginText" class="flashText"></span></div><div class="box">
   <div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div>
@@ -1018,10 +1045,10 @@ body:not(.dashboardMode) #createCrewBtn{display:inline-block!important}
 </div>
   <div id="msg" class="err"></div>
 </div></div>
-<div id="app" class="app"><div id="mobileNavBackdrop" class="mobileNavBackdrop" onclick="closeMobileNav()"></div><div class="top"><button type="button" class="mobileMenuBtn" onclick="toggleMobileNav()" aria-label="Ouvrir le menu">☰</button><div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div><div class="right"><b id="agentName">Agent</b><div class="tag" id="clock"></div><div class="row" style="justify-content:flex-end;margin-top:6px"><button id="themeBtn" class="themeToggle" onclick="toggleTheme()" title="Changer le thème"><span class="themeIcon">🌙</span><span id="themeText">Thème sombre</span></button><button id="notifBtn" class="notifSwitch" onclick="toggleNotifications()" title="Alertes sonores"><span class="notifKnob"></span><span id="notifText">ALERTES ON</span></button><button id="passwordBtn" class="small" onclick="changePass()">Mot de passe</button><button class="small danger" onclick="logout()">Déconnexion</button></div></div></div>
-<div class="layout"><aside><div class="nav"><button onclick="show('dash')"><span class="navIcon">⌂</span>Tableau de bord</button><button id="personnelBtn" onclick="show('personnel')"><span class="navIcon">♙</span>Personnel</button><button onclick="show('notes')"><span class="navIcon">▤</span>Notes privées</button><button onclick="show('links')"><span class="navIcon">⛓</span>Liens utiles</button><button onclick="show('events')"><span class="navIcon">▦</span>Événements</button><button id="historyBtn" onclick="show('history')"><span class="navIcon">◷</span>Historique</button><button class="consigneNav" onclick="show('consignes')"><span class="navIcon">▣</span>Consignes <span id="consigneCount" class="consigneCount">(0)</span><span id="consigneBell" class="consigneBell">🔔</span></button><button id="adminBtn" onclick="show('admin')"><span class="navIcon">⚙</span>Administration</button></div><div id="eventTodayBox" class="eventTodayBox hidden"></div></aside><main>
+<div id="app" class="app"><div id="mobileNavBackdrop" class="mobileNavBackdrop" onclick="closeMobileNav()"></div><div class="top"><button type="button" class="mobileMenuBtn" onclick="toggleMobileNav()" aria-label="Ouvrir le menu">☰</button><div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div><div class="right"><b id="agentName">Agent</b><div class="tag" id="clock"></div><div class="row" style="justify-content:flex-end;margin-top:6px"><button class="small danger" onclick="logout()">Déconnexion</button></div></div></div>
+<div class="layout"><aside><div class="nav"><button onclick="show('dash')"><span class="navIcon">⌂</span>Tableau de bord</button><button id="personnelBtn" onclick="show('personnel')"><span class="navIcon">♙</span>Personnel</button><button onclick="show('notes')"><span class="navIcon">▤</span>Notes privées</button><button onclick="show('links')"><span class="navIcon">⛓</span>Liens utiles</button><button onclick="show('events')"><span class="navIcon">▦</span>Événements</button><button id="historyBtn" onclick="show('history')"><span class="navIcon">◷</span>Historique</button><button class="consigneNav" onclick="show('consignes')"><span class="navIcon">▣</span>Consignes <span id="consigneCount" class="consigneCount">(0)</span><span id="consigneBell" class="consigneBell">🔔</span></button><button id="settingsBtn" onclick="show('settings')"><span class="navIcon">⚙</span>Paramètres</button><button id="adminBtn" onclick="show('admin')"><span class="navIcon">⌘</span>Administration</button></div><div id="eventTodayBox" class="eventTodayBox hidden"></div></aside><main>
 <section id="dash"><div class="cards"><div class="card"><span>Équipages</span><br><b id="cTotal">0</b></div><div class="card green"><span>Disponibles</span><br><b id="cDispo">0</b></div><div class="card red"><span>Indisponibles</span><br><b id="cIndispo">0</b></div><div class="card"><span>Effectifs</span><br><b id="cEff">0</b></div></div><div class="section"><div class="row dashTableHeader" style="justify-content:space-between"><h2>Tableau de bord opérationnel</h2><div class="row dashTools"><div id="dashZoomTools" class="row"><button class="small" onclick="setDashZoom(-1)" title="Réduire l'affichage">Zoom −</button><button class="small" onclick="resetDashZoom()" title="Réinitialiser le zoom">100 %</button><button class="small" onclick="setDashZoom(1)" title="Agrandir l'affichage">Zoom +</button><button id="compactDashBtn" class="small" onclick="toggleDashCompact()">Mode compact</button></div><button type="button" id="createCrewBtn" class="primary" onclick="openCrew()">Créer équipage</button></div></div><div id="dashTableWrap" class="dashTableWrap"><table id="crewTable"><thead><tr><th>Info</th><th>Indicatif</th><th>Matricules</th><th>Intervention</th><th>Code Blanc</th><th>Vacation</th><th>Actions</th></tr></thead><tbody id="crewRows"></tbody></table></div></div><div id="logSection" class="section"><h2>Journal de la dernière heure</h2><div id="logs"></div></div></section>
-<section id="personnel" class="hidden"><div class="section"><div class="row" style="justify-content:space-between"><h2>Personnel</h2><button class="primary" onclick="addAgent()">Ajouter agent</button></div><p class="mut">Réservé Admin : ajout et modification des matricules, noms et prénoms. Les opérateurs sélectionnent ensuite uniquement les matricules dans les équipages.</p><table><thead><tr><th>Matricule</th><th>Nom</th><th>Prénom</th><th>Actif</th><th></th></tr></thead><tbody id="agentRows"></tbody></table><button class="primary" onclick="saveAgents()">Enregistrer le personnel</button></div></section>
+<section id="settings" class="hidden"><div class="section settingsSection"><h2>Paramètres</h2><p class="mut">Personnalise l’affichage et les alertes de PHENIX sur cet appareil.</p><div class="settingsList"><div class="settingsItem"><div><b>Alertes sonores</b><div class="mut">Active ou désactive le son lors d’un changement de statut.</div></div><button id="settingsSoundBtn" class="settingsSwitch" onclick="toggleNotifications()" aria-pressed="true"><span class="settingsSwitchKnob"></span><span id="settingsSoundText">Activées</span></button></div><div class="settingsItem settingsThemeItem"><div><b>Thème de l’application</b><div class="mut">Choisis le thème clair ou sombre.</div></div><div class="themeChoices" role="group" aria-label="Thème"><button id="settingsThemeDark" onclick="applyTheme('dark')">🌙 Sombre</button><button id="settingsThemeLight" onclick="applyTheme('light')">☀️ Clair</button></div></div><div class="settingsItem"><div><b>Mot de passe</b><div class="mut">Modifie le mot de passe de ton compte.</div></div><button class="primary settingsAction" onclick="changePass()">Modifier</button></div></div></div></section><section id="personnel" class="hidden"><div class="section"><div class="row" style="justify-content:space-between"><h2>Personnel</h2><button class="primary" onclick="addAgent()">Ajouter agent</button></div><p class="mut">Réservé Admin : ajout et modification des matricules, noms et prénoms. Les opérateurs sélectionnent ensuite uniquement les matricules dans les équipages.</p><table><thead><tr><th>Matricule</th><th>Nom</th><th>Prénom</th><th>Actif</th><th></th></tr></thead><tbody id="agentRows"></tbody></table><button class="primary" onclick="saveAgents()">Enregistrer le personnel</button></div></section>
 <section id="notes" class="hidden"><div class="section"><h2>Notes privées</h2><p class="mut">Chaque agent voit uniquement ses propres notes.</p><textarea id="note" oninput="noteDirty=true"></textarea><br><br><button class="primary" onclick="saveNote()">Enregistrer mes notes</button></div></section><section id="consignes" class="hidden">
   <div class="section">
     <div class="row" style="justify-content:space-between">
@@ -1199,6 +1226,7 @@ function applyTheme(theme){
   if(txt)txt.textContent=light?'Clair':'Sombre';
   if(icon)icon.textContent=light?'☀️':'🌙';
   localStorage.setItem('phenixTheme',light?'light':'dark');
+  updateSettingsUI();
 }
 function toggleTheme(){
   applyTheme(document.body.classList.contains('lightMode')?'dark':'light');
@@ -1246,7 +1274,15 @@ function autoCompactDashboard(){
 }
 
 function tick(){$('clock')&&($('clock').textContent=new Date().toLocaleString('fr-FR'))}function err(e){$('msg').textContent=e.message||e;setTimeout(()=>{$('msg').textContent=''},7000)}
-function updateNotifButton(){const btn=$('notifBtn');const txt=$('notifText');if(!btn)return;btn.classList.toggle('off',!notificationsEnabled);if(txt)txt.textContent=notificationsEnabled?'ALERTES ON':'ALERTES OFF'}
+function updateSettingsUI(){
+  const soundBtn=$('settingsSoundBtn'), soundText=$('settingsSoundText');
+  if(soundBtn){soundBtn.classList.toggle('off',!notificationsEnabled);soundBtn.setAttribute('aria-pressed',String(notificationsEnabled))}
+  if(soundText)soundText.textContent=notificationsEnabled?'Activées':'Désactivées';
+  const light=document.body.classList.contains('lightMode');
+  $('settingsThemeDark')?.classList.toggle('active',!light);
+  $('settingsThemeLight')?.classList.toggle('active',light);
+}
+function updateNotifButton(){const btn=$('notifBtn');const txt=$('notifText');if(btn)btn.classList.toggle('off',!notificationsEnabled);if(txt)txt.textContent=notificationsEnabled?'ALERTES ON':'ALERTES OFF';updateSettingsUI()}
 function toggleNotifications(){notificationsEnabled=!notificationsEnabled;localStorage.setItem('notificationsEnabled',notificationsEnabled);updateNotifButton();if(notificationsEnabled){alertSound.currentTime=0;alertSound.play().then(()=>{alertSound.pause();alertSound.currentTime=0}).catch(()=>{})}}
 function checkCrewChanges(newCrews){if(!Array.isArray(newCrews))return;if(previousCrews.length===0){previousCrews=JSON.parse(JSON.stringify(newCrews));return}let changed=false;for(const crew of newCrews){const old=previousCrews.find(c=>c.id===crew.id);if(old&&old.status!==crew.status){changed=true;break}}previousCrews=JSON.parse(JSON.stringify(newCrews));if(changed&&notificationsEnabled){alertSound.currentTime=0;alertSound.play().catch(()=>{})}}
 
@@ -1257,11 +1293,11 @@ async function logout(){await api('/api/logout',{method:'POST'});location.reload
 async function refresh(){return refreshSafe(true)}
 async function refreshSafe(force=false){if(!force && shouldPauseRefresh()) return; S=await api('/api/data');$('agentName').textContent=S.user.displayName;const dash=S.user.role==='dashboard';
 document.body.classList.toggle('dashboardMode',dash);
-if($('dashZoomTools'))$('dashZoomTools').classList.toggle('hidden',!dash);$('adminBtn').classList.toggle('hidden',S.user.role!=='admin'); if($('historyBtn'))$('historyBtn').classList.toggle('hidden',!['admin','superviseur'].includes(S.user.role));$('personnelBtn').classList.toggle('hidden',S.user.role!=='admin');document.querySelector('button[onclick="show(\'notes\')"]').classList.toggle('hidden',dash);$('createCrewBtn').classList.toggle('hidden',dash);if(dash&&!['dash','consignes','events'].includes(activeSection))activeSection='dash';checkCrewChanges(S.crews);renderAll(force);updateNotifButton()}
+if($('dashZoomTools'))$('dashZoomTools').classList.toggle('hidden',!dash);$('adminBtn').classList.toggle('hidden',S.user.role!=='admin'); if($('historyBtn'))$('historyBtn').classList.toggle('hidden',!['admin','superviseur'].includes(S.user.role));$('personnelBtn').classList.toggle('hidden',S.user.role!=='admin');document.querySelector('button[onclick="show(\'notes\')"]').classList.toggle('hidden',dash);$('createCrewBtn').classList.toggle('hidden',dash);if(dash&&!['dash','consignes','events','settings'].includes(activeSection))activeSection='dash';checkCrewChanges(S.crews);renderAll(force);updateNotifButton()}
 function shouldPauseRefresh(){const el=document.activeElement; if(el && ['INPUT','TEXTAREA','SELECT'].includes(el.tagName)) return true; return ['personnel','admin','notes'].includes(activeSection)}
 function show(id){
   document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('activeNav',b.getAttribute('onclick')===`show('${id}')`));
-  if(S.user&&S.user.role==='dashboard' && !['dash','consignes','events'].includes(id)){id='dash'}activeSection=id;['dash','personnel','notes','links','events','history','consignes','admin'].forEach(x=>$(x).classList.toggle('hidden',x!==id)); if(id==='notes') $('note').value=S.note||''; if(id==='consignes') renderConsignes(); if(id==='links') renderLinks(); if(id==='events') renderEvents(); if(id==='history') renderHistoryUsers()}
+  if(S.user&&S.user.role==='dashboard' && !['dash','consignes','events','settings'].includes(id)){id='dash'}activeSection=id;['dash','personnel','notes','links','events','history','consignes','settings','admin'].forEach(x=>$(x).classList.toggle('hidden',x!==id)); if(id==='notes') $('note').value=S.note||''; if(id==='consignes') renderConsignes(); if(id==='links') renderLinks(); if(id==='events') renderEvents(); if(id==='history') renderHistoryUsers()}
 function an(m){const a=S.agents.find(x=>x.matricule===m);return a?`${a.matricule} ${a.nom||''} ${a.prenom||''}`.trim():m}
 function canOperate(){return S.user && S.user.role!=='dashboard'}
 function renderAll(force=false){renderCrews();renderAgents();renderAdmin(force);renderConsignes();renderLinks();renderEvents();renderFlash();if(activeSection!=='notes' || force || !noteDirty){$('note').value=S.note||'';noteDirty=false;}const logsRecent=S.logs.filter(l=>{
