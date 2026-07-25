@@ -1246,103 +1246,94 @@ body.lightMode #indispoPreview{
 
 
 
-/* PHENIX V5.4 — correctif visuel uniquement, logique de connexion intacte */
+/* PHENIX V5.5 STABLE — correctif VISUEL SEULEMENT. Aucun HTML/JS de connexion modifié. */
 #login.login{
-  position:relative!important;
+  isolation:isolate!important;
   min-height:100vh!important;
   display:grid!important;
   place-items:center!important;
+  position:relative!important;
   overflow:hidden!important;
-  isolation:isolate!important;
-  background:#0018a8!important;
-  color:#fff!important;
+  padding:110px 20px 30px!important;
+  background:
+    radial-gradient(circle at 18% 25%,rgba(255,255,255,.92) 0 3%,rgba(255,255,255,.28) 9%,transparent 25%),
+    radial-gradient(circle at 78% 24%,rgba(220,38,38,.90) 0 5%,rgba(220,38,38,.35) 13%,transparent 31%),
+    radial-gradient(circle at 74% 76%,rgba(255,255,255,.76) 0 4%,rgba(255,255,255,.20) 12%,transparent 29%),
+    radial-gradient(circle at 23% 76%,rgba(0,72,255,.94) 0 8%,rgba(0,72,255,.38) 19%,transparent 39%),
+    linear-gradient(125deg,#0018a8 0%,#003bd4 34%,#f7faff 52%,#0648d8 68%,#a70016 100%)!important;
+  background-size:145% 145%!important;
+  animation:phenixLoginBase 13s ease-in-out infinite alternate!important;
 }
-#login.login::before,
-#login.login::after{
-  content:""!important;
-  position:absolute!important;
-  pointer-events:none!important;
-  z-index:0!important;
+#login.login::before,#login.login::after{
+  content:""!important;position:absolute!important;inset:-18%!important;
+  display:block!important;pointer-events:none!important;z-index:0!important;
 }
 #login.login::before{
-  inset:-20%!important;
   background:
-    radial-gradient(circle at 18% 25%,rgba(255,255,255,.95) 0 3%,rgba(255,255,255,.42) 8%,transparent 24%),
-    radial-gradient(circle at 78% 22%,rgba(235,35,55,.92) 0 4%,rgba(235,35,55,.32) 12%,transparent 28%),
-    radial-gradient(circle at 28% 78%,rgba(0,75,255,.95) 0 8%,rgba(0,75,255,.45) 20%,transparent 38%),
-    radial-gradient(circle at 80% 76%,rgba(255,255,255,.78) 0 5%,rgba(255,255,255,.22) 14%,transparent 30%),
-    linear-gradient(125deg,#0018a8 0%,#0039d7 42%,#07114f 70%,#9f1027 100%)!important;
-  filter:blur(18px) saturate(1.12)!important;
-  animation:phenixHaloMove 13s ease-in-out infinite alternate!important;
+    radial-gradient(circle at 17% 38%,rgba(0,38,190,.98) 0 7%,rgba(0,72,255,.54) 17%,transparent 37%),
+    radial-gradient(circle at 82% 31%,rgba(220,18,45,.82) 0 6%,rgba(220,18,45,.30) 15%,transparent 35%),
+    radial-gradient(circle at 52% 77%,rgba(255,255,255,.88) 0 5%,rgba(255,255,255,.25) 15%,transparent 34%)!important;
+  filter:blur(24px)!important;
+  animation:phenixHaloA 10s ease-in-out infinite alternate!important;
 }
 #login.login::after{
-  inset:0!important;
   background:
-    radial-gradient(circle at 52% 48%,transparent 0 22%,rgba(0,0,0,.10) 55%,rgba(0,0,0,.32) 100%),
-    linear-gradient(90deg,rgba(255,255,255,.06),transparent 30%,transparent 70%,rgba(255,0,35,.08))!important;
+    radial-gradient(circle at 34% 70%,rgba(255,255,255,.62) 0 3%,rgba(255,255,255,.15) 12%,transparent 28%),
+    radial-gradient(circle at 68% 58%,rgba(0,24,168,.75) 0 8%,rgba(0,24,168,.20) 23%,transparent 42%),
+    radial-gradient(circle at 91% 79%,rgba(190,0,30,.72) 0 5%,rgba(190,0,30,.22) 16%,transparent 34%)!important;
+  filter:blur(32px)!important;
+  animation:phenixHaloB 14s ease-in-out infinite alternate-reverse!important;
 }
-@keyframes phenixHaloMove{
-  0%{transform:translate3d(-2%,-2%,0) scale(1.03) rotate(-1deg)}
-  50%{transform:translate3d(2%,1%,0) scale(1.08) rotate(1deg)}
-  100%{transform:translate3d(-1%,3%,0) scale(1.04) rotate(-.5deg)}
-}
+@keyframes phenixLoginBase{0%{background-position:0% 20%}100%{background-position:100% 80%}}
+@keyframes phenixHaloA{0%{transform:translate3d(-4%,-3%,0) scale(1)}100%{transform:translate3d(7%,5%,0) scale(1.12)}}
+@keyframes phenixHaloB{0%{transform:translate3d(4%,-5%,0) scale(1.08)}100%{transform:translate3d(-6%,7%,0) scale(.96)}}
 #login.login>.box{
-  position:relative!important;
-  z-index:2!important;
-  width:min(430px,92vw)!important;
-  margin:0!important;
-  background:rgba(5,18,60,.86)!important;
-  border:1px solid rgba(255,255,255,.34)!important;
-  color:#fff!important;
-  box-shadow:0 24px 80px rgba(0,0,0,.42),0 0 50px rgba(255,255,255,.10)!important;
-  backdrop-filter:blur(18px) saturate(1.15)!important;
+  position:relative!important;z-index:2!important;
+  width:min(460px,92vw)!important;margin:0!important;
+  background:rgba(5,20,75,.84)!important;
+  border:1px solid rgba(255,255,255,.48)!important;
+  box-shadow:0 26px 85px rgba(0,0,45,.48),inset 0 1px 0 rgba(255,255,255,.17)!important;
+  backdrop-filter:blur(18px) saturate(130%)!important;
 }
 #login.login>#flashLogin{
-  position:absolute!important;
-  z-index:3!important;
-  top:28px!important;
-  left:50%!important;
-  transform:translateX(-50%)!important;
-  width:min(760px,calc(100vw - 32px))!important;
-  margin:0!important;
-  justify-content:center!important;
-  text-align:center!important;
-  color:#7f1d1d!important;
-  background:rgba(255,255,255,.94)!important;
-  border:1px solid rgba(220,38,38,.34)!important;
-  box-shadow:0 12px 45px rgba(0,0,0,.22)!important;
+  position:absolute!important;top:28px!important;left:50%!important;transform:translateX(-50%)!important;
+  z-index:3!important;width:min(900px,calc(100vw - 40px))!important;margin:0!important;
+  background:rgba(255,255,255,.94)!important;color:#7f1d1d!important;
+  border:1px solid rgba(220,38,38,.32)!important;box-shadow:0 14px 48px rgba(24,35,90,.24)!important;
+  justify-content:center!important;text-align:center!important;
 }
-#login.login>#flashLogin .flashLabel,
-#login.login>#flashLogin .flashText{color:#7f1d1d!important}
+#login.login>#flashLogin .flashLabel,#login.login>#flashLogin .flashText{color:#7f1d1d!important}
 #login.login .brand h1,#login.login h2,#login.login label{color:#fff!important}
-#login.login .tag,#login.login .mut{color:#dce7ff!important}
-#login.login input{background:rgba(255,255,255,.97)!important;color:#111827!important;border-color:rgba(255,255,255,.78)!important}
+#login.login .tag,#login.login .mut{color:#dbeafe!important}
+#login.login input{background:rgba(255,255,255,.97)!important;color:#111827!important;border-color:rgba(255,255,255,.82)!important}
 #login.login input::placeholder{color:#64748b!important;opacity:1!important}
-#login.login .primary{background:linear-gradient(90deg,#0018a8,#084cff)!important;color:#fff!important;font-weight:700!important}
+#login.login .primary{background:linear-gradient(90deg,#0018a8,#075cff)!important;color:#fff!important;font-weight:800!important;position:relative!important;z-index:4!important}
 
-/* Lisibilité métier en thème clair */
+/* Identité PHENIX et lisibilité du thème clair */
+body.lightMode .top{background:#0018a8!important;color:#fff!important;border-bottom-color:#00118a!important}
+body.lightMode .top h1,body.lightMode .top .tag,body.lightMode .top .right,body.lightMode .top #agentName,body.lightMode .top #clock{color:#fff!important}
 body.lightMode #dash h1,body.lightMode #dash h2,body.lightMode #dash h3,
-body.lightMode .section h1,body.lightMode .section h2,body.lightMode .section h3{color:#111827!important}
-body.lightMode button.small.primary,
-body.lightMode button.small.ok,
-body.lightMode button.small.danger,
-body.lightMode .actions button,
-body.lightMode td button{color:#fff!important;text-shadow:none!important}
-body.lightMode button.small.primary{background:#0018a8!important}
-body.lightMode button.small.ok{background:#138a36!important}
-body.lightMode button.small.danger{background:#d3262e!important}
-body.lightMode tr.dispo{background:#edf9ef!important;color:#12351d!important}
-body.lightMode tr.indispo{background:#ffe5e5!important;color:#5f1418!important}
-
-/* L'icône de l'onglet actif reste visible */
-.nav button.activeNav,.nav button.activeNav *{color:#fff!important;stroke:#fff!important;fill:none!important}
-.nav button.activeNav .navIcon{background:rgba(255,255,255,.16)!important;border-color:rgba(255,255,255,.38)!important}
-
+body.lightMode #dash table,body.lightMode #dash th,body.lightMode #dash td{color:#172033!important}
+body.lightMode .nav button.activeNav{background:#0018a8!important;color:#fff!important;border-color:#0018a8!important}
+body.lightMode .nav button.activeNav .navIcon,body.lightMode .nav button.activeNav svg{color:#fff!important;stroke:#fff!important}
+/* Boutons opérationnels : texte toujours blanc */
+body.lightMode #crewRows button,body.lightMode #crewTable button,
+body.lightMode button.small.primary,body.lightMode button.small.ok,body.lightMode button.small.danger,
+body.lightMode .crewActions button{color:#fff!important;text-shadow:0 1px 1px rgba(0,0,0,.32)!important;font-weight:700!important}
+body.lightMode #crewRows button.primary,body.lightMode #crewRows button:not(.ok):not(.danger){background:#0b3560!important}
+body.lightMode #crewRows button.ok{background:#11943b!important}
+body.lightMode #crewRows button.danger{background:#d4262e!important}
+/* Statuts de lignes conservés */
+body.lightMode tr.dispo{background:#eaf8ec!important;color:#14532d!important}
+body.lightMode tr.indispo{background:#ffe0e0!important;color:#641313!important}
+body.lightMode tr.dispo td{border-bottom-color:#b9e6c1!important}
+body.lightMode tr.indispo td{border-bottom-color:#efaaaa!important}
 @media(max-width:700px){
+  #login.login{padding:95px 12px 18px!important}
   #login.login>#flashLogin{top:12px!important;width:calc(100vw - 20px)!important}
   #login.login>.box{width:calc(100vw - 24px)!important}
 }
-@media(prefers-reduced-motion:reduce){#login.login::before{animation:none!important}}
+@media(prefers-reduced-motion:reduce){#login.login,#login.login::before,#login.login::after{animation:none!important}}
 </style></head><body>
 <div id="login" class="login"><div id="flashLogin" class="flashLogin hidden"><span class="flashIcon">📢</span><span id="flashLoginLabel" class="flashLabel">INFO :</span><span id="flashLoginText" class="flashText"></span></div><div class="box">
   <div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div>
