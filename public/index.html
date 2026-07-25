@@ -1059,6 +1059,152 @@ body.lightMode .eventTodayBox .pill{background:#dcecff!important;color:#0758b6!i
   body.lightMode .nav::before{color:#fff}
 }
 
+
+
+/* V4 - Thème clair homogène et page de connexion modernisée */
+:root{--phenix-blue:#0018A8;--phenix-blue-hover:#00127f;--phenix-blue-soft:#eef2ff}
+
+/* Le thème clair ne conserve aucune surface sombre dans les pages de contenu. */
+body.lightMode .consigneItem,
+body.lightMode .flashPreview,
+body.lightMode .eventTodayBox,
+body.lightMode .eventCalendar,
+body.lightMode .eventCalHead,
+body.lightMode .eventDay,
+body.lightMode .eventWeekDate,
+body.lightMode .eventWeekEvents,
+body.lightMode .historyBox,
+body.lightMode .agentList,
+body.lightMode .agentChoice,
+body.lightMode .linkCard,
+body.lightMode .linkLogo,
+body.lightMode .section,
+body.lightMode .card{
+  background:#fff!important;
+  color:#14213d!important;
+  border-color:#d7deea!important;
+}
+body.lightMode .consigneItem{box-shadow:0 5px 16px rgba(15,23,42,.06)!important}
+body.lightMode .consigneItem.unread{
+  background:#fff7f7!important;
+  border-color:#ef4444!important;
+  box-shadow:0 0 0 1px rgba(239,68,68,.08),0 6px 18px rgba(127,29,29,.06)!important
+}
+body.lightMode .consigneItem .consigneTitle,
+body.lightMode .consigneItem .consigneText,
+body.lightMode .consigneItem b,
+body.lightMode .consigneItem strong{color:#14213d!important}
+body.lightMode .consigneItem.unread .consigneTitle{color:#9f1d1d!important}
+body.lightMode .consigneItem .pill{
+  background:#edf3ff!important;
+  color:#123c80!important;
+  border:1px solid #cfdbef!important
+}
+body.lightMode .eventTodayBox{
+  box-shadow:0 6px 18px rgba(15,23,42,.06)!important;
+  border-color:#d7deea!important
+}
+body.lightMode .eventTodayTitle,
+body.lightMode .eventTodayBox .mut{color:#14213d!important}
+body.lightMode .eventCalHead,
+body.lightMode .eventWeekDate{background:#f4f6fa!important}
+body.lightMode .eventDay.today{background:#eef2ff!important;box-shadow:inset 0 0 0 2px var(--phenix-blue)!important}
+body.lightMode .linkCard:hover{border-color:var(--phenix-blue)!important;box-shadow:0 12px 28px rgba(0,24,168,.12)!important}
+
+/* Bleu demandé, utilisé comme accent et non comme grand fond omniprésent. */
+body.lightMode .top{
+  background:linear-gradient(90deg,var(--phenix-blue),#102ebd)!important;
+  color:#fff!important
+}
+body.lightMode aside{
+  background:#fff!important;
+  border-right:1px solid #dbe2ec!important;
+  box-shadow:2px 0 14px rgba(15,23,42,.06)!important
+}
+body.lightMode .nav button{
+  background:#fff!important;
+  color:#14213d!important;
+  border:1px solid transparent!important
+}
+body.lightMode .nav button:hover{background:#f3f5f9!important;color:var(--phenix-blue)!important}
+body.lightMode .nav button.activeNav{
+  background:var(--phenix-blue-soft)!important;
+  color:var(--phenix-blue)!important;
+  border-color:#dbe2ff!important;
+  box-shadow:none!important
+}
+body.lightMode .navIcon{
+  color:var(--phenix-blue)!important;
+  border-color:#b7c3f4!important;
+  background:#f7f9ff!important
+}
+body.lightMode .primary{background:var(--phenix-blue)!important}
+body.lightMode .primary:hover{background:var(--phenix-blue-hover)!important;filter:none}
+body.lightMode .themeToggle,
+body.lightMode .notifSwitch{color:#fff!important}
+
+/* Connexion claire : fond propre, carte blanche et contraste lisible. */
+body.lightMode .login{
+  background:linear-gradient(145deg,#f8fafc 0%,#eef2f7 58%,#e8edf5 100%)!important
+}
+body.lightMode .login::before{
+  inset:0!important;
+  transform:none!important;
+  animation:none!important;
+  background:
+    radial-gradient(circle at 12% 12%,rgba(0,24,168,.10),transparent 30%),
+    radial-gradient(circle at 88% 82%,rgba(0,24,168,.08),transparent 32%),
+    linear-gradient(155deg,transparent 0 62%,rgba(0,24,168,.045) 62% 68%,transparent 68%)!important
+}
+body.lightMode .login::after{
+  animation:none!important;
+  opacity:1!important;
+  background:linear-gradient(135deg,rgba(255,255,255,.45),transparent 42%)!important
+}
+body.lightMode .login>.box{
+  background:rgba(255,255,255,.96)!important;
+  color:#14213d!important;
+  border:1px solid #d7deea!important;
+  box-shadow:0 22px 55px rgba(15,23,42,.16)!important;
+  backdrop-filter:blur(12px)
+}
+body.lightMode .login .brand{justify-content:center;text-align:left}
+body.lightMode .login .brand h1{color:var(--phenix-blue)!important}
+body.lightMode .login .tag{color:#5f6f86!important}
+body.lightMode .login h2{color:#14213d!important;text-align:center;margin-top:24px}
+body.lightMode .login .field input{
+  background:#f8fafc!important;
+  color:#14213d!important;
+  border:1px solid #cbd5e1!important;
+  box-shadow:none!important
+}
+body.lightMode .login .field input:focus{
+  outline:3px solid rgba(0,24,168,.12)!important;
+  border-color:var(--phenix-blue)!important
+}
+body.lightMode .loginIcon,
+body.lightMode .passToggle{color:#60708a!important}
+body.lightMode .login .primary{
+  width:100%;min-height:44px;margin-top:4px;
+  background:var(--phenix-blue)!important;
+  box-shadow:0 8px 18px rgba(0,24,168,.18)
+}
+body.lightMode .flashLogin{
+  background:#fff7f7!important;
+  color:#7f1d1d!important;
+  border-color:#efb2b2!important;
+  box-shadow:0 10px 26px rgba(127,29,29,.10)!important
+}
+body.lightMode .flashLogin .flashText,
+body.lightMode .flashLogin .flashLabel{color:#7f1d1d!important}
+
+@media(max-width:700px){
+  body.lightMode aside{background:#fff!important}
+  body.lightMode .nav button{background:#fff!important;color:#14213d!important;border-color:#e1e6ee!important}
+  body.lightMode .nav button.activeNav{background:var(--phenix-blue-soft)!important;color:var(--phenix-blue)!important}
+  body.lightMode .login>.box{width:min(430px,92vw)!important;padding:22px!important}
+}
+
 </style></head><body>
 <div id="login" class="login"><div id="flashLogin" class="flashLogin hidden"><span class="flashIcon">📢</span><span id="flashLoginLabel" class="flashLabel">INFO :</span><span id="flashLoginText" class="flashText"></span></div><div class="box">
   <div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div>
