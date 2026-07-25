@@ -1376,7 +1376,63 @@ body.lightMode .nav button.activeNav .navIcon svg *{
   opacity:1!important;
   visibility:visible!important;
 }
+
+/* PHENIX V5.8 — pastilles opérationnelles renforcées et écran de chargement */
+#crewRows td:nth-child(3) .pill{
+  background:#0b3b78!important;
+  color:#fff!important;
+  border:1px solid #175da9!important;
+  box-shadow:0 2px 7px rgba(2,34,73,.28)!important;
+  font-weight:800!important;
+  min-width:34px;
+  text-align:center;
+}
+#crewRows tr.dispo td:nth-child(2) .pill{
+  background:#15803d!important;
+  color:#fff!important;
+  border:1px solid #166534!important;
+  box-shadow:0 2px 7px rgba(21,128,61,.28)!important;
+  font-weight:900!important;
+}
+#crewRows tr.indispo td:nth-child(2) .pill{
+  background:#c81e1e!important;
+  color:#fff!important;
+  border:1px solid #991b1b!important;
+  box-shadow:0 2px 7px rgba(200,30,30,.28)!important;
+  font-weight:900!important;
+}
+.phenixLoading{
+  position:fixed;inset:0;z-index:99999;display:none;place-items:center;
+  background:rgba(3,13,38,.94);backdrop-filter:blur(10px);
+}
+.phenixLoading.show{display:grid!important}
+.phenixLoadingCard{
+  width:min(390px,88vw);padding:32px 28px 28px;border-radius:24px;text-align:center;
+  color:#fff;background:linear-gradient(145deg,rgba(0,24,168,.92),rgba(6,18,54,.96));
+  border:1px solid rgba(255,255,255,.26);box-shadow:0 24px 80px rgba(0,0,0,.48);
+}
+.phenixLoadingLogo{
+  width:82px;height:82px;object-fit:contain;border-radius:20px;padding:7px;
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.34);
+  box-shadow:0 0 28px rgba(255,255,255,.18);
+}
+.phenixLoadingTitle{margin:14px 0 4px;font-size:30px;letter-spacing:1.5px;font-weight:900}
+.phenixLoadingText{margin:16px 0 0;color:#eaf2ff;font-weight:700}
+.phenixProgress{height:8px;margin-top:22px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.18)}
+.phenixProgressBar{height:100%;width:36%;border-radius:inherit;background:linear-gradient(90deg,#fff,#5ca8ff,#fff);animation:phenixLoadBar 1.05s ease-in-out infinite}
+@keyframes phenixLoadBar{0%{transform:translateX(-115%)}100%{transform:translateX(325%)}}
+@media(prefers-reduced-motion:reduce){.phenixProgressBar{animation-duration:2s}}
+
 </style></head><body>
+<div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
+  <div class="phenixLoadingCard">
+    <img class="phenixLoadingLogo" src="/logo.png" alt="Logo PHENIX">
+    <div class="phenixLoadingTitle">PHENIX</div>
+    <div class="phenixProgress"><div class="phenixProgressBar"></div></div>
+    <div class="phenixLoadingText">Chargement des équipages en cours…</div>
+  </div>
+</div>
+
 <div id="login" class="login"><div id="flashLogin" class="flashLogin hidden"><span class="flashIcon">📢</span><span id="flashLoginLabel" class="flashLabel">INFO :</span><span id="flashLoginText" class="flashText"></span></div><div class="box">
   <div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div>
   <div id="setup" class="hidden"><h2>Première installation</h2><p class="mut">Crée le premier compte admin. Ensuite, seul l'admin créera les autres accès.</p><div class="field"><input id="suName" placeholder="Nom affiché admin"></div><div class="field"><input id="suLogin" placeholder="Identifiant admin"></div><div class="field"><input id="suPass" type="password" placeholder="Mot de passe admin"></div><button class="primary" onclick="setupAdmin()">Créer le premier admin</button></div>
@@ -1640,8 +1696,8 @@ function toggleNotifications(){notificationsEnabled=!notificationsEnabled;localS
 function checkCrewChanges(newCrews){if(!Array.isArray(newCrews))return;if(previousCrews.length===0){previousCrews=JSON.parse(JSON.stringify(newCrews));return}let changed=false;for(const crew of newCrews){const old=previousCrews.find(c=>c.id===crew.id);if(old&&old.status!==crew.status){changed=true;break}}previousCrews=JSON.parse(JSON.stringify(newCrews));if(changed&&notificationsEnabled){alertSound.currentTime=0;alertSound.play().catch(()=>{})}}
 
 async function init(){applyTheme(localStorage.getItem('phenixTheme')||'dark');applyDashDisplay();tick();setInterval(tick,1000);try{const st=await api('/api/status');S.flash=st.flash||{enabled:false,title:'INFO',text:''};renderFlash();if(st.user){$('login').style.display='none';$('app').style.display='block';await refresh();document.querySelector('.nav button[onclick="show(\'dash\')"]')?.classList.add('activeNav')}else{$('setup').classList.toggle('hidden',!st.setupRequired);$('logbox').classList.toggle('hidden',st.setupRequired)}}catch(e){err(Error('Serveur non joignable : vérifie que Render est lancé'))}}
-async function setupAdmin(){try{await api('/api/setup',{method:'POST',body:JSON.stringify({displayName:$('suName').value,login:$('suLogin').value,password:$('suPass').value})});$('login').style.display='none';$('app').style.display='block';await refresh()}catch(e){err(e)}}
-async function login(){try{await api('/api/login',{method:'POST',body:JSON.stringify({login:$('loginId').value,password:$('loginPass').value})});$('login').style.display='none';$('app').style.display='block';await refresh()}catch(e){err(e)}}
+async function setupAdmin(){try{await api('/api/setup',{method:'POST',body:JSON.stringify({displayName:$('suName').value,login:$('suLogin').value,password:$('suPass').value})});showPhenixLoading();$('login').style.display='none';$('app').style.display='block';await Promise.all([refresh(),phenixDelay(2000)]);hidePhenixLoading()}catch(e){hidePhenixLoading();err(e)}}
+function phenixDelay(ms){return new Promise(resolve=>setTimeout(resolve,ms))}function showPhenixLoading(){$('phenixLoading')?.classList.add('show')}function hidePhenixLoading(){$('phenixLoading')?.classList.remove('show')}async function login(){try{await api('/api/login',{method:'POST',body:JSON.stringify({login:$('loginId').value,password:$('loginPass').value})});showPhenixLoading();$('login').style.display='none';$('app').style.display='block';await Promise.all([refresh(),phenixDelay(2000)]);hidePhenixLoading()}catch(e){hidePhenixLoading();err(e)}}
 async function logout(){await api('/api/logout',{method:'POST'});location.reload()}async function changePass(){const oldPassword=prompt('Ancien mot de passe');if(oldPassword===null)return;const newPassword=prompt('Nouveau mot de passe');if(!newPassword)return;try{await api('/api/password',{method:'POST',body:JSON.stringify({oldPassword,newPassword})});alert('Mot de passe modifié')}catch(e){alert(e.message)}}
 async function refresh(){return refreshSafe(true)}
 async function refreshSafe(force=false){if(!force && shouldPauseRefresh()) return; S=await api('/api/data');$('agentName').textContent=S.user.displayName;const dash=S.user.role==='dashboard';
