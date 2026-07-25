@@ -1401,6 +1401,109 @@ body.lightMode .modal .box>.row:last-child{background:rgba(255,255,255,.98)!impo
 
 @media (prefers-reduced-motion:reduce){#login.login::before,#login.login::after{animation-duration:30s!important}}
 
+
+
+/* PHENIX V5.3 — correctifs demandés : halos, centrage, logo et lisibilité */
+/* Connexion sans photo : dominante bleu PHENIX, halos blancs et rouges, violet discret */
+#login.login{
+  display:block!important;
+  min-height:100vh!important;
+  background:
+    radial-gradient(circle at 14% 22%,rgba(0,83,255,.98) 0 10%,rgba(0,58,210,.66) 25%,transparent 48%),
+    radial-gradient(circle at 76% 16%,rgba(255,255,255,.92) 0 4%,rgba(255,255,255,.30) 15%,transparent 34%),
+    radial-gradient(circle at 89% 76%,rgba(235,18,45,.90) 0 8%,rgba(196,0,35,.45) 24%,transparent 46%),
+    radial-gradient(circle at 42% 83%,rgba(255,255,255,.88) 0 5%,rgba(118,170,255,.30) 19%,transparent 40%),
+    radial-gradient(circle at 63% 48%,rgba(75,38,170,.24) 0 9%,transparent 31%),
+    linear-gradient(125deg,#0018a8 0%,#003be0 38%,#071a73 66%,#6e0827 100%)!important;
+}
+#login.login::before{
+  width:54vmax!important;height:54vmax!important;
+  left:-11vmax!important;top:-18vmax!important;
+  background:
+    radial-gradient(circle at 50% 50%,rgba(255,255,255,.72) 0 4%,rgba(31,125,255,.72) 14%,rgba(0,43,190,.42) 35%,transparent 66%)!important;
+  filter:blur(22px) saturate(1.12)!important;
+  opacity:.92!important;
+  animation:phenixHaloBlue 12s ease-in-out infinite alternate!important;
+}
+#login.login::after{
+  width:48vmax!important;height:48vmax!important;
+  right:-10vmax!important;bottom:-16vmax!important;
+  background:
+    radial-gradient(circle at 50% 50%,rgba(255,255,255,.58) 0 3%,rgba(255,38,57,.76) 14%,rgba(176,0,39,.46) 34%,transparent 66%)!important;
+  filter:blur(26px) saturate(1.12)!important;
+  opacity:.88!important;
+  animation:phenixHaloRed 14s ease-in-out infinite alternate!important;
+}
+@keyframes phenixHaloBlue{0%{transform:translate3d(-5%,-3%,0) scale(.96)}100%{transform:translate3d(30%,22%,0) scale(1.18)}}
+@keyframes phenixHaloRed{0%{transform:translate3d(5%,4%,0) scale(1)}100%{transform:translate3d(-28%,-20%,0) scale(1.2)}}
+
+/* Carte de connexion réellement centrée */
+#login.login>.box{
+  position:absolute!important;
+  z-index:2!important;
+  left:50%!important;
+  top:54%!important;
+  transform:translate(-50%,-50%)!important;
+  width:min(460px,92vw)!important;
+  margin:0!important;
+}
+/* Flash centré en haut et indépendant de la carte */
+#login.login>#flashLogin{
+  position:absolute!important;
+  z-index:3!important;
+  top:28px!important;
+  left:50%!important;
+  transform:translateX(-50%)!important;
+  width:min(900px,calc(100vw - 32px))!important;
+  margin:0!important;
+}
+
+/* Logo/icône de l’onglet actif toujours visible */
+body.lightMode .nav button.activeNav .navIcon{
+  background:rgba(255,255,255,.16)!important;
+  border-color:rgba(255,255,255,.72)!important;
+  color:#fff!important;
+}
+body.lightMode .nav button.activeNav .navIcon svg{
+  color:#fff!important;stroke:#fff!important;fill:none!important;
+}
+body.lightMode .nav button.activeNav .navIcon svg *{stroke:#fff!important}
+body.lightMode .top .logo{display:block!important;opacity:1!important;visibility:visible!important}
+
+/* Tableau de bord : titres noirs en thème clair */
+body.lightMode #dash h1,body.lightMode #dash h2,body.lightMode #dash h3,
+body.lightMode #dash .section>h2,body.lightMode #dash .section>h3,
+body.lightMode #dash th{color:#111827!important;text-shadow:none!important}
+
+/* Boutons d’action : contraste garanti */
+body.lightMode #crewRows button.small{
+  color:#fff!important;
+  font-weight:700!important;
+  text-shadow:none!important;
+  border:1px solid transparent!important;
+}
+body.lightMode #crewRows button.small:not(.ok):not(.danger){
+  background:#123f6b!important;
+  border-color:#0e345a!important;
+  color:#fff!important;
+}
+body.lightMode #crewRows button.small.ok{
+  background:#138a3b!important;
+  border-color:#0f7130!important;
+  color:#fff!important;
+}
+body.lightMode #crewRows button.small.danger{
+  background:#d1262e!important;
+  border-color:#af1d24!important;
+  color:#fff!important;
+}
+body.lightMode #crewRows button.small:hover{filter:brightness(1.12)!important}
+
+@media(max-width:700px){
+  #login.login>.box{top:56%!important;width:calc(100vw - 24px)!important}
+  #login.login>#flashLogin{top:12px!important;width:calc(100vw - 20px)!important}
+}
+
 </style></head><body>
 <div id="login" class="login"><div id="flashLogin" class="flashLogin hidden"><span class="flashIcon">📢</span><span id="flashLoginLabel" class="flashLabel">INFO :</span><span id="flashLoginText" class="flashText"></span></div><div class="box">
   <div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div>
