@@ -1245,79 +1245,79 @@ body.lightMode #indispoPreview{
 }
 
 
-/* ===== PHENIX FINAL — CONNEXION ANIMÉE + THÈME CLAIR ===== */
-#login.login{
-  isolation:isolate!important;
-  position:relative!important;
-  overflow:hidden!important;
-  background:linear-gradient(135deg,#020818 0%,#071c58 48%,#180b42 100%)!important;
-}
-#login.login::before,#login.login::after{display:none!important}
-.phenixLoginBackdrop{
-  position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none;
-  background:
-    radial-gradient(circle at 22% 18%,rgba(255,255,255,.18),transparent 30%),
-    linear-gradient(125deg,#0018a8 0%,#173fc7 34%,#5b21b6 67%,#b31332 100%);
-  background-size:160% 160%;
-  animation:phenixGradientShift 11s ease-in-out infinite alternate;
-}
-.phenixLoginBackdrop::after{
-  content:"";position:absolute;inset:0;
-  background:linear-gradient(115deg,transparent 25%,rgba(255,255,255,.22) 43%,transparent 58%);
-  transform:translateX(-120%);animation:phenixLightSweep 7s ease-in-out infinite;
-}
-.phenixOrb{position:absolute;display:block;border-radius:50%;filter:blur(18px);opacity:.78;will-change:transform}
-.orbBlue{width:48vmax;height:48vmax;left:-15vmax;top:-20vmax;background:radial-gradient(circle,#2f6fff 0%,rgba(0,24,168,.65) 48%,transparent 72%);animation:phenixFloatA 9s ease-in-out infinite alternate}
-.orbPurple{width:42vmax;height:42vmax;right:-13vmax;top:5vmax;background:radial-gradient(circle,#a855f7 0%,rgba(91,33,182,.65) 48%,transparent 72%);animation:phenixFloatB 12s ease-in-out infinite alternate}
-.orbWhite{width:24vmax;height:24vmax;left:38%;bottom:-10vmax;background:radial-gradient(circle,rgba(255,255,255,.95) 0%,rgba(255,255,255,.25) 48%,transparent 72%);animation:phenixFloatC 8s ease-in-out infinite alternate}
-.orbRed{width:30vmax;height:30vmax;right:-5vmax;bottom:-13vmax;background:radial-gradient(circle,#ff3b52 0%,rgba(190,18,60,.58) 46%,transparent 72%);animation:phenixFloatD 10s ease-in-out infinite alternate}
-.phenixGrid{position:absolute;inset:0;opacity:.13;background-image:linear-gradient(rgba(255,255,255,.22) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.18) 1px,transparent 1px);background-size:48px 48px;transform:perspective(500px) rotateX(58deg) scale(1.5) translateY(24%);transform-origin:center bottom;animation:phenixGridMove 9s linear infinite}
-#login.login>.box{z-index:2!important;background:rgba(5,13,38,.76)!important;border:1px solid rgba(255,255,255,.24)!important;box-shadow:0 30px 90px rgba(0,0,0,.48),inset 0 1px 0 rgba(255,255,255,.12)!important;backdrop-filter:blur(24px) saturate(140%)!important;-webkit-backdrop-filter:blur(24px) saturate(140%)!important}
-#login .flashLogin{z-index:3!important}
-@keyframes phenixGradientShift{0%{background-position:0% 30%}100%{background-position:100% 70%}}
-@keyframes phenixLightSweep{0%,15%{transform:translateX(-130%)}58%,100%{transform:translateX(140%)}}
-@keyframes phenixFloatA{to{transform:translate(13vmax,10vmax) scale(1.16)}}
-@keyframes phenixFloatB{to{transform:translate(-15vmax,12vmax) scale(.88)}}
-@keyframes phenixFloatC{to{transform:translate(-9vmax,-12vmax) scale(1.2)}}
-@keyframes phenixFloatD{to{transform:translate(-13vmax,-9vmax) scale(1.12)}}
-@keyframes phenixGridMove{to{background-position:0 48px,48px 0}}
 
-/* Onglet actif : bleu PHENIX, texte et icône blancs */
-.nav button.activeNav,
-body.lightMode .nav button.activeNav,
-body:not(.lightMode) .nav button.activeNav{
-  background:#0018a8!important;color:#fff!important;border-color:#0018a8!important;
-  box-shadow:0 8px 22px rgba(0,24,168,.28)!important
-}
-.nav button.activeNav svg,.nav button.activeNav .navIcon,.nav button.activeNav i{color:#fff!important;fill:#fff!important;stroke:#fff!important}
-.nav button.activeNav #consigneCount{color:#fff!important}
+/* PHENIX V5.1 — correctif de contraste et identité visuelle */
+:root{--phenix:#0018A8;--phenix2:#1739d4}
 
-/* Thème clair complet : neutralise les derniers fonds sombres */
-body.lightMode{--bg:#eef3f8!important;--p:#fff!important;--t:#14213d!important;--m:#64748b!important;--l:#d9e2ec!important;background:#eef3f8!important;color:#14213d!important}
-body.lightMode .app,body.lightMode main,body.lightMode .layout{background:#eef3f8!important;color:#14213d!important}
-body.lightMode .top,body.lightMode aside{background:#fff!important;color:#14213d!important;border-color:#d9e2ec!important}
-body.lightMode .section,body.lightMode .card,body.lightMode .modal .box,body.lightMode .crewBox,body.lightMode .historyBox,body.lightMode .agentList,body.lightMode .eventCalendar,body.lightMode .eventDay,body.lightMode .eventTodayBox,body.lightMode .linkCard,body.lightMode .linkLogo,body.lightMode #indispoPreview{background:#fff!important;color:#14213d!important;border-color:#d9e2ec!important;box-shadow:0 8px 28px rgba(31,51,73,.08)!important}
-body.lightMode .modal{background:rgba(15,23,42,.35)!important}
-body.lightMode .modal .box>.row:last-child,body.lightMode .crewFooter{background:#fff!important;color:#14213d!important;border-color:#d9e2ec!important}
-body.lightMode input,body.lightMode select,body.lightMode textarea,body.lightMode td input{background:#f8fafc!important;color:#14213d!important;border-color:#cbd5e1!important}
-body.lightMode input::placeholder,body.lightMode textarea::placeholder{color:#94a3b8!important}
-body.lightMode .nav button:not(.activeNav){background:#fff!important;color:#24324a!important;border-color:#d9e2ec!important}
-body.lightMode .nav button:not(.activeNav) svg,body.lightMode .nav button:not(.activeNav) .navIcon,body.lightMode .nav button:not(.activeNav) i{color:#0018a8!important;stroke:#0018a8!important}
-body.lightMode table,body.lightMode th,body.lightMode td{color:#14213d!important;border-color:#d9e2ec!important}
-body.lightMode tr.dispo{background:#ecfdf3!important}
-body.lightMode tr.indispo{background:#fff1f2!important}
-body.lightMode .card.green{background:linear-gradient(135deg,#fff,#ecfdf3)!important;border-color:#86efac!important}
-body.lightMode .card.red{background:linear-gradient(135deg,#fff,#fff1f2)!important;border-color:#fda4af!important}
-body.lightMode .mut,body.lightMode .tag{color:#64748b!important}
-body.lightMode button:not(.primary):not(.danger):not(.ok):not(.activeNav):not(.notifSwitch){background:#e8eef6!important;color:#14213d!important;border-color:#cbd5e1!important}
-body.lightMode .pill{background:#e8eef6!important;color:#24324a!important}
-body.lightMode .primary{background:#0018a8!important;color:#fff!important}
-body.lightMode .danger{background:#b91c1c!important;color:#fff!important}
-body.lightMode .ok{background:#15803d!important;color:#fff!important}
-@media (prefers-reduced-motion:reduce){.phenixLoginBackdrop,.phenixLoginBackdrop::after,.phenixOrb,.phenixGrid{animation-duration:24s!important}}
+/* Connexion : contraste garanti, quel que soit le thème mémorisé */
+.login{isolation:isolate;background:#07152d!important;color:#fff!important}
+.login::before{z-index:-2!important;inset:-28%!important;opacity:1!important;background:
+ radial-gradient(circle at 18% 22%,rgba(0,122,255,.95),transparent 28%),
+ radial-gradient(circle at 78% 25%,rgba(112,48,255,.86),transparent 30%),
+ radial-gradient(circle at 82% 78%,rgba(225,22,75,.78),transparent 28%),
+ radial-gradient(circle at 35% 82%,rgba(255,255,255,.92),transparent 25%),
+ linear-gradient(135deg,#0018a8 0%,#081a58 45%,#5019a8 74%,#a41246 100%)!important;
+ filter:blur(18px) saturate(1.22)!important;animation:phenixV51Move 12s ease-in-out infinite alternate!important}
+.login::after{z-index:-1!important;opacity:.7!important;background:
+ linear-gradient(115deg,transparent 15%,rgba(255,255,255,.18) 38%,transparent 60%),
+ radial-gradient(circle at center,transparent 20%,rgba(2,8,30,.42) 100%)!important;
+ animation:phenixV51Light 9s ease-in-out infinite alternate!important}
+@keyframes phenixV51Move{0%{transform:translate3d(-3%,-2%,0) scale(1.03) rotate(-2deg)}50%{transform:translate3d(3%,2%,0) scale(1.1) rotate(2deg)}100%{transform:translate3d(-1%,4%,0) scale(1.06) rotate(-1deg)}}
+@keyframes phenixV51Light{from{transform:translateX(-5%);opacity:.45}to{transform:translateX(5%);opacity:.82}}
+.login>.box{background:rgba(5,15,40,.86)!important;color:#fff!important;border:1px solid rgba(255,255,255,.24)!important;box-shadow:0 28px 80px rgba(0,0,0,.48)!important;backdrop-filter:blur(18px) saturate(1.2)!important}
+.login .brand h1,.login h1,.login h2,.login label,.login .tag,.login .mut{color:#fff!important;text-shadow:0 1px 4px rgba(0,0,0,.42)}
+.login .tag,.login .mut{color:#dbe7ff!important}
+.login .field input{background:rgba(255,255,255,.96)!important;color:#111827!important;border-color:rgba(255,255,255,.75)!important}
+.login .field input::placeholder{color:#667085!important;opacity:1}
+.loginIcon,.login .passToggle{color:#426187!important}
+.login .primary{background:linear-gradient(90deg,var(--phenix),#1746ff)!important;color:#fff!important}
+
+/* Thème clair : bleu PHENIX visible et textes foncés */
+body.lightMode{background:#edf2f7!important;color:#172033!important}
+body.lightMode .app,body.lightMode .layout,body.lightMode main{background:#edf2f7!important;color:#172033!important}
+body.lightMode .top{background:linear-gradient(90deg,var(--phenix),var(--phenix2))!important;color:#fff!important;border-bottom-color:#00127f!important;box-shadow:0 4px 18px rgba(0,24,168,.24)!important}
+body.lightMode .top *,body.lightMode .top h1,body.lightMode .top h2,body.lightMode .top b,body.lightMode .top strong{color:#fff!important}
+body.lightMode .top .tag,body.lightMode .top .mut,body.lightMode .top #clock{color:#e8eeff!important}
+body.lightMode aside{background:#fff!important;color:#172033!important;border-right:1px solid #d5deea!important}
+body.lightMode .nav button{background:#fff!important;color:#172033!important;border:1px solid #e1e7ef!important}
+body.lightMode .nav button:hover{background:#f2f5ff!important;color:var(--phenix)!important}
+body.lightMode .nav button.activeNav{background:var(--phenix)!important;color:#fff!important;border-color:var(--phenix)!important;box-shadow:0 6px 16px rgba(0,24,168,.22)!important}
+body.lightMode .nav button.activeNav .navIcon,body.lightMode .nav button.activeNav .navIcon svg,body.lightMode .nav button.activeNav span{color:#fff!important;stroke:currentColor!important}
+body.lightMode .navIcon{color:var(--phenix)!important;background:#f3f6ff!important;border-color:#c4cff8!important}
+body.lightMode .section,body.lightMode .card,body.lightMode .settingsItem{background:#fff!important;color:#172033!important;border-color:#d7e0ea!important}
+body.lightMode h1,body.lightMode h2,body.lightMode h3,body.lightMode h4,body.lightMode label,body.lightMode th{color:#172033!important}
+body.lightMode p,body.lightMode td,body.lightMode .row{color:#26354a}
+body.lightMode .mut,body.lightMode .tag{color:#5b6b80!important}
+body.lightMode input,body.lightMode select,body.lightMode textarea{background:#fff!important;color:#172033!important;border-color:#b8c5d4!important}
+body.lightMode input::placeholder,body.lightMode textarea::placeholder{color:#6b7789!important;opacity:1}
+
+/* États opérationnels : ne jamais neutraliser le vert et le rouge */
+body.lightMode #crewRows tr.dispo,body.lightMode tr.dispo{background:#d8f4e1!important;color:#103c22!important;border-left:5px solid #16a34a!important}
+body.lightMode #crewRows tr.indispo,body.lightMode tr.indispo{background:#ffdcdc!important;color:#621d1d!important;border-left:5px solid #dc2626!important}
+body.lightMode #crewRows tr.dispo td,body.lightMode #crewRows tr.dispo td *,body.lightMode tr.dispo td,body.lightMode tr.dispo td *{color:#103c22!important}
+body.lightMode #crewRows tr.indispo td,body.lightMode #crewRows tr.indispo td *,body.lightMode tr.indispo td,body.lightMode tr.indispo td *{color:#621d1d!important}
+body.lightMode #crewRows tr.dispo:hover{background:#c4ebd1!important}
+body.lightMode #crewRows tr.indispo:hover{background:#f7c6c6!important}
+body.lightMode .card.green{background:#dcf5e4!important;color:#14532d!important;border-color:#60b77c!important}
+body.lightMode .card.red{background:#ffe0e0!important;color:#7f1d1d!important;border-color:#df7777!important}
+body.lightMode .card.green *,body.lightMode .card.red *{color:inherit!important}
+
+/* Thème sombre : textes clairs et couleurs métier fortes */
+body:not(.lightMode){color:#edf4ff!important}
+body:not(.lightMode) .top,body:not(.lightMode) aside,body:not(.lightMode) .section,body:not(.lightMode) .card{color:#edf4ff}
+body:not(.lightMode) h1,body:not(.lightMode) h2,body:not(.lightMode) h3,body:not(.lightMode) h4,body:not(.lightMode) label,body:not(.lightMode) th{color:#f8fbff}
+body:not(.lightMode) .mut,body:not(.lightMode) .tag{color:#aebed2!important}
+body:not(.lightMode) input,body:not(.lightMode) select,body:not(.lightMode) textarea{color:#f4f7fb!important}
+body:not(.lightMode) input::placeholder,body:not(.lightMode) textarea::placeholder{color:#91a4bb!important;opacity:1}
+body:not(.lightMode) .nav button.activeNav{background:var(--phenix)!important;color:#fff!important;border-color:#2948d9!important}
+body:not(.lightMode) .nav button.activeNav .navIcon,body:not(.lightMode) .nav button.activeNav span{color:#fff!important}
+body:not(.lightMode) tr.dispo{background:#073d22!important;color:#e8fff0!important;border-left:5px solid #22c55e!important}
+body:not(.lightMode) tr.indispo{background:#501414!important;color:#fff0f0!important;border-left:5px solid #ef4444!important}
+
+@media (prefers-reduced-motion:reduce){.login::before,.login::after{animation:none!important}}
 
 </style></head><body>
-<div id="login" class="login"><div class="phenixLoginBackdrop" aria-hidden="true"><span class="phenixOrb orbBlue"></span><span class="phenixOrb orbPurple"></span><span class="phenixOrb orbWhite"></span><span class="phenixOrb orbRed"></span><span class="phenixGrid"></span></div><div id="flashLogin" class="flashLogin hidden"><span class="flashIcon">📢</span><span id="flashLoginLabel" class="flashLabel">INFO :</span><span id="flashLoginText" class="flashText"></span></div><div class="box">
+<div id="login" class="login"><div id="flashLogin" class="flashLogin hidden"><span class="flashIcon">📢</span><span id="flashLoginLabel" class="flashLabel">INFO :</span><span id="flashLoginText" class="flashText"></span></div><div class="box">
   <div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div>
   <div id="setup" class="hidden"><h2>Première installation</h2><p class="mut">Crée le premier compte admin. Ensuite, seul l'admin créera les autres accès.</p><div class="field"><input id="suName" placeholder="Nom affiché admin"></div><div class="field"><input id="suLogin" placeholder="Identifiant admin"></div><div class="field"><input id="suPass" type="password" placeholder="Mot de passe admin"></div><button class="primary" onclick="setupAdmin()">Créer le premier admin</button></div>
   <div id="logbox"><h2>Connexion</h2>
