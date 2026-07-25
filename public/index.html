@@ -1377,51 +1377,59 @@ body.lightMode .nav button.activeNav .navIcon svg *{
   visibility:visible!important;
 }
 
-/* PHENIX V5.8 — pastilles opérationnelles renforcées et écran de chargement */
+/* PHENIX V5.9 — badges plus compacts et chargement sobre */
 #crewRows td:nth-child(3) .pill{
   background:#0b3b78!important;
   color:#fff!important;
   border:1px solid #175da9!important;
-  box-shadow:0 2px 7px rgba(2,34,73,.28)!important;
-  font-weight:800!important;
-  min-width:34px;
+  box-shadow:0 1px 4px rgba(2,34,73,.22)!important;
+  font-size:12px!important;
+  font-weight:650!important;
+  line-height:1.15!important;
+  padding:3px 7px!important;
+  min-width:31px;
   text-align:center;
 }
 #crewRows tr.dispo td:nth-child(2) .pill{
   background:#15803d!important;
   color:#fff!important;
   border:1px solid #166534!important;
-  box-shadow:0 2px 7px rgba(21,128,61,.28)!important;
-  font-weight:900!important;
+  box-shadow:0 1px 4px rgba(21,128,61,.22)!important;
+  font-size:12px!important;
+  font-weight:700!important;
+  line-height:1.15!important;
+  padding:3px 7px!important;
 }
 #crewRows tr.indispo td:nth-child(2) .pill{
   background:#c81e1e!important;
   color:#fff!important;
   border:1px solid #991b1b!important;
-  box-shadow:0 2px 7px rgba(200,30,30,.28)!important;
-  font-weight:900!important;
+  box-shadow:0 1px 4px rgba(200,30,30,.22)!important;
+  font-size:12px!important;
+  font-weight:700!important;
+  line-height:1.15!important;
+  padding:3px 7px!important;
 }
 .phenixLoading{
   position:fixed;inset:0;z-index:99999;display:none;place-items:center;
-  background:rgba(3,13,38,.94);backdrop-filter:blur(10px);
+  background:rgba(7,17,31,.82);
 }
 .phenixLoading.show{display:grid!important}
 .phenixLoadingCard{
-  width:min(390px,88vw);padding:32px 28px 28px;border-radius:24px;text-align:center;
-  color:#fff;background:linear-gradient(145deg,rgba(0,24,168,.92),rgba(6,18,54,.96));
-  border:1px solid rgba(255,255,255,.26);box-shadow:0 24px 80px rgba(0,0,0,.48);
+  width:min(390px,88vw);padding:30px 28px 26px;border-radius:14px;text-align:center;
+  color:#172033;background:#fff;border:1px solid #d7e0ea;
+  box-shadow:0 18px 48px rgba(0,0,0,.28);
 }
 .phenixLoadingLogo{
-  width:82px;height:82px;object-fit:contain;border-radius:20px;padding:7px;
-  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.34);
-  box-shadow:0 0 28px rgba(255,255,255,.18);
+  width:72px;height:72px;object-fit:contain;border-radius:12px;padding:5px;
+  background:#f6f8fb;border:1px solid #d7e0ea;
 }
-.phenixLoadingTitle{margin:14px 0 4px;font-size:30px;letter-spacing:1.5px;font-weight:900}
-.phenixLoadingText{margin:16px 0 0;color:#eaf2ff;font-weight:700}
-.phenixProgress{height:8px;margin-top:22px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.18)}
-.phenixProgressBar{height:100%;width:36%;border-radius:inherit;background:linear-gradient(90deg,#fff,#5ca8ff,#fff);animation:phenixLoadBar 1.05s ease-in-out infinite}
-@keyframes phenixLoadBar{0%{transform:translateX(-115%)}100%{transform:translateX(325%)}}
-@media(prefers-reduced-motion:reduce){.phenixProgressBar{animation-duration:2s}}
+.phenixLoadingTitle{margin:13px 0 3px;font-size:27px;letter-spacing:1px;font-weight:800;color:#0758b6}
+.phenixLoadingText{margin:14px 0 0;color:#475569;font-size:13px;font-weight:600}
+.phenixProgress{height:5px;margin-top:20px;border-radius:4px;overflow:hidden;background:#e5eaf0}
+.phenixProgressBar{height:100%;width:0;background:#0758b6;animation:phenixLoadBar 2s ease-out forwards}
+@keyframes phenixLoadBar{from{width:0}to{width:100%}}
+@media(prefers-reduced-motion:reduce){.phenixProgressBar{animation:none;width:100%}}
 
 </style></head><body>
 <div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
