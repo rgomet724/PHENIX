@@ -1246,103 +1246,108 @@ body.lightMode #indispoPreview{
 
 
 
-/* V59 - Onglet actif bleu + fond de connexion animé */
+/* V60 - Onglet actif bleu + fond de connexion animé renforcé */
 :root{
   --phenix-active:#0018A8;
   --phenix-active-hover:#102EC5;
 }
 
-/* L'onglet ouvert reste clairement identifié dans les deux thèmes. */
 .nav button.activeNav,
 body.lightMode .nav button.activeNav,
 body:not(.lightMode) .nav button.activeNav{
   background:linear-gradient(135deg,var(--phenix-active),var(--phenix-active-hover))!important;
-  color:#ffffff!important;
-  border-color:rgba(255,255,255,.22)!important;
-  box-shadow:0 8px 20px rgba(0,24,168,.24)!important;
+  color:#fff!important;
+  border-color:rgba(255,255,255,.28)!important;
+  box-shadow:0 8px 20px rgba(0,24,168,.25)!important;
   transform:none!important;
 }
 .nav button.activeNav .navIcon,
 body.lightMode .nav button.activeNav .navIcon,
 body:not(.lightMode) .nav button.activeNav .navIcon{
-  color:#ffffff!important;
-  border-color:rgba(255,255,255,.75)!important;
-  background:rgba(255,255,255,.12)!important;
+  color:#fff!important;
+  border-color:rgba(255,255,255,.78)!important;
+  background:rgba(255,255,255,.14)!important;
 }
-.nav button.activeNav .navIcon svg{
-  stroke:#ffffff!important;
-}
-.nav button.activeNav .consigneCount{color:#ffffff!important}
+.nav button.activeNav .navIcon svg{stroke:#fff!important}
+.nav button.activeNav .consigneCount{color:#fff!important}
 
-/* Fond de connexion bleu / violet / blanc / rouge, animé et léger. */
+/* Animation visible sans dépendre de z-index négatifs. */
 .login{
-  isolation:isolate;
-  background:
-    radial-gradient(circle at 18% 22%,rgba(255,255,255,.92),transparent 25%),
-    radial-gradient(circle at 78% 25%,rgba(115,55,190,.55),transparent 34%),
-    radial-gradient(circle at 80% 78%,rgba(220,38,38,.46),transparent 36%),
-    linear-gradient(135deg,#0018A8 0%,#1638c4 36%,#7450ba 67%,#c83858 100%)!important;
-  background-size:150% 150%!important;
-  animation:phenixLoginGradient 14s ease-in-out infinite alternate;
+  isolation:isolate!important;
+  position:relative!important;
+  overflow:hidden!important;
+  background:linear-gradient(125deg,#0018A8 0%,#2546d8 28%,#8a55c8 56%,#f7f8ff 73%,#d62f52 100%)!important;
+  background-size:300% 300%!important;
+  animation:phenixBgMove 11s ease-in-out infinite alternate!important;
+}
+.login::before,
+.login::after{
+  content:''!important;
+  position:absolute!important;
+  pointer-events:none!important;
+  z-index:0!important;
+  display:block!important;
 }
 .login::before{
-  inset:-25%!important;
-  transform:none!important;
-  opacity:.92!important;
+  inset:-22%!important;
+  opacity:.88!important;
   background:
-    linear-gradient(118deg,transparent 15%,rgba(255,255,255,.40) 28%,transparent 43%),
-    linear-gradient(135deg,transparent 45%,rgba(123,72,202,.38) 58%,transparent 72%),
-    linear-gradient(150deg,transparent 62%,rgba(239,68,68,.36) 75%,transparent 88%)!important;
-  background-size:180% 180%!important;
-  animation:phenixLoginWaves 13s ease-in-out infinite alternate!important;
+    radial-gradient(ellipse at 20% 35%,rgba(255,255,255,.92) 0 8%,rgba(255,255,255,.30) 22%,transparent 42%),
+    radial-gradient(ellipse at 67% 20%,rgba(139,71,201,.78) 0 11%,transparent 39%),
+    radial-gradient(ellipse at 84% 76%,rgba(220,38,38,.66) 0 10%,transparent 38%)!important;
+  filter:blur(10px) saturate(1.15)!important;
+  animation:phenixOrbs 10s ease-in-out infinite alternate!important;
 }
 .login::after{
-  opacity:1!important;
+  inset:-35%!important;
+  opacity:.72!important;
   background:
-    radial-gradient(circle at 25% 70%,rgba(0,24,168,.35),transparent 30%),
-    radial-gradient(circle at 70% 18%,rgba(255,255,255,.34),transparent 27%),
-    radial-gradient(circle at 92% 70%,rgba(193,24,66,.28),transparent 34%)!important;
-  animation:phenixLoginGlow 9s ease-in-out infinite alternate!important;
+    linear-gradient(115deg,transparent 25%,rgba(255,255,255,.62) 42%,transparent 57%),
+    linear-gradient(145deg,transparent 40%,rgba(111,65,190,.46) 55%,transparent 70%),
+    linear-gradient(160deg,transparent 60%,rgba(239,68,68,.45) 74%,transparent 88%)!important;
+  background-size:180% 180%!important;
+  filter:blur(3px)!important;
+  animation:phenixLightSweep 8s linear infinite!important;
 }
-@keyframes phenixLoginGradient{
-  0%{background-position:0% 20%}
-  100%{background-position:100% 80%}
-}
-@keyframes phenixLoginWaves{
-  0%{transform:translate3d(-4%,3%,0) rotate(-2deg);background-position:0% 35%}
-  100%{transform:translate3d(4%,-3%,0) rotate(2deg);background-position:100% 65%}
-}
-@keyframes phenixLoginGlow{
-  0%{transform:scale(1);filter:saturate(.95)}
-  100%{transform:scale(1.08);filter:saturate(1.15)}
-}
-
-/* La carte reste lisible, quel que soit le thème mémorisé. */
-.login>.box,
-body.lightMode .login>.box{
-  background:rgba(255,255,255,.93)!important;
+.login>.box{
+  z-index:2!important;
+  background:rgba(255,255,255,.94)!important;
   color:#14213d!important;
-  border:1px solid rgba(255,255,255,.72)!important;
-  box-shadow:0 28px 75px rgba(9,18,50,.32)!important;
-  backdrop-filter:blur(18px) saturate(1.12)!important;
+  border:1px solid rgba(255,255,255,.78)!important;
+  box-shadow:0 30px 90px rgba(5,15,55,.38)!important;
+  backdrop-filter:blur(18px) saturate(1.15)!important;
+  -webkit-backdrop-filter:blur(18px) saturate(1.15)!important;
 }
-.login .brand h1,
-.login h2,
-body.lightMode .login .brand h1,
-body.lightMode .login h2{color:#0018A8!important}
-.login .tag,
-body.lightMode .login .tag{color:#52647e!important}
-.login .field input,
-body.lightMode .login .field input{
-  background:rgba(248,250,252,.96)!important;
+.login #flashLogin{z-index:3!important}
+.login .brand h1,.login h2{color:#0018A8!important}
+.login .tag{color:#52647e!important}
+.login .field input{
+  background:rgba(248,250,252,.97)!important;
   color:#14213d!important;
   border:1px solid #c8d2e1!important;
 }
 .login .loginIcon,.login .passToggle{color:#60708a!important}
 .login .primary{background:#0018A8!important;color:#fff!important}
 
-@media (prefers-reduced-motion:reduce){
-  .login,.login::before,.login::after{animation:none!important}
+@keyframes phenixBgMove{
+  0%{background-position:0% 25%}
+  50%{background-position:55% 70%}
+  100%{background-position:100% 40%}
+}
+@keyframes phenixOrbs{
+  0%{transform:translate3d(-4%,2%,0) scale(1) rotate(-2deg)}
+  100%{transform:translate3d(5%,-3%,0) scale(1.09) rotate(3deg)}
+}
+@keyframes phenixLightSweep{
+  0%{transform:translate3d(-12%,6%,0) rotate(-3deg);background-position:0% 50%}
+  100%{transform:translate3d(12%,-6%,0) rotate(3deg);background-position:100% 50%}
+}
+@media(max-width:700px){
+  .login::before{filter:blur(6px) saturate(1.12)!important}
+  .login>.box{width:min(430px,92vw)!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .login,.login::before,.login::after{animation-duration:28s!important}
 }
 
 </style></head><body>
