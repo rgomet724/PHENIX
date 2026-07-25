@@ -1334,6 +1334,13 @@ body.lightMode tr.indispo td{border-bottom-color:#efaaaa!important}
   #login.login>.box{width:calc(100vw - 24px)!important}
 }
 @media(prefers-reduced-motion:reduce){#login.login,#login.login::before,#login.login::after{animation:none!important}}
+
+/* V5.6 — correctif critique : permettre au JavaScript de masquer réellement l’écran de connexion.
+   L’ancien display:grid!important empêchait style.display="none" de fonctionner. */
+#login.login[style*="display: none"],
+#login.login[style*="display:none"]{display:none!important;}
+#app.app[style*="display: block"],
+#app.app[style*="display:block"]{display:block!important;}
 </style></head><body>
 <div id="login" class="login"><div id="flashLogin" class="flashLogin hidden"><span class="flashIcon">📢</span><span id="flashLoginLabel" class="flashLabel">INFO :</span><span id="flashLoginText" class="flashText"></span></div><div class="box">
   <div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div>
