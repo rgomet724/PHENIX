@@ -1205,6 +1205,37 @@ body.lightMode .flashLogin .flashLabel{color:#7f1d1d!important}
   body.lightMode .login>.box{width:min(430px,92vw)!important;padding:22px!important}
 }
 
+
+
+/* V60 - Onglet de navigation actif en bleu PHENIX */
+.nav button.activeNav,
+body.lightMode .nav button.activeNav,
+body:not(.lightMode) .nav button.activeNav{
+  background:#0018A8!important;
+  color:#ffffff!important;
+  border-color:#0018A8!important;
+  box-shadow:0 6px 16px rgba(0,24,168,.25)!important;
+  transform:none!important;
+}
+.nav button.activeNav:hover,
+body.lightMode .nav button.activeNav:hover,
+body:not(.lightMode) .nav button.activeNav:hover{
+  background:#00127f!important;
+  color:#ffffff!important;
+}
+.nav button.activeNav .navIcon,
+body.lightMode .nav button.activeNav .navIcon,
+body:not(.lightMode) .nav button.activeNav .navIcon{
+  color:#ffffff!important;
+  border-color:rgba(255,255,255,.75)!important;
+  background:rgba(255,255,255,.12)!important;
+}
+.nav button.activeNav .consigneCount,
+body.lightMode .nav button.activeNav .consigneCount,
+body:not(.lightMode) .nav button.activeNav .consigneCount{
+  color:#ffffff!important;
+}
+
 </style></head><body>
 <div id="login" class="login"><div id="flashLogin" class="flashLogin hidden"><span class="flashIcon">📢</span><span id="flashLoginLabel" class="flashLabel">INFO :</span><span id="flashLoginText" class="flashText"></span></div><div class="box">
   <div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div>
