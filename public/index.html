@@ -1341,6 +1341,41 @@ body.lightMode tr.indispo td{border-bottom-color:#efaaaa!important}
 #login.login[style*="display:none"]{display:none!important;}
 #app.app[style*="display: block"],
 #app.app[style*="display:block"]{display:block!important;}
+
+/* V5.7 - Icônes des onglets visibles en thème clair */
+body.lightMode .nav button .navIcon{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  flex:0 0 34px!important;
+  width:34px!important;
+  height:34px!important;
+  min-width:34px!important;
+  opacity:1!important;
+  visibility:visible!important;
+}
+body.lightMode .nav button .navIcon svg{
+  display:block!important;
+  width:20px!important;
+  height:20px!important;
+  opacity:1!important;
+  visibility:visible!important;
+  fill:none!important;
+  stroke:#0758b6!important;
+  color:#0758b6!important;
+}
+body.lightMode .nav button.activeNav .navIcon{
+  background:rgba(255,255,255,.18)!important;
+  border-color:rgba(255,255,255,.45)!important;
+  color:#fff!important;
+}
+body.lightMode .nav button.activeNav .navIcon svg,
+body.lightMode .nav button.activeNav .navIcon svg *{
+  stroke:#fff!important;
+  color:#fff!important;
+  opacity:1!important;
+  visibility:visible!important;
+}
 </style></head><body>
 <div id="login" class="login"><div id="flashLogin" class="flashLogin hidden"><span class="flashIcon">📢</span><span id="flashLoginLabel" class="flashLabel">INFO :</span><span id="flashLoginText" class="flashText"></span></div><div class="box">
   <div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div>
