@@ -1207,33 +1207,41 @@ body.lightMode .flashLogin .flashLabel{color:#7f1d1d!important}
 
 
 
-/* V60 - Onglet de navigation actif en bleu PHENIX */
-.nav button.activeNav,
-body.lightMode .nav button.activeNav,
-body:not(.lightMode) .nav button.activeNav{
+/* V58 - Correctifs finaux du thème clair pour les fenêtres */
+body.lightMode .modal .box,
+body.lightMode .modal .box:not(.crewBox),
+body.lightMode .crewBox{
+  background:#ffffff!important;
+  color:#172033!important;
+  border-color:#cbd5e1!important;
+}
+body.lightMode .modal .box>.row:last-child,
+body.lightMode .crewFooter{
+  background:#f4f7fb!important;
+  color:#172033!important;
+  border-top-color:#d7e0ea!important;
+}
+body.lightMode .modal .box>.row:last-child button:not(.primary):not(.danger):not(.ok),
+body.lightMode .crewFooter button:not(.primary):not(.danger):not(.ok){
+  background:#e7edf5!important;
+  color:#172033!important;
+  border:1px solid #c7d2df!important;
+}
+body.lightMode .modal .box>.row:last-child .primary,
+body.lightMode .crewFooter .primary{
   background:#0018A8!important;
   color:#ffffff!important;
-  border-color:#0018A8!important;
-  box-shadow:0 6px 16px rgba(0,24,168,.25)!important;
-  transform:none!important;
 }
-.nav button.activeNav:hover,
-body.lightMode .nav button.activeNav:hover,
-body:not(.lightMode) .nav button.activeNav:hover{
-  background:#00127f!important;
-  color:#ffffff!important;
+body.lightMode #indispoModal .box,
+body.lightMode #dispoModal .box{
+  background:#ffffff!important;
+  color:#172033!important;
 }
-.nav button.activeNav .navIcon,
-body.lightMode .nav button.activeNav .navIcon,
-body:not(.lightMode) .nav button.activeNav .navIcon{
-  color:#ffffff!important;
-  border-color:rgba(255,255,255,.75)!important;
-  background:rgba(255,255,255,.12)!important;
-}
-.nav button.activeNav .consigneCount,
-body.lightMode .nav button.activeNav .consigneCount,
-body:not(.lightMode) .nav button.activeNav .consigneCount{
-  color:#ffffff!important;
+body.lightMode #indispoModal .field,
+body.lightMode #dispoModal .field,
+body.lightMode #indispoPreview{
+  background:transparent!important;
+  color:#172033!important;
 }
 
 </style></head><body>
