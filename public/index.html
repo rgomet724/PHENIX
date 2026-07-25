@@ -1246,110 +1246,124 @@ body.lightMode #indispoPreview{
 
 
 
-/* V60 - Onglet actif bleu + fond de connexion animé renforcé */
-:root{
-  --phenix-active:#0018A8;
-  --phenix-active-hover:#102EC5;
+/* === PHENIX FINAL PATCH — connexion animée + thème clair harmonisé === */
+#login.login{
+  isolation:isolate;
+  position:relative;
+  min-height:100vh;
+  overflow:hidden;
+  background:
+    linear-gradient(125deg,#ffffff 0%,#edf4ff 24%,#dfe8ff 46%,#f7efff 68%,#fff4f4 100%)!important;
 }
-
-.nav button.activeNav,
-body.lightMode .nav button.activeNav,
-body:not(.lightMode) .nav button.activeNav{
-  background:linear-gradient(135deg,var(--phenix-active),var(--phenix-active-hover))!important;
-  color:#fff!important;
-  border-color:rgba(255,255,255,.28)!important;
-  box-shadow:0 8px 20px rgba(0,24,168,.25)!important;
-  transform:none!important;
-}
-.nav button.activeNav .navIcon,
-body.lightMode .nav button.activeNav .navIcon,
-body:not(.lightMode) .nav button.activeNav .navIcon{
-  color:#fff!important;
-  border-color:rgba(255,255,255,.78)!important;
-  background:rgba(255,255,255,.14)!important;
-}
-.nav button.activeNav .navIcon svg{stroke:#fff!important}
-.nav button.activeNav .consigneCount{color:#fff!important}
-
-/* Animation visible sans dépendre de z-index négatifs. */
-.login{
-  isolation:isolate!important;
-  position:relative!important;
-  overflow:hidden!important;
-  background:linear-gradient(125deg,#0018A8 0%,#2546d8 28%,#8a55c8 56%,#f7f8ff 73%,#d62f52 100%)!important;
-  background-size:300% 300%!important;
-  animation:phenixBgMove 11s ease-in-out infinite alternate!important;
-}
-.login::before,
-.login::after{
-  content:''!important;
+#login.login::before{
+  content:""!important;
   position:absolute!important;
-  pointer-events:none!important;
+  inset:-28%!important;
   z-index:0!important;
-  display:block!important;
-}
-.login::before{
-  inset:-22%!important;
-  opacity:.88!important;
+  pointer-events:none!important;
+  opacity:1!important;
   background:
-    radial-gradient(ellipse at 20% 35%,rgba(255,255,255,.92) 0 8%,rgba(255,255,255,.30) 22%,transparent 42%),
-    radial-gradient(ellipse at 67% 20%,rgba(139,71,201,.78) 0 11%,transparent 39%),
-    radial-gradient(ellipse at 84% 76%,rgba(220,38,38,.66) 0 10%,transparent 38%)!important;
-  filter:blur(10px) saturate(1.15)!important;
-  animation:phenixOrbs 10s ease-in-out infinite alternate!important;
+    radial-gradient(circle at 18% 34%,rgba(0,24,168,.92) 0 11%,transparent 31%),
+    radial-gradient(circle at 82% 25%,rgba(111,45,189,.75) 0 10%,transparent 29%),
+    radial-gradient(circle at 72% 78%,rgba(225,29,72,.72) 0 9%,transparent 28%),
+    radial-gradient(circle at 38% 84%,rgba(255,255,255,.98) 0 10%,transparent 34%),
+    linear-gradient(118deg,rgba(0,24,168,.64),rgba(255,255,255,.44) 44%,rgba(119,55,194,.52) 70%,rgba(220,38,38,.48));
+  background-size:100% 100%!important;
+  animation:phenixAurora 13s ease-in-out infinite alternate!important;
+  transform-origin:center;
+  filter:saturate(1.18) blur(2px);
 }
-.login::after{
-  inset:-35%!important;
-  opacity:.72!important;
+#login.login::after{
+  content:""!important;
+  position:absolute!important;
+  inset:-12%!important;
+  z-index:1!important;
+  pointer-events:none!important;
+  opacity:.95!important;
   background:
-    linear-gradient(115deg,transparent 25%,rgba(255,255,255,.62) 42%,transparent 57%),
-    linear-gradient(145deg,transparent 40%,rgba(111,65,190,.46) 55%,transparent 70%),
-    linear-gradient(160deg,transparent 60%,rgba(239,68,68,.45) 74%,transparent 88%)!important;
-  background-size:180% 180%!important;
-  filter:blur(3px)!important;
-  animation:phenixLightSweep 8s linear infinite!important;
+    linear-gradient(112deg,transparent 12%,rgba(255,255,255,.88) 25%,transparent 39%),
+    linear-gradient(132deg,transparent 44%,rgba(0,24,168,.28) 53%,transparent 64%),
+    linear-gradient(145deg,transparent 64%,rgba(220,38,38,.26) 72%,transparent 82%);
+  animation:phenixLightSweep 9s linear infinite!important;
+  mix-blend-mode:screen;
 }
-.login>.box{
-  z-index:2!important;
-  background:rgba(255,255,255,.94)!important;
-  color:#14213d!important;
-  border:1px solid rgba(255,255,255,.78)!important;
-  box-shadow:0 30px 90px rgba(5,15,55,.38)!important;
-  backdrop-filter:blur(18px) saturate(1.15)!important;
-  -webkit-backdrop-filter:blur(18px) saturate(1.15)!important;
+#login.login>.box,
+#login.login>.flashLogin{
+  position:relative!important;
+  z-index:3!important;
 }
-.login #flashLogin{z-index:3!important}
-.login .brand h1,.login h2{color:#0018A8!important}
-.login .tag{color:#52647e!important}
-.login .field input{
-  background:rgba(248,250,252,.97)!important;
-  color:#14213d!important;
-  border:1px solid #c8d2e1!important;
+#login.login>.box{
+  background:rgba(255,255,255,.82)!important;
+  color:#14213a!important;
+  border:1px solid rgba(255,255,255,.92)!important;
+  box-shadow:0 28px 80px rgba(19,35,75,.28)!important;
+  backdrop-filter:blur(22px) saturate(1.25)!important;
+  -webkit-backdrop-filter:blur(22px) saturate(1.25)!important;
 }
-.login .loginIcon,.login .passToggle{color:#60708a!important}
-.login .primary{background:#0018A8!important;color:#fff!important}
-
-@keyframes phenixBgMove{
-  0%{background-position:0% 25%}
-  50%{background-position:55% 70%}
-  100%{background-position:100% 40%}
+#login.login .brand h1{color:#0018a8!important}
+#login.login .tag,#login.login .mut{color:#5f6f86!important}
+#login.login input{
+  background:rgba(255,255,255,.88)!important;
+  color:#14213a!important;
+  border-color:rgba(0,24,168,.22)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.8)!important;
 }
-@keyframes phenixOrbs{
-  0%{transform:translate3d(-4%,2%,0) scale(1) rotate(-2deg)}
-  100%{transform:translate3d(5%,-3%,0) scale(1.09) rotate(3deg)}
+#login.login .loginIcon{color:#0018a8!important}
+#login.login .passToggle{color:#0018a8!important}
+#login.login .primary{
+  background:linear-gradient(135deg,#0018a8,#3159dc)!important;
+  box-shadow:0 10px 25px rgba(0,24,168,.26)!important;
+}
+@keyframes phenixAurora{
+  0%{transform:translate3d(-5%,-3%,0) rotate(-3deg) scale(1.05)}
+  50%{transform:translate3d(5%,4%,0) rotate(2deg) scale(1.12)}
+  100%{transform:translate3d(-1%,7%,0) rotate(-1deg) scale(1.08)}
 }
 @keyframes phenixLightSweep{
-  0%{transform:translate3d(-12%,6%,0) rotate(-3deg);background-position:0% 50%}
-  100%{transform:translate3d(12%,-6%,0) rotate(3deg);background-position:100% 50%}
-}
-@media(max-width:700px){
-  .login::before{filter:blur(6px) saturate(1.12)!important}
-  .login>.box{width:min(430px,92vw)!important}
-}
-@media(prefers-reduced-motion:reduce){
-  .login,.login::before,.login::after{animation-duration:28s!important}
+  0%{transform:translate3d(-10%,-4%,0) scale(1.08)}
+  50%{transform:translate3d(8%,5%,0) scale(1.16)}
+  100%{transform:translate3d(-10%,-4%,0) scale(1.08)}
 }
 
+/* Onglet actif bleu PHENIX, thème clair */
+body.lightMode aside{background:#fff!important;border-right:1px solid #dbe4ef!important;box-shadow:3px 0 18px rgba(20,42,70,.07)!important}
+body.lightMode .nav button{background:#fff!important;color:#1d2b41!important;border:1px solid transparent!important}
+body.lightMode .nav button:hover{background:#eef4ff!important;color:#0018a8!important;transform:none!important}
+body.lightMode .nav button.activeNav{background:#0018a8!important;color:#fff!important;box-shadow:0 8px 20px rgba(0,24,168,.22)!important}
+body.lightMode .nav button .navIcon{color:#0018a8!important;border-color:#b9c9e8!important;background:#f5f8ff!important}
+body.lightMode .nav button.activeNav .navIcon{color:#fff!important;border-color:rgba(255,255,255,.58)!important;background:rgba(255,255,255,.10)!important}
+body.lightMode .nav button.activeNav .consigneCount,
+body.lightMode .nav button.activeNav .consigneBell{color:#fff!important}
+
+/* Derniers éléments sombres supprimés du thème clair */
+body.lightMode .modal .box,
+body.lightMode .modal .box:not(.crewBox),
+body.lightMode .crewBox,
+body.lightMode .modal .box>.row:last-child,
+body.lightMode .crewFooter,
+body.lightMode .agentList,
+body.lightMode .historyBox,
+body.lightMode .eventCalendar,
+body.lightMode .linkCard,
+body.lightMode .linkLogo,
+body.lightMode .consigneItem,
+body.lightMode .eventTodayBox{
+  background:#fff!important;
+  color:#16233a!important;
+  border-color:#d6e0eb!important;
+}
+body.lightMode .modal .box>.row:last-child,
+body.lightMode .crewFooter{box-shadow:0 -8px 18px rgba(25,45,72,.06)!important}
+body.lightMode .agentChoice{background:#fff!important;color:#16233a!important;border-color:#e1e8f0!important}
+body.lightMode .agentChoice:hover{background:#f3f7fc!important}
+body.lightMode .eventTodayTitle,
+body.lightMode .eventTodayBox .mut{color:#16233a!important}
+body.lightMode button:not(.primary):not(.danger):not(.ok):not(.notifSwitch):not(.themeToggle){background:#e8eef7;color:#18304f}
+body.lightMode .modal{background:rgba(28,42,62,.38)!important;backdrop-filter:blur(4px)}
+
+@media (prefers-reduced-motion:reduce){
+  #login.login::before,#login.login::after{animation-duration:30s!important}
+}
 </style></head><body>
 <div id="login" class="login"><div id="flashLogin" class="flashLogin hidden"><span class="flashIcon">📢</span><span id="flashLoginLabel" class="flashLabel">INFO :</span><span id="flashLoginText" class="flashText"></span></div><div class="box">
   <div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div>
