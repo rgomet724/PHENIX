@@ -1586,6 +1586,15 @@ body.lightMode .nav button.activeNav .navIcon svg *{
         </div>
 
         <div class="crewField">
+          <label>Service</label>
+          <select id="crewService">
+            <option value="JOUR">Jour</option>
+            <option value="NUIT">Nuit</option>
+          </select>
+          <span class="crewHint">Le choix ajoute automatiquement JOUR ou NUIT après l’indicatif.</span>
+        </div>
+
+        <div class="crewField">
           <label>Heure de repas</label>
           <select id="crewMeal">
             <option value="">Aucune</option>
@@ -1790,6 +1799,18 @@ function filterCrewAgents(){
     row.classList.toggle('hiddenBySearch',!!q && !text.includes(q));
   });
 }
+
+function baseCrewCallsign(value){
+  return String(value||'').replace(/\s+(JOUR|NUIT)\s*$/i,'').trim();
+}
+function crewServiceFromCallsign(value){
+  return /\s+NUIT\s*$/i.test(String(value||''))?'NUIT':'JOUR';
+}
+function buildCrewCallsign(value,service){
+  const base=baseCrewCallsign(value);
+  return base+(service==='NUIT'?' NUIT':' JOUR');
+}
+
 function openCrew(id){
   const crewId=id==null?'':String(id);
   const c=S.crews.find(x=>String(x.id)===crewId)||{
@@ -1797,7 +1818,8 @@ function openCrew(id){
   };
   fillSelects(c.matricules||[]);
   $('crewId').value=crewId;
-  $('crewCall').value=c.callsign||S.callsigns[0]||'';
+  $('crewCall').value=baseCrewCallsign(c.callsign)||S.callsigns[0]||'';
+  $('crewService').value=crewServiceFromCallsign(c.callsign);
   $('crewMeal').value=c.meal||'';
   $('crewObs').value=c.observations||'';
   $('crewShiftStart').value=c.shiftStart||defaultShiftDate(8);
@@ -1832,7 +1854,7 @@ async function saveCrew(){
       body:JSON.stringify({
         crew:{
           id:$('crewId').value,
-          callsign:$('crewCall').value,
+          callsign:buildCrewCallsign($('crewCall').value,$('crewService').value),
           matricules,
           meal:$('crewMeal').value,
           observations:$('crewObs').value,
