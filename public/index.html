@@ -1435,7 +1435,7 @@ body.lightMode .nav button.activeNav .navIcon svg *{
 /* V58 - Choix JOUR / NUIT et fond de connexion plus vivant */
 .serviceChoices{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .serviceChoice{display:block;cursor:pointer;user-select:none}
-.serviceChoice input{position:absolute;opacity:0;pointer-events:none}
+.serviceChoice input{position:static;opacity:1;pointer-events:auto;margin-right:8px}
 .serviceChoiceBox{min-height:48px;display:flex;align-items:center;justify-content:center;gap:9px;border:2px solid #c5cfdb;border-radius:11px;background:#fff;color:#334155;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease,background .18s ease}
 .serviceChoice:hover .serviceChoiceBox{transform:translateY(-2px)}
 .serviceChoice input:checked+.serviceChoiceBox{transform:translateY(-1px) scale(1.015);border-color:#2563eb;background:#eaf3ff;color:#174785;box-shadow:0 0 0 3px rgba(37,99,235,.13),0 8px 20px rgba(37,99,235,.15)}
@@ -1642,11 +1642,11 @@ animation:radarSpin 6.5s linear infinite;
           <div class="serviceChoices" id="crewServiceChoices">
             <label class="serviceChoice serviceDay">
               <input type="radio" name="crewService" value="JOUR" checked>
-              <span class="serviceChoiceBox"><span class="serviceEmoji">☀️</span><b>JOUR</b></span>
+              <span class="serviceChoiceBox" style="justify-content:flex-start;padding:0 14px;"><b>JOUR</b></span>
             </label>
             <label class="serviceChoice serviceNight">
               <input type="radio" name="crewService" value="NUIT">
-              <span class="serviceChoiceBox"><span class="serviceEmoji">🌙</span><b>NUIT</b></span>
+              <span class="serviceChoiceBox" style="justify-content:flex-start;padding:0 14px;"><b>NUIT</b></span>
             </label>
           </div>
           <span class="crewHint">Le choix ajoute uniquement JOUR ou NUIT après l’indicatif.</span>
