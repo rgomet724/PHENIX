@@ -1433,16 +1433,16 @@ body.lightMode .nav button.activeNav .navIcon svg *{
 
 
 /* V58 - Choix JOUR / NUIT et fond de connexion plus vivant */
-.serviceChoices{display:flex;gap:18px;align-items:center;}
-.serviceChoice{display:block;cursor:pointer;user-select:none}
-.serviceChoice input{position:static;opacity:1;pointer-events:auto;margin-right:8px}
-.serviceChoiceBox{display:inline-flex;align-items:center;gap:6px;border:none;background:transparent;box-shadow:none;min-height:auto;padding:0;color:inherit;}
-.serviceChoice:hover .serviceChoiceBox{display:inline-flex;align-items:center;gap:6px;border:none;background:transparent;box-shadow:none;min-height:auto;padding:0;color:inherit;}
-.serviceChoice input:checked+.serviceChoiceBox{border:none;background:transparent;box-shadow:none;color:#2563eb;transform:none;}
-.serviceNight input:checked+.serviceChoiceBox{color:#2563eb;}
+.serviceChoices{display:flex;align-items:center;gap:12px;font-size:13px;}
+.serviceChoice{display:inline-flex;align-items:center;cursor:pointer;font-size:13px;font-weight:400;}
+.serviceChoice input{margin:0 4px 0 0;width:14px;height:14px;accent-color:#2563eb;}
+.serviceChoiceBox{display:inline;min-height:0;padding:0;border:none;background:none;box-shadow:none;font-size:13px;}
+.serviceChoice:hover .serviceChoiceBox{display:inline;min-height:0;padding:0;border:none;background:none;box-shadow:none;font-size:13px;}
+.serviceChoice input:checked+.serviceChoiceBox{display:inline;min-height:0;padding:0;border:none;background:none;box-shadow:none;font-size:13px;}
+.serviceNight input:checked+.serviceChoiceBox{display:inline;min-height:0;padding:0;border:none;background:none;box-shadow:none;font-size:13px;}
 .serviceEmoji{font-size:20px;transition:transform .25s ease}
 .serviceChoice input:checked+.serviceChoiceBox .serviceEmoji{transform:rotate(8deg) scale(1.18)}
-body.lightMode .serviceChoiceBox,body:not(.lightMode) .crewBox .serviceChoiceBox{display:inline-flex;align-items:center;gap:6px;border:none;background:transparent;box-shadow:none;min-height:auto;padding:0;color:inherit;}
+body.lightMode .serviceChoiceBox,body:not(.lightMode) .crewBox .serviceChoiceBox{display:inline;min-height:0;padding:0;border:none;background:none;box-shadow:none;font-size:13px;}
 .loginMotion{position:absolute;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
 .loginOrb{position:absolute;border-radius:50%;filter:blur(2px);opacity:.6;mix-blend-mode:screen}
 .loginOrb.o1{width:330px;height:330px;left:-80px;top:12%;background:radial-gradient(circle,#ef444488,transparent 68%);animation:orbOne 8s ease-in-out infinite alternate}
@@ -1642,11 +1642,11 @@ animation:radarSpin 6.5s linear infinite;
           <div class="serviceChoices" id="crewServiceChoices">
             <label class="serviceChoice serviceDay">
               <input type="radio" name="crewService" value="JOUR" checked>
-              <span class="serviceChoiceBox" style="justify-content:flex-start;padding:0 14px;"><b>JOUR</b></span>
+              <span class="serviceChoiceBox">JOUR</span>
             </label>
             <label class="serviceChoice serviceNight">
               <input type="radio" name="crewService" value="NUIT">
-              <span class="serviceChoiceBox" style="justify-content:flex-start;padding:0 14px;"><b>NUIT</b></span>
+              <span class="serviceChoiceBox">NUIT</span>
             </label>
           </div>
           <span class="crewHint">Le choix ajoute uniquement JOUR ou NUIT après l’indicatif.</span>
