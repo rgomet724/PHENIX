@@ -1433,16 +1433,16 @@ body.lightMode .nav button.activeNav .navIcon svg *{
 
 
 /* V58 - Choix JOUR / NUIT et fond de connexion plus vivant */
-.serviceChoices{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.serviceChoices{display:flex;gap:18px;align-items:center;}
 .serviceChoice{display:block;cursor:pointer;user-select:none}
 .serviceChoice input{position:static;opacity:1;pointer-events:auto;margin-right:8px}
-.serviceChoiceBox{min-height:48px;display:flex;align-items:center;justify-content:center;gap:9px;border:2px solid #c5cfdb;border-radius:11px;background:#fff;color:#334155;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease,background .18s ease}
-.serviceChoice:hover .serviceChoiceBox{transform:translateY(-2px)}
-.serviceChoice input:checked+.serviceChoiceBox{transform:translateY(-1px) scale(1.015);border-color:#2563eb;background:#eaf3ff;color:#174785;box-shadow:0 0 0 3px rgba(37,99,235,.13),0 8px 20px rgba(37,99,235,.15)}
-.serviceNight input:checked+.serviceChoiceBox{border-color:#6366f1;background:#eef2ff;color:#3730a3;box-shadow:0 0 0 3px rgba(99,102,241,.13),0 8px 20px rgba(99,102,241,.15)}
+.serviceChoiceBox{display:inline-flex;align-items:center;gap:6px;border:none;background:transparent;box-shadow:none;min-height:auto;padding:0;color:inherit;}
+.serviceChoice:hover .serviceChoiceBox{display:inline-flex;align-items:center;gap:6px;border:none;background:transparent;box-shadow:none;min-height:auto;padding:0;color:inherit;}
+.serviceChoice input:checked+.serviceChoiceBox{border:none;background:transparent;box-shadow:none;color:#2563eb;transform:none;}
+.serviceNight input:checked+.serviceChoiceBox{color:#2563eb;}
 .serviceEmoji{font-size:20px;transition:transform .25s ease}
 .serviceChoice input:checked+.serviceChoiceBox .serviceEmoji{transform:rotate(8deg) scale(1.18)}
-body.lightMode .serviceChoiceBox,body:not(.lightMode) .crewBox .serviceChoiceBox{background:#fff;color:#334155}
+body.lightMode .serviceChoiceBox,body:not(.lightMode) .crewBox .serviceChoiceBox{display:inline-flex;align-items:center;gap:6px;border:none;background:transparent;box-shadow:none;min-height:auto;padding:0;color:inherit;}
 .loginMotion{position:absolute;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
 .loginOrb{position:absolute;border-radius:50%;filter:blur(2px);opacity:.6;mix-blend-mode:screen}
 .loginOrb.o1{width:330px;height:330px;left:-80px;top:12%;background:radial-gradient(circle,#ef444488,transparent 68%);animation:orbOne 8s ease-in-out infinite alternate}
