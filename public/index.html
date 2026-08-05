@@ -1432,53 +1432,28 @@ body.lightMode .nav button.activeNav .navIcon svg *{
 @media(prefers-reduced-motion:reduce){.phenixProgressBar{animation:none;width:100%}}
 
 
-/* V58 - Choix JOUR / NUIT et fond de connexion plus vivant */
-.serviceChoices{display:flex;align-items:center;gap:12px;font-size:13px;}
-.serviceChoice{display:inline-flex;align-items:center;cursor:pointer;font-size:13px;font-weight:400;}
-.serviceChoice input{margin:0 4px 0 0;width:14px;height:14px;accent-color:#2563eb;}
-.serviceChoiceBox{display:inline;min-height:0;padding:0;border:none;background:none;box-shadow:none;font-size:13px;}
-.serviceChoice:hover .serviceChoiceBox{display:inline;min-height:0;padding:0;border:none;background:none;box-shadow:none;font-size:13px;}
-.serviceChoice input:checked+.serviceChoiceBox{display:inline;min-height:0;padding:0;border:none;background:none;box-shadow:none;font-size:13px;}
-.serviceNight input:checked+.serviceChoiceBox{display:inline;min-height:0;padding:0;border:none;background:none;box-shadow:none;font-size:13px;}
-.serviceEmoji{font-size:20px;transition:transform .25s ease}
-.serviceChoice input:checked+.serviceChoiceBox .serviceEmoji{transform:rotate(8deg) scale(1.18)}
-body.lightMode .serviceChoiceBox,body:not(.lightMode) .crewBox .serviceChoiceBox{display:inline;min-height:0;padding:0;border:none;background:none;box-shadow:none;font-size:13px;}
-.loginMotion{position:absolute;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
-.loginOrb{position:absolute;border-radius:50%;filter:blur(2px);opacity:.6;mix-blend-mode:screen}
-.loginOrb.o1{width:330px;height:330px;left:-80px;top:12%;background:radial-gradient(circle,#ef444488,transparent 68%);animation:orbOne 8s ease-in-out infinite alternate}
-.loginOrb.o2{width:420px;height:420px;right:-120px;bottom:-80px;background:radial-gradient(circle,#2563eb99,transparent 68%);animation:orbTwo 10s ease-in-out infinite alternate}
-.loginOrb.o3{width:220px;height:220px;left:58%;top:-70px;background:radial-gradient(circle,#38bdf877,transparent 68%);animation:orbThree 7s ease-in-out infinite alternate}
-.loginRadar{position:absolute;width:min(76vw,760px);height:min(76vw,760px);left:50%;top:52%;transform:translate(-50%,-50%);border-radius:50%;opacity:.28;background:repeating-radial-gradient(circle,transparent 0 52px,rgba(96,165,250,.80) 53px 54px),linear-gradient(90deg,transparent 49.8%,rgba(96,165,250,.85) 50%,transparent 50.2%),linear-gradient(transparent 49.8%,rgba(96,165,250,.85) 50%,transparent 50.2%)}
-.loginRadar::after{
-content:'';
-position:absolute;
-inset:0;
-border-radius:50%;
-background:
-conic-gradient(
-from -90deg,
-rgba(96,165,250,0) 0deg,
-rgba(96,165,250,.04) 300deg,
-rgba(96,165,250,.12) 325deg,
-rgba(96,165,250,.30) 338deg,
-rgba(147,197,253,.85) 348deg,
-rgba(255,255,255,.95) 350deg,
-rgba(147,197,253,.35) 354deg,
-rgba(96,165,250,0) 360deg);
-filter:blur(.3px);
-animation:radarSpin 6.5s linear infinite;
+/* V59 - Radio compact + sonar sécurisé derrière la connexion */
+.crewServiceRadios{display:flex;align-items:center;gap:18px;min-height:24px}
+.crewServiceRadios label{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer}
+.crewServiceRadios input[type="radio"]{width:14px!important;height:14px!important;min-height:14px!important;margin:0!important;padding:0!important;accent-color:#2563eb}
+.login{isolation:isolate}
+.loginSonar{
+  position:absolute;left:50%;top:50%;width:min(78vw,760px);aspect-ratio:1;
+  transform:translate(-50%,-50%);border-radius:50%;pointer-events:none;z-index:0;opacity:.24;
+  background:
+    repeating-radial-gradient(circle,transparent 0 52px,rgba(96,165,250,.62) 53px 54px),
+    linear-gradient(90deg,transparent 49.8%,rgba(96,165,250,.62) 50%,transparent 50.2%),
+    linear-gradient(transparent 49.8%,rgba(96,165,250,.62) 50%,transparent 50.2%)
 }
-.loginScan{display:none}
-.loginParticle{position:absolute;border-radius:50%;background:#fff;box-shadow:0 0 9px rgba(147,197,253,.9);animation:particleFloat linear infinite}
-.login .box{animation:none!important}
-@keyframes orbOne{to{transform:translate(110px,-55px) scale(1.18)}}
-@keyframes orbTwo{to{transform:translate(-130px,-75px) scale(.88)}}
-@keyframes orbThree{to{transform:translate(-90px,120px) scale(1.25)}}
-@keyframes radarSpin{to{transform:rotate(360deg)}}
-@keyframes scanMove{0%{top:8%;opacity:0}12%{opacity:.5}88%{opacity:.5}100%{top:92%;opacity:0}}
-@keyframes particleFloat{0%{transform:translate3d(0,110vh,0) scale(.5);opacity:0}12%{opacity:.75}82%{opacity:.55}100%{transform:translate3d(var(--drift),-20vh,0) scale(1.25);opacity:0}}
-
-@media(prefers-reduced-motion:reduce){.loginMotion *,.login .box,.login::before,.login::after{animation:none!important}}
+.loginSonar::after{
+  content:'';position:absolute;inset:0;border-radius:50%;
+  background:conic-gradient(from -90deg,transparent 0deg,rgba(96,165,250,.03) 300deg,rgba(96,165,250,.10) 325deg,rgba(96,165,250,.26) 340deg,rgba(191,219,254,.82) 349deg,rgba(255,255,255,.92) 351deg,transparent 360deg);
+  animation:phenixSafeRadar 7s linear infinite
+}
+@keyframes phenixSafeRadar{to{transform:rotate(360deg)}}
+.login>.box,.login>.flashLogin{position:relative;z-index:3!important}
+@media(max-width:700px){.loginSonar{width:115vw;opacity:.18}}
+@media(prefers-reduced-motion:reduce){.loginSonar::after{animation:none!important}}
 
 </style></head><body>
 <div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
@@ -1490,10 +1465,7 @@ animation:radarSpin 6.5s linear infinite;
   </div>
 </div>
 
-<div id="login" class="login"><div class="loginMotion" aria-hidden="true">
-  <div class="loginOrb o1"></div><div class="loginOrb o2"></div><div class="loginOrb o3"></div>
-  <div class="loginRadar"></div><div class="loginScan"></div><div id="loginParticles"></div>
-</div><div id="flashLogin" class="flashLogin hidden"><span class="flashIcon">📢</span><span id="flashLoginLabel" class="flashLabel">INFO :</span><span id="flashLoginText" class="flashText"></span></div><div class="box">
+<div id="login" class="login"><div class="loginSonar" aria-hidden="true"></div><div id="flashLogin" class="flashLogin hidden"><span class="flashIcon">📢</span><span id="flashLoginLabel" class="flashLabel">INFO :</span><span id="flashLoginText" class="flashText"></span></div><div class="box">
   <div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div>
   <div id="setup" class="hidden"><h2>Première installation</h2><p class="mut">Crée le premier compte admin. Ensuite, seul l'admin créera les autres accès.</p><div class="field"><input id="suName" placeholder="Nom affiché admin"></div><div class="field"><input id="suLogin" placeholder="Identifiant admin"></div><div class="field"><input id="suPass" type="password" placeholder="Mot de passe admin"></div><button class="primary" onclick="setupAdmin()">Créer le premier admin</button></div>
   <div id="logbox"><h2>Connexion</h2>
@@ -1636,20 +1608,12 @@ animation:radarSpin 6.5s linear infinite;
           <label>Indicatif</label>
           <select id="crewCall"></select>
         </div>
-
         <div class="crewField">
           <label>Service</label>
-          <div class="serviceChoices" id="crewServiceChoices">
-            <label class="serviceChoice serviceDay">
-              <input type="radio" name="crewService" value="JOUR" checked>
-              <span class="serviceChoiceBox">JOUR</span>
-            </label>
-            <label class="serviceChoice serviceNight">
-              <input type="radio" name="crewService" value="NUIT">
-              <span class="serviceChoiceBox">NUIT</span>
-            </label>
+          <div class="crewServiceRadios">
+            <label><input type="radio" name="crewService" value="JOUR" checked> JOUR</label>
+            <label><input type="radio" name="crewService" value="NUIT"> NUIT</label>
           </div>
-          <span class="crewHint">Le choix ajoute uniquement JOUR ou NUIT après l’indicatif.</span>
         </div>
 
         <div class="crewField">
@@ -1864,13 +1828,12 @@ function baseCrewCallsign(value){
 function crewServiceFromCallsign(value){
   return /\s+NUIT\s*$/i.test(String(value||''))?'NUIT':'JOUR';
 }
-function getCrewService(){
-  const selected=document.querySelector('input[name="crewService"]:checked');
-  return selected?selected.value:'JOUR';
-}
 function setCrewService(service){
-  const target=document.querySelector('input[name="crewService"][value="'+(service==='NUIT'?'NUIT':'JOUR')+'"]');
-  if(target) target.checked=true;
+  const input=document.querySelector('input[name="crewService"][value="'+(service==='NUIT'?'NUIT':'JOUR')+'"]');
+  if(input) input.checked=true;
+}
+function getCrewService(){
+  return document.querySelector('input[name="crewService"]:checked')?.value||'JOUR';
 }
 function buildCrewCallsign(value,service){
   const base=baseCrewCallsign(value);
@@ -2178,26 +2141,6 @@ document.addEventListener('click',e=>{
 window.addEventListener('resize',()=>{if(window.innerWidth>700)closeMobileNav()});
 
 setInterval(()=>{if($('app').style.display==='block')refreshSafe(false).catch(()=>{})},3000);init();
-
-(function createLoginParticles(){
-  const host=document.getElementById('loginParticles');
-  if(!host || host.children.length) return;
-  const amount=52;
-  for(let i=0;i<amount;i++){
-    const p=document.createElement('i');
-    p.className='loginParticle';
-    const size=(Math.random()*3.2+1).toFixed(1);
-    p.style.width=size+'px'; p.style.height=size+'px';
-    p.style.left=(Math.random()*100).toFixed(2)+'%';
-    p.style.bottom=(-10-Math.random()*80).toFixed(1)+'px';
-    p.style.setProperty('--drift',(Math.random()*180-90).toFixed(0)+'px');
-    p.style.animationDuration=(5+Math.random()*8).toFixed(2)+'s';
-    p.style.animationDelay=(-Math.random()*12).toFixed(2)+'s';
-    p.style.opacity=(.25+Math.random()*.65).toFixed(2);
-    host.appendChild(p);
-  }
-})();
-
 </script>
 
 <script>
