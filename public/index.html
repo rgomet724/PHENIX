@@ -1455,6 +1455,19 @@ body.lightMode .nav button.activeNav .navIcon svg *{
 @media(max-width:700px){.loginSonar{width:115vw;opacity:.18}}
 @media(prefers-reduced-motion:reduce){.loginSonar::after{animation:none!important}}
 
+
+/* V60 - Correctif visibilité des onglets selon le rôle
+   IMPORTANT : cette règle doit rester à la fin du CSS. */
+.nav button.hidden{
+  display:none!important;
+}
+body.operatorMode #personnelBtn,
+body.operatorMode #linksBtn,
+body.operatorMode #historyBtn,
+body.operatorMode #adminBtn{
+  display:none!important;
+}
+
 </style></head><body>
 <div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
   <div class="phenixLoadingCard">
@@ -1765,6 +1778,10 @@ function applyRoleNavigation(){
   const isDashboard=role==='dashboard';
   const isSupervisor=role==='superviseur';
   const isAdmin=role==='admin';
+
+  document.body.classList.toggle('operatorMode',isOperator);
+  document.body.classList.toggle('supervisorMode',isSupervisor);
+  document.body.classList.toggle('adminMode',isAdmin);
 
   const personnel=$('personnelBtn');
   const links=$('linksBtn');
