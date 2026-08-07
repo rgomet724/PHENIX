@@ -1,4 +1,4 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>PHENIX</title><meta name="phenix-build" content="roles-v60-20260807"><link rel="manifest" href="/manifest.json">
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>PHENIX</title><link rel="manifest" href="/manifest.json">
 <link rel="icon" type="image/png" href="/favicon.png">
 <meta name="theme-color" content="#07111f">
 <style>
@@ -1455,15 +1455,6 @@ body.lightMode .nav button.activeNav .navIcon svg *{
 @media(max-width:700px){.loginSonar{width:115vw;opacity:.18}}
 @media(prefers-reduced-motion:reduce){.loginSonar::after{animation:none!important}}
 
-
-/* V60 - Droits visuels stricts par rôle */
-body.operatorMode #personnelBtn,
-body.operatorMode #linksBtn,
-body.operatorMode #historyBtn,
-body.operatorMode #adminBtn{
-  display:none!important;
-}
-
 </style></head><body>
 <div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
   <div class="phenixLoadingCard">
@@ -1496,7 +1487,7 @@ body.operatorMode #adminBtn{
   <div id="msg" class="err"></div>
 </div></div>
 <div id="app" class="app"><div id="mobileNavBackdrop" class="mobileNavBackdrop" onclick="closeMobileNav()"></div><div class="top"><button type="button" class="mobileMenuBtn" onclick="toggleMobileNav()" aria-label="Ouvrir le menu">☰</button><div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div><div class="right"><b id="agentName">Agent</b><div class="tag" id="clock"></div><div class="row topUserActions" style="justify-content:flex-end;margin-top:6px"><button id="notifBtn" class="notifSwitch desktopSoundControl" onclick="toggleNotifications()" title="Alertes sonores"><span class="notifKnob"></span><span id="notifText">ALERTES ON</span></button><button class="small danger" onclick="logout()">Déconnexion</button></div></div></div>
-<div class="layout"><aside><div class="nav"><button onclick="show('dash')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5"/><path d="M9.5 20v-6h5v6"/></svg></span>Tableau de bord</button><button id="personnelBtn" onclick="show('personnel')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/><path d="M8 11.5h8"/></svg></span>Personnel</button><button onclick="show('notes')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h6"/></svg></span>Notes privées</button><button onclick="show('links')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a4 4 0 0 0 5.7 0l2.3-2.3a4 4 0 1 0-5.7-5.7L11 6.3"/><path d="M14 11a4 4 0 0 0-5.7 0L6 13.3A4 4 0 0 0 11.7 19l1.3-1.3"/></svg></span>Liens utiles</button><button onclick="show('events')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 9h18M7 13h2M11 13h2M15 13h2M7 17h2M11 17h2"/></svg></span>Événements</button><button id="historyBtn" onclick="show('history')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>Historique</button><button class="consigneNav" onclick="show('consignes')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/><path d="m6.5 8 .5.5 1-1"/></svg></span>Consignes <span id="consigneCount" class="consigneCount">(0)</span><span id="consigneBell" class="consigneBell">🔔</span></button><button id="settingsBtn" onclick="show('settings')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg></span>Paramètres</button><button id="adminBtn" onclick="show('admin')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 12H6.5a3.5 3.5 0 1 1 3.5-3.5V18a3 3 0 1 1-3-3h10a3 3 0 1 1-3 3V8.5A3.5 3.5 0 1 1 17.5 12H9Z"/></svg></span>Administration</button></div><div id="eventTodayBox" class="eventTodayBox hidden"></div></aside><main>
+<div class="layout"><aside><div class="nav"><button onclick="show('dash')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5"/><path d="M9.5 20v-6h5v6"/></svg></span>Tableau de bord</button><button id="personnelBtn" onclick="show('personnel')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/><path d="M8 11.5h8"/></svg></span>Personnel</button><button onclick="show('notes')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h6"/></svg></span>Notes privées</button><button id="linksBtn" onclick="show('links')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a4 4 0 0 0 5.7 0l2.3-2.3a4 4 0 1 0-5.7-5.7L11 6.3"/><path d="M14 11a4 4 0 0 0-5.7 0L6 13.3A4 4 0 0 0 11.7 19l1.3-1.3"/></svg></span>Liens utiles</button><button onclick="show('events')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 9h18M7 13h2M11 13h2M15 13h2M7 17h2M11 17h2"/></svg></span>Événements</button><button id="historyBtn" onclick="show('history')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>Historique</button><button class="consigneNav" onclick="show('consignes')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/><path d="m6.5 8 .5.5 1-1"/></svg></span>Consignes <span id="consigneCount" class="consigneCount">(0)</span><span id="consigneBell" class="consigneBell">🔔</span></button><button id="settingsBtn" onclick="show('settings')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg></span>Paramètres</button><button id="adminBtn" onclick="show('admin')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 12H6.5a3.5 3.5 0 1 1 3.5-3.5V18a3 3 0 1 1-3-3h10a3 3 0 1 1-3 3V8.5A3.5 3.5 0 1 1 17.5 12H9Z"/></svg></span>Administration</button></div><div id="eventTodayBox" class="eventTodayBox hidden"></div></aside><main>
 <section id="dash"><div class="cards"><div class="card"><span>Équipages</span><br><b id="cTotal">0</b></div><div class="card green"><span>Disponibles</span><br><b id="cDispo">0</b></div><div class="card red"><span>Indisponibles</span><br><b id="cIndispo">0</b></div><div class="card"><span>Effectifs</span><br><b id="cEff">0</b></div></div><div class="section"><div class="row dashTableHeader" style="justify-content:space-between"><h2>Tableau de bord opérationnel</h2><div class="row dashTools"><div id="dashZoomTools" class="row"><button class="small" onclick="setDashZoom(-1)" title="Réduire l'affichage">Zoom −</button><button class="small" onclick="resetDashZoom()" title="Réinitialiser le zoom">100 %</button><button class="small" onclick="setDashZoom(1)" title="Agrandir l'affichage">Zoom +</button><button id="compactDashBtn" class="small" onclick="toggleDashCompact()">Mode compact</button></div><button type="button" id="createCrewBtn" class="primary" onclick="openCrew()">Créer équipage</button></div></div><div id="dashTableWrap" class="dashTableWrap"><table id="crewTable"><thead><tr><th>Info</th><th>Indicatif</th><th>Matricules</th><th>Intervention</th><th>Code Blanc</th><th>Vacation</th><th>Actions</th></tr></thead><tbody id="crewRows"></tbody></table></div></div><div id="logSection" class="section"><h2>Journal de la dernière heure</h2><div id="logs"></div></div></section>
 <section id="settings" class="hidden"><div class="section settingsSection"><h2>Paramètres</h2><p class="mut">Personnalise l’affichage et les alertes de PHENIX sur cet appareil.</p><div class="settingsList"><div class="settingsItem mobileSoundSetting"><div><b>Alertes sonores</b><div class="mut">Active ou désactive le son lors d’un changement de statut.</div></div><button id="settingsSoundBtn" class="settingsSwitch" onclick="toggleNotifications()" aria-pressed="true"><span class="settingsSwitchKnob"></span><span id="settingsSoundText">Activées</span></button></div><div class="settingsItem settingsThemeItem"><div><b>Thème de l’application</b><div class="mut">Choisis le thème clair ou sombre.</div></div><div class="themeChoices" role="group" aria-label="Thème"><button id="settingsThemeDark" onclick="applyTheme('dark')">🌙 Sombre</button><button id="settingsThemeLight" onclick="applyTheme('light')">☀️ Clair</button></div></div><div class="settingsItem"><div><b>Mot de passe</b><div class="mut">Modifie le mot de passe de ton compte.</div></div><button class="primary settingsAction" onclick="changePass()">Modifier</button></div></div></div></section><section id="personnel" class="hidden"><div class="section"><div class="row" style="justify-content:space-between"><h2>Personnel</h2><button class="primary" onclick="addAgent()">Ajouter agent</button></div><p class="mut">Réservé Admin : ajout et modification des matricules, noms et prénoms. Les opérateurs sélectionnent ensuite uniquement les matricules dans les équipages.</p><table><thead><tr><th>Matricule</th><th>Nom</th><th>Prénom</th><th>Actif</th><th></th></tr></thead><tbody id="agentRows"></tbody></table><button class="primary" onclick="saveAgents()">Enregistrer le personnel</button></div></section>
 <section id="notes" class="hidden"><div class="section"><h2>Notes privées</h2><p class="mut">Chaque agent voit uniquement ses propres notes.</p><textarea id="note" oninput="noteDirty=true"></textarea><br><br><button class="primary" onclick="saveNote()">Enregistrer mes notes</button></div></section><section id="consignes" class="hidden">
@@ -1748,58 +1739,58 @@ async function setupAdmin(){try{await api('/api/setup',{method:'POST',body:JSON.
 function phenixDelay(ms){return new Promise(resolve=>setTimeout(resolve,ms))}function showPhenixLoading(){$('phenixLoading')?.classList.add('show')}function hidePhenixLoading(){$('phenixLoading')?.classList.remove('show')}async function login(){try{await api('/api/login',{method:'POST',body:JSON.stringify({login:$('loginId').value,password:$('loginPass').value})});showPhenixLoading();$('login').style.display='none';$('app').style.display='block';await Promise.all([refresh(),phenixDelay(2000)]);hidePhenixLoading()}catch(e){hidePhenixLoading();err(e)}}
 async function logout(){await api('/api/logout',{method:'POST'});location.reload()}async function changePass(){const oldPassword=prompt('Ancien mot de passe');if(oldPassword===null)return;const newPassword=prompt('Nouveau mot de passe');if(!newPassword)return;try{await api('/api/password',{method:'POST',body:JSON.stringify({oldPassword,newPassword})});alert('Mot de passe modifié')}catch(e){alert(e.message)}}
 async function refresh(){return refreshSafe(true)}
-function normalizedClientRole(role){
-  return String(role||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-}
-function applyRoleAccess(){
-  if(!S.user)return;
-  const role=normalizedClientRole(S.user.role);
-  const operator=role==='operateur';
-  const dashboard=role==='dashboard';
-  const supervisor=role==='superviseur';
-  const admin=role==='admin' || role==='administrateur';
-  const privileged=admin||supervisor;
-
-  document.body.classList.toggle('operatorMode',operator);
-  document.body.classList.toggle('dashboardMode',dashboard);
-
-  if($('personnelBtn')) $('personnelBtn').classList.toggle('hidden',!privileged);
-  if($('linksBtn')) $('linksBtn').classList.toggle('hidden',!privileged);
-  if($('historyBtn')) $('historyBtn').classList.toggle('hidden',!privileged);
-  if($('adminBtn')) $('adminBtn').classList.toggle('hidden',!admin);
-
-  const notesBtn=document.querySelector('button[onclick="show(\\'notes\\')"]');
-  if(notesBtn) notesBtn.classList.toggle('hidden',dashboard);
-
-  if($('createCrewBtn')) $('createCrewBtn').classList.toggle('hidden',dashboard);
-  if($('dashZoomTools')) $('dashZoomTools').classList.toggle('hidden',!dashboard);
-
-  const allowedOperator=['dash','notes','events','consignes','settings'];
-  const allowedDashboard=['dash','events','consignes','settings'];
-  if(operator && !allowedOperator.includes(activeSection)) activeSection='dash';
-  if(dashboard && !allowedDashboard.includes(activeSection)) activeSection='dash';
-}
-async function refreshSafe(force=false){if(!force && shouldPauseRefresh()) return; S=await api('/api/data');$('agentName').textContent=S.user.displayName;applyRoleAccess();checkCrewChanges(S.crews);renderAll(force);updateNotifButton()}
+async function refreshSafe(force=false){if(!force && shouldPauseRefresh()) return; S=await api('/api/data');$('agentName').textContent=S.user.displayName;const dash=S.user.role==='dashboard';
+document.body.classList.toggle('dashboardMode',dash);
+if($('dashZoomTools'))$('dashZoomTools').classList.toggle('hidden',!dash);applyRoleNavigation();$('createCrewBtn').classList.toggle('hidden',dash);if((dash||phenixRole()==='operateur')&&!['dash','notes','consignes','events','settings'].includes(activeSection))activeSection='dash';checkCrewChanges(S.crews);renderAll(force);updateNotifButton()}
 function shouldPauseRefresh(){const el=document.activeElement; if(el && ['INPUT','TEXTAREA','SELECT'].includes(el.tagName)) return true; return ['personnel','admin','notes'].includes(activeSection)}
 function show(id){
-  const role=S.user?normalizedClientRole(S.user.role):'';
-  const operatorAllowed=['dash','notes','events','consignes','settings'];
-  const dashboardAllowed=['dash','events','consignes','settings'];
-  if(role==='operateur' && !operatorAllowed.includes(id)) id='dash';
-  if(role==='dashboard' && !dashboardAllowed.includes(id)) id='dash';
-  if(role==='superviseur' && id==='admin') id='dash';
-  if(role!=='admin' && role!=='administrateur' && id==='admin') id='dash';
-
-  activeSection=id;
   document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('activeNav',b.getAttribute('onclick')===`show('${id}')`));
-  ['dash','personnel','notes','links','events','history','consignes','settings','admin'].forEach(x=>$(x).classList.toggle('hidden',x!==id));
-  if(id==='notes') $('note').value=S.note||'';
-  if(id==='consignes') renderConsignes();
-  if(id==='links') renderLinks();
-  if(id==='events') renderEvents();
-  if(id==='history') renderHistoryUsers();
-}
+  const role=phenixRole();
+  if(role==='dashboard' && !['dash','consignes','events','settings'].includes(id)){id='dash'}
+  if(role==='operateur' && !['dash','notes','events','consignes','settings'].includes(id)){id='dash'}
+  if(role==='superviseur' && id==='admin'){id='dash'}
+  activeSection=id;['dash','personnel','notes','links','events','history','consignes','settings','admin'].forEach(x=>$(x).classList.toggle('hidden',x!==id)); if(id==='notes') $('note').value=S.note||''; if(id==='consignes') renderConsignes(); if(id==='links') renderLinks(); if(id==='events') renderEvents(); if(id==='history') renderHistoryUsers()}
 function an(m){const a=S.agents.find(x=>x.matricule===m);return a?`${a.matricule} ${a.nom||''} ${a.prenom||''}`.trim():m}
+
+function phenixRole(){
+  return String(S.user&&S.user.role||'')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'');
+}
+function applyRoleNavigation(){
+  const role=phenixRole();
+  const isOperator=role==='operateur';
+  const isDashboard=role==='dashboard';
+  const isSupervisor=role==='superviseur';
+  const isAdmin=role==='admin';
+
+  const personnel=$('personnelBtn');
+  const links=$('linksBtn');
+  const history=$('historyBtn');
+  const admin=$('adminBtn');
+
+  if(personnel) personnel.classList.toggle('hidden', !(isSupervisor||isAdmin));
+  if(links) links.classList.toggle('hidden', isOperator||isDashboard);
+  if(history) history.classList.toggle('hidden', !(isSupervisor||isAdmin));
+  if(admin) admin.classList.toggle('hidden', !isAdmin);
+
+  const notesBtn=document.querySelector('button[onclick="show(\'notes\')"]');
+  const eventsBtn=document.querySelector('button[onclick="show(\'events\')"]');
+  const consignesBtn=document.querySelector('button[onclick="show(\'consignes\')"]');
+  const settingsBtn=$('settingsBtn');
+
+  if(notesBtn) notesBtn.classList.toggle('hidden', isDashboard);
+  if(eventsBtn) eventsBtn.classList.remove('hidden');
+  if(consignesBtn) consignesBtn.classList.remove('hidden');
+  if(settingsBtn) settingsBtn.classList.remove('hidden');
+
+  if(isOperator && !['dash','notes','events','consignes','settings'].includes(activeSection)){
+    activeSection='dash';
+  }
+}
+
 function canOperate(){return S.user && S.user.role!=='dashboard'}
 function renderAll(force=false){renderCrews();renderAgents();renderAdmin(force);renderConsignes();renderLinks();renderEvents();renderFlash();if(activeSection!=='notes' || force || !noteDirty){$('note').value=S.note||'';noteDirty=false;}const logsRecent=S.logs.filter(l=>{
   const recent=Date.now()-new Date(l.date).getTime()<=60*60*1000;
