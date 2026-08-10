@@ -1631,6 +1631,34 @@ body.lightMode .badge.indispo{
   font-weight:800!important;
 }
 
+
+/* V64 - Lisibilité DISPO / INDISPO : couleur de ligne visible mais texte intact */
+body.lightMode #crewTable tbody tr{
+  transition:background-color .15s ease,border-color .15s ease;
+}
+body.lightMode #crewTable tbody tr:has(.status.ok),
+body.lightMode #crewTable tbody tr:has(.status.available),
+body.lightMode #crewTable tbody tr:has(.badge.available),
+body.lightMode #crewTable tbody tr:has(.badge.dispo){
+  background:#d7f7df!important;
+  box-shadow:inset 5px 0 0 #159447!important;
+}
+body.lightMode #crewTable tbody tr:has(.status.bad),
+body.lightMode #crewTable tbody tr:has(.status.unavailable),
+body.lightMode #crewTable tbody tr:has(.badge.unavailable),
+body.lightMode #crewTable tbody tr:has(.badge.indispo){
+  background:#ffdada!important;
+  box-shadow:inset 5px 0 0 #d62828!important;
+}
+body.lightMode #crewTable tbody tr td{
+  background:transparent!important;
+  color:#071a31!important;
+}
+body.lightMode #crewTable .status,
+body.lightMode #crewTable .badge{
+  color:#fff!important;
+}
+
 </style></head><body>
 <div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
   <div class="phenixLoadingCard">
