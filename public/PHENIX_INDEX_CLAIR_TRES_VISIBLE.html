@@ -1,0 +1,2346 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>PHENIX</title><link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/png" href="/favicon.png">
+<meta name="theme-color" content="#07111f">
+<style>
+:root{--bg:#07111f;--p:#0d1b2e;--p2:#13243b;--t:#eaf2ff;--m:#9bb0c9;--b:#3b82f6;--g:#22c55e;--r:#ef4444;--l:#21364f}*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:var(--t);background:linear-gradient(135deg,#06101d,#0b1d34);overflow-x:hidden}
+.login::before{content:'';position:absolute;inset:-35%;z-index:-2;pointer-events:none;background:
+linear-gradient(135deg,transparent 0 16%,rgba(239,68,68,.62) 18%,rgba(239,68,68,.18) 23%,transparent 27%),
+linear-gradient(135deg,transparent 0 31%,rgba(239,68,68,.38) 34%,rgba(239,68,68,.10) 40%,transparent 45%),
+linear-gradient(135deg,transparent 0 58%,rgba(37,99,235,.18) 62%,rgba(37,99,235,.62) 70%,transparent 76%),
+linear-gradient(135deg,transparent 0 73%,rgba(56,189,248,.45) 76%,rgba(29,78,216,.18) 82%,transparent 88%);
+background-size:170% 170%;
+animation:phenixStripes 12s linear infinite}
+.login::after{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;background:
+radial-gradient(circle at 18% 50%,rgba(239,68,68,.32),transparent 28%),
+radial-gradient(circle at 82% 70%,rgba(59,130,246,.36),transparent 32%),
+linear-gradient(135deg,rgba(255,255,255,.04),transparent 35%,rgba(0,0,0,.35));
+animation:phenixGlow 8s ease-in-out infinite alternate}
+@keyframes phenixStripes{0%{transform:translate(-6%,8%) rotate(0deg)}50%{transform:translate(6%,-8%) rotate(0deg)}100%{transform:translate(-6%,8%) rotate(0deg)}}
+@keyframes phenixGlow{0%{opacity:.75}100%{opacity:1}}button,input,select,textarea{font:inherit}button{border:0;border-radius:10px;padding:9px 12px;background:#20395c;color:white;cursor:pointer}button:hover{filter:brightness(1.15)}.primary{background:var(--b)}.danger{background:#7f1d1d}.ok{background:#166534}.small{padding:6px 9px;font-size:12px;border-radius:8px;min-width:84px}.login{min-height:100vh;display:grid;place-items:center;position:relative;overflow:hidden}.box{position:relative;z-index:1;width:min(460px,92vw);background:rgba(6,18,38,.88);backdrop-filter:blur(8px);border:1px solid rgba(59,130,246,.38);border-radius:22px;padding:26px;box-shadow:0 25px 80px #000a}.brand{display:flex;align-items:center;gap:12px}.logo{width:50px;height:50px;border-radius:12px;object-fit:contain;background:#10223a;border:1px solid var(--l)}.brand h1{margin:0;font-size:27px}.tag,.mut{color:var(--m);font-size:12px}.field{display:flex;flex-direction:column;gap:6px;margin:12px 0}.field input,.field select,.field textarea,td input{background:#071525;color:var(--t);border:1px solid var(--l);border-radius:10px;padding:10px;width:100%}.err{color:#fecaca;min-height:18px}.hidden{display:none!important}.app{display:none;min-height:100vh}.top{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--l);background:#08182a}.right{text-align:right}.layout{display:grid;grid-template-columns:250px 1fr;min-height:calc(100vh - 78px)}aside{background:#09182a;border-right:1px solid var(--l);padding:18px}.nav button{display:block;width:100%;text-align:left;margin:7px 0;background:transparent;border:1px solid var(--l)}main{padding:20px}.cards{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:12px;margin-bottom:16px}.card{background:var(--p);border:1px solid var(--l);border-radius:16px;padding:16px}.card b{font-size:28px}.green{border-color:#14532d;background:linear-gradient(135deg,#0d1b2e,#0f3b25)}.red{border-color:#7f1d1d;background:linear-gradient(135deg,#0d1b2e,#3b1111)}.section{background:rgba(13,27,46,.88);border:1px solid var(--l);border-radius:16px;padding:16px;margin-bottom:16px}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid var(--l);padding:10px;text-align:left;vertical-align:top}tr.dispo{background:#052e1a}tr.indispo{background:#3b0b0b}.modal{position:fixed;inset:0;background:#0009;display:none;place-items:center;z-index:5;padding:8px}.modal .box{width:min(760px,94vw);max-height:90vh;overflow-y:auto}.modal .box>.row:last-child{position:sticky;bottom:-26px;background:rgba(13,27,46,.98);padding-top:10px;padding-bottom:2px;border-top:1px solid var(--l)}.pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#20395c;margin:2px}.agentList{max-height:260px;overflow:auto;border:1px solid var(--l);border-radius:10px;background:#071525;padding:8px}.agentChoice{display:flex;gap:8px;align-items:center;padding:6px;border-bottom:1px solid rgba(255,255,255,.05)}.agentChoice input{width:auto}.infoBtn{width:26px;height:26px;border-radius:50%;padding:0;min-width:0;background:#2563eb;font-weight:bold}.infoBtn{width:26px;height:26px;border-radius:50%;padding:0;min-width:0;background:#2563eb;font-weight:bold}textarea{min-height:110px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.dashboardMode aside{display:block}.dashboardMode .layout{grid-template-columns:250px 1fr}.dashboardMode #logSection{display:none}.dashboardMode #createCrewBtn{display:none}.dashboardMode #refreshBtn{display:none}.dashboardMode #passwordBtn{display:none}.dashboardMode main{padding:22px}.dashboardMode .cards{grid-template-columns:repeat(4,minmax(170px,1fr))}.notifSwitch{position:relative;display:inline-flex;align-items:center;justify-content:flex-start;width:132px;height:34px;border-radius:999px;padding:3px 10px 3px 38px;font-weight:bold;font-size:11px;letter-spacing:.4px;min-width:132px;transition:.2s;background:#16a34a;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}.notifSwitch.off{background:#dc2626;padding-left:12px;padding-right:38px}.notifKnob{position:absolute;left:5px;top:5px;width:24px;height:24px;border-radius:50%;background:white;box-shadow:0 2px 8px #0006;transition:.2s}.notifSwitch.off .notifKnob{left:103px}.notifSwitch span:last-child{white-space:nowrap;color:white}@media(max-width:900px){.layout{grid-template-columns:1fr}.cards{grid-template-columns:1fr 1fr}.grid2{grid-template-columns:1fr}.modal{align-items:flex-start;overflow:hidden}.modal .box{width:98vw;max-height:95vh;overflow-y:auto;padding:18px}.agentList{max-height:210px}textarea{min-height:80px}.modal .box>.row:last-child{position:sticky;bottom:-18px;background:rgba(13,27,46,.98);padding-top:10px;padding-bottom:4px;border-top:1px solid var(--l)}}
+
+.loginField{position:relative}
+.loginField input{
+  padding-left:44px;
+  padding-right:44px;
+}
+.loginIcon{
+  position:absolute;
+  left:14px;
+  top:50%;
+  transform:translateY(-50%);
+  width:18px;
+  height:18px;
+  color:#9bb0c9;
+  opacity:.9;
+  pointer-events:none;
+}
+.passToggle{
+  position:absolute;
+  right:10px;
+  top:50%;
+  transform:translateY(-50%);
+  width:30px;
+  height:30px;
+  min-width:30px;
+  padding:0;
+  border-radius:8px;
+  background:transparent;
+  color:#9bb0c9;
+  display:grid;
+  place-items:center;
+}
+.passToggle:hover{
+  background:rgba(59,130,246,.18);
+  filter:none;
+}
+.passToggle svg{
+  width:18px;
+  height:18px;
+}
+
+.consigneNav{position:relative}
+.consigneCount{color:#eaf2ff;font-weight:bold;margin-left:4px}
+.consigneBell{display:none;position:absolute;right:10px;top:8px;color:#ef4444;font-size:18px;line-height:18px}
+.consigneBell.on{display:inline-block;animation:shake .9s infinite;text-shadow:0 0 10px rgba(239,68,68,.75)}
+@keyframes shake{0%,100%{transform:rotate(0)}20%{transform:rotate(-10deg)}40%{transform:rotate(8deg)}60%{transform:rotate(-6deg)}80%{transform:rotate(4deg)}}
+.consigneItem{border:1px solid var(--l);border-radius:14px;background:#071525;padding:14px;margin:10px 0}
+.consigneItem.unread{border-color:#ef4444;box-shadow:0 0 0 1px rgba(239,68,68,.25),0 0 22px rgba(239,68,68,.12)}
+.consigneHead{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.consigneTitle{font-weight:bold;font-size:18px}
+.consigneText{white-space:pre-wrap;margin-top:8px;line-height:1.35}
+.consigneMeta{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.alertIcon{display:inline-block;margin-right:6px;color:#fecaca}.unread .alertIcon{animation:shake .8s infinite}
+.dayPick label{display:inline-flex;align-items:center;gap:4px;margin-right:8px}.dayPick input{width:auto}
+
+
+.flashLogin{position:absolute;top:26px;left:50%;transform:translateX(-50%);z-index:2;width:min(900px,92vw);background:rgba(127,29,29,.72);border:1px solid rgba(239,68,68,.75);color:#fff;border-radius:16px;padding:14px 18px;box-shadow:0 0 30px rgba(239,68,68,.18),0 18px 60px #0008;backdrop-filter:blur(8px);display:flex;align-items:center;gap:12px;animation:flashPulse 2.2s ease-in-out infinite}
+.flashLogin.hidden{display:none!important}.flashIcon{font-size:24px}.flashLabel{font-weight:800;color:#fecaca;margin-right:8px;white-space:nowrap}.flashText{font-weight:700;line-height:1.35}
+@keyframes flashPulse{0%,100%{box-shadow:0 0 18px rgba(239,68,68,.15),0 18px 60px #0008}50%{box-shadow:0 0 34px rgba(239,68,68,.35),0 18px 60px #0008}}
+.flashAdmin{border-color:rgba(239,68,68,.55);box-shadow:0 0 0 1px rgba(239,68,68,.12)}.flashAdmin textarea{min-height:130px}.flashToggleRow{display:flex;align-items:center;gap:10px;margin:10px 0}.flashToggleRow input{width:auto}
+
+
+.flashLogin.flashBlue{background:rgba(30,64,175,.30);border-color:#3b82f6;box-shadow:0 0 28px rgba(59,130,246,.25),0 18px 60px #0008}
+.flashLogin.flashRed{background:rgba(127,29,29,.38);border-color:#ef4444;box-shadow:0 0 30px rgba(239,68,68,.30),0 18px 60px #0008}
+.flashLogin.flashOrange{background:rgba(154,52,18,.34);border-color:#f97316;box-shadow:0 0 30px rgba(249,115,22,.25),0 18px 60px #0008}
+.flashLogin.flashGreen{background:rgba(20,83,45,.34);border-color:#22c55e;box-shadow:0 0 30px rgba(34,197,94,.22),0 18px 60px #0008}
+.flashLogin.flashPurple{background:rgba(88,28,135,.34);border-color:#a855f7;box-shadow:0 0 30px rgba(168,85,247,.25),0 18px 60px #0008}
+.flashLogin.flashUrgent{background:rgba(127,29,29,.55);border:2px solid #ef4444;animation:flashUrgent 1s infinite}
+@keyframes flashUrgent{0%,100%{box-shadow:0 0 12px rgba(239,68,68,.55),0 18px 60px #0008}50%{box-shadow:0 0 38px rgba(239,68,68,.95),0 18px 60px #0008}}
+.flashIcon.siren{display:inline-block;font-size:34px;margin-right:12px;animation:beaconSpin 1.1s linear infinite;filter:drop-shadow(0 0 10px rgba(255,0,0,.9))}
+@keyframes beaconSpin{0%{transform:rotate(0) scale(1)}25%{transform:rotate(8deg) scale(1.08)}50%{transform:rotate(0) scale(1)}75%{transform:rotate(-8deg) scale(1.08)}100%{transform:rotate(0) scale(1)}}
+.flashStyleGrid{display:grid;grid-template-columns:repeat(3,minmax(120px,1fr));gap:8px;margin:10px 0}
+.flashStyleBtn{border:1px solid var(--l);background:#071525;font-weight:bold}
+.flashStyleBtn.active{box-shadow:0 0 18px rgba(255,255,255,.18)}
+.flashStyleBtn.info{color:#60a5fa;border-color:#2563eb}
+.flashStyleBtn.alerte{color:#f87171;border-color:#dc2626}
+.flashStyleBtn.note{color:#fb923c;border-color:#ea580c}
+.flashStyleBtn.urgent{color:#fca5a5;border-color:#ef4444;animation:flashUrgent 1.2s infinite}
+.flashStyleBtn.service{color:#4ade80;border-color:#16a34a}
+.flashStyleBtn.rappel{color:#c084fc;border-color:#9333ea}
+.iconPick{display:flex;gap:8px;flex-wrap:wrap}
+.iconPick button{font-size:22px;min-width:48px;background:#071525;border:1px solid var(--l)}
+.iconPick button.active{border-color:#3b82f6;box-shadow:0 0 14px rgba(59,130,246,.35)}
+.flashPreview{margin-top:12px;padding:12px;border-radius:14px;border:1px solid var(--l);background:#071525}
+
+
+/* V32 - Texte flash simple */
+.flashLogin{position:absolute;top:26px;left:50%;transform:translateX(-50%);z-index:2;width:min(900px,92vw);background:rgba(127,29,29,.72)!important;border:1px solid rgba(239,68,68,.75)!important;color:#fff;border-radius:16px;padding:14px 18px;box-shadow:0 0 30px rgba(239,68,68,.18),0 18px 60px #0008;backdrop-filter:blur(8px);display:flex;align-items:center;gap:12px;animation:none!important}
+.flashLogin.hidden{display:none!important}.flashIcon{font-size:24px}.flashLabel{font-weight:800;color:#fecaca;margin-right:8px;white-space:nowrap}.flashText{font-weight:700;line-height:1.35}
+.flashAdmin{border-color:rgba(239,68,68,.55);box-shadow:0 0 0 1px rgba(239,68,68,.12)}.flashAdmin textarea{min-height:130px}.flashToggleRow{display:flex;align-items:center;gap:10px;margin:10px 0}.flashToggleRow input{width:auto}
+
+/* V32 - Liens utiles */
+.linkGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,120px));gap:18px;align-items:start}
+.linkCard{position:relative;width:120px;min-height:132px;background:linear-gradient(145deg,#10223a,#071525);border:1px solid var(--l);border-radius:20px;padding:12px 10px 10px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease;box-shadow:0 10px 25px rgba(0,0,0,.22)}
+.linkCard:hover{transform:translateY(-3px) scale(1.03);border-color:#3b82f6;box-shadow:0 16px 36px rgba(0,0,0,.34),0 0 18px rgba(59,130,246,.18)}
+.linkCard:active{transform:scale(.97)}
+.linkLogo{width:76px;height:76px;border-radius:18px;background:#10223a;border:1px solid rgba(255,255,255,.12);display:grid;place-items:center;font-size:42px;object-fit:contain;margin-bottom:9px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}
+.linkLogoImg{width:76px;height:76px;border-radius:18px;object-fit:contain;background:#f8fafc;border:1px solid rgba(255,255,255,.12);padding:6px;margin-bottom:9px;box-shadow:0 6px 16px rgba(0,0,0,.28)}
+.linkBody{width:100%;display:flex;flex-direction:column;align-items:center}
+.linkBody h3{margin:0;color:#fff;font-size:14px;line-height:1.15;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.linkBody p,.linkBody a{display:none}
+.linkActions{position:absolute;right:6px;top:6px;display:flex;gap:4px;opacity:0;transition:.15s}
+.linkCard:hover .linkActions{opacity:1}
+.linkActions button{min-width:0;width:28px;height:28px;padding:0;border-radius:9px;font-size:0;background:rgba(32,57,92,.92)}
+.linkActions button:first-child::before{content:'✎';font-size:14px}
+.linkActions button.danger::before{content:'×';font-size:18px}
+@media(max-width:900px){.linkGrid{grid-template-columns:repeat(auto-fill,minmax(104px,104px));gap:14px}.linkCard{width:104px;min-height:122px}.linkLogo,.linkLogoImg{width:68px;height:68px}.linkBody h3{font-size:13px}.linkActions{opacity:1}}
+.historyBox{max-height:420px;overflow:auto;border:1px solid var(--l);border-radius:12px;background:#071525;padding:10px}
+.historyItem{border-bottom:1px solid rgba(255,255,255,.07);padding:8px 0}.historyItem:last-child{border-bottom:0}
+
+
+.dashboardMode #personnelBtn,
+.dashboardMode .nav button[onclick="show('notes')"],
+.dashboardMode .nav button[onclick="show('links')"],
+.dashboardMode #historyBtn,
+.dashboardMode #adminBtn{display:none!important}
+
+
+.agentSearch{margin-bottom:8px;position:relative}
+.agentSearch input{padding-left:34px}
+
+.agentChoice.hiddenBySearch{display:none!important}
+
+
+.eventToolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:12px}.eventCalendar{border:1px solid var(--l);border-radius:16px;overflow:hidden;background:#071525}.eventCalHead{display:grid;grid-template-columns:repeat(7,1fr);background:#0d1b2e;border-bottom:1px solid var(--l)}.eventCalHead div{padding:10px;text-align:center;font-weight:bold;color:#9bb0c9}.eventGridMonth{display:grid;grid-template-columns:repeat(7,1fr)}.eventDay{min-height:118px;border-right:1px solid rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.06);padding:8px;background:rgba(7,21,37,.72)}.eventDay:nth-child(7n){border-right:0}.eventDay.otherMonth{opacity:.42}.eventDay.today{box-shadow:inset 0 0 0 2px #3b82f6;background:rgba(59,130,246,.08)}.eventDayNum{font-weight:bold;margin-bottom:6px}.eventPill{display:block;width:100%;text-align:left;border-radius:8px;padding:4px 6px;margin:3px 0;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#2563eb}.eventPill.red{background:#dc2626}.eventPill.green{background:#16a34a}.eventPill.orange{background:#ea580c}.eventPill.purple{background:#9333ea}.eventPill.gray{background:#475569}.eventWeekDay{display:grid;grid-template-columns:130px 1fr;border-bottom:1px solid rgba(255,255,255,.07);min-height:82px}.eventWeekDate{background:#0d1b2e;padding:12px;border-right:1px solid var(--l);font-weight:bold}.eventWeekEvents{padding:10px}.eventTodayBox{margin-top:16px;background:rgba(13,27,46,.92);border:1px solid #3b82f6;border-radius:14px;padding:12px;box-shadow:0 0 20px rgba(59,130,246,.15)}.eventTodayBox.hidden{display:none!important}.eventTodayTitle{font-weight:bold;margin-bottom:8px;color:#eaf2ff}.eventTodayEntry{font-size:12px;line-height:1.35;margin-top:8px}.eventTodayEntry b{display:block;margin-top:4px}.colorPick{display:flex;gap:8px;flex-wrap:wrap}.colorPick label{display:inline-flex;align-items:center;gap:6px}.colorPick input{width:auto}.colorDot{width:18px;height:18px;border-radius:50%;display:inline-block;background:#2563eb}.colorDot.red{background:#dc2626}.colorDot.green{background:#16a34a}.colorDot.orange{background:#ea580c}.colorDot.purple{background:#9333ea}.colorDot.gray{background:#475569}
+
+
+/* V40 - Icônes du menu et fenêtre équipage modernisée */
+.nav button{display:flex;align-items:center;gap:10px}
+.navIcon{width:18px;height:18px;flex:0 0 18px;display:inline-grid;place-items:center;font-size:16px;line-height:1}
+.crewBox{width:min(820px,96vw)!important;padding:0!important;overflow:hidden!important;border-color:#2f6fbf!important;background:#f7f9fc!important;color:#1f2937!important}
+.crewHeader{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,#3b82f6,#2563eb);color:#fff;padding:16px 20px}
+.crewHeaderLeft{display:flex;align-items:center;gap:12px}
+.crewHeaderIcon{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:rgba(255,255,255,.16);font-size:18px}
+.crewHeader h2{margin:0;font-size:20px}
+.crewClose{width:30px;height:30px;min-width:30px;padding:0;border-radius:50%;background:rgba(255,255,255,.14);font-size:18px}
+.crewBody{padding:22px}
+.crewFormRow{display:grid;grid-template-columns:170px 1fr;gap:16px;align-items:start;margin:14px 0}
+.crewFormRow>label{font-weight:bold;color:#4b5563;padding-top:11px;text-align:right}
+.crewControl input,.crewControl select,.crewControl textarea{width:100%;background:#fff;color:#111827;border:1px solid #b7c3d0;border-radius:8px;padding:11px 12px;box-shadow:inset 0 1px 2px rgba(0,0,0,.03)}
+.crewControl textarea{min-height:90px}
+.crewControl .agentSearch{margin-bottom:8px}
+.crewControl .agentList{max-height:260px;background:#fff;border:1px solid #b7c3d0;border-radius:8px;padding:0}
+.crewControl .agentChoice{color:#111827;padding:9px 12px;border-bottom:1px solid #e5e7eb}
+.crewControl .agentChoice:hover{background:#eef5ff}
+.crewHint{display:block;color:#6b7280;font-size:12px;margin-top:6px}
+.crewFooter{display:flex;justify-content:flex-end;gap:8px;padding:14px 22px;background:#edf3fb;border-top:1px solid #c9d7e8}
+@media(max-width:760px){.crewFormRow{grid-template-columns:1fr;gap:6px}.crewFormRow>label{text-align:left;padding-top:0}.crewBody{padding:16px}}
+
+
+/* V41 - Fenêtre équipage alignée + thème clair/sombre */
+.themeToggle{
+  display:inline-flex;align-items:center;gap:8px;min-width:auto;
+  background:#20395c;border:1px solid var(--l);padding:8px 12px
+}
+.themeToggle .themeIcon{font-size:16px}
+
+.crewBox{
+  width:min(860px,96vw)!important;
+  max-height:92vh!important;
+  padding:0!important;
+  overflow:hidden!important;
+  border:1px solid #2f6fbf!important;
+  border-radius:16px!important;
+  background:#f7f9fc!important;
+  color:#1f2937!important
+}
+.crewHeader{
+  display:flex;align-items:center;justify-content:space-between;
+  background:linear-gradient(180deg,#3b82f6,#2563eb);
+  color:#fff;padding:16px 20px
+}
+.crewHeaderLeft{display:flex;align-items:center;gap:12px}
+.crewHeaderIcon{
+  width:38px;height:38px;border-radius:10px;display:grid;place-items:center;
+  background:rgba(255,255,255,.16);font-size:20px
+}
+.crewHeader h2{margin:0;font-size:20px}
+.crewHeaderSub{font-size:12px;color:#dbeafe;margin-top:2px}
+.crewClose{
+  width:32px;height:32px;min-width:32px;padding:0;border-radius:50%;
+  background:rgba(255,255,255,.15);font-size:20px
+}
+.crewBody{padding:22px 24px;overflow:auto;max-height:calc(92vh - 132px)}
+.crewGrid{display:grid;grid-template-columns:1fr 1fr;gap:18px 20px}
+.crewField{display:flex;flex-direction:column;gap:7px}
+.crewField.full{grid-column:1/-1}
+.crewField label{font-weight:700;color:#374151;font-size:14px}
+.crewField input,.crewField select,.crewField textarea{
+  width:100%;min-height:44px;background:#fff;color:#111827;
+  border:1px solid #b7c3d0;border-radius:8px;padding:10px 12px;
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.03)
+}
+.crewField textarea{min-height:88px;resize:vertical}
+.crewField .agentSearch{margin:0 0 8px 0}
+.crewField .agentList{
+  max-height:250px;background:#fff;border:1px solid #b7c3d0;
+  border-radius:8px;padding:0;overflow:auto
+}
+.crewField .agentChoice{
+  color:#111827;padding:9px 12px;border-bottom:1px solid #e5e7eb
+}
+.crewField .agentChoice:last-child{border-bottom:0}
+.crewField .agentChoice:hover{background:#eef5ff}
+.crewHint{color:#6b7280;font-size:12px;margin-top:6px}
+.crewFooter{
+  display:flex;justify-content:flex-end;gap:8px;
+  padding:14px 22px;background:#edf3fb;border-top:1px solid #c9d7e8
+}
+.crewFooter .primary{background:#2563eb}
+.crewFooter .danger{background:#b91c1c}
+
+body.lightMode{
+  --bg:#eef3f8;--p:#ffffff;--p2:#f6f8fb;--t:#152238;--m:#5f6f82;
+  --l:#c9d4e1;background:#edf3f8;color:var(--t)
+}
+body.lightMode .top,
+body.lightMode aside{background:#ffffff}
+body.lightMode .section,
+body.lightMode .card{background:#ffffff}
+body.lightMode .nav button{color:#152238;background:#f7f9fc}
+body.lightMode .layout{background:#edf3f8}
+body.lightMode .field input,
+body.lightMode .field select,
+body.lightMode .field textarea,
+body.lightMode td input{background:#fff;color:#152238;border-color:#c9d4e1}
+body.lightMode .historyBox,
+body.lightMode .agentList,
+body.lightMode .eventCalendar{background:#fff;color:#152238}
+body.lightMode .pill{color:#fff}
+body.lightMode .mut,
+body.lightMode .tag{color:#64748b}
+body.lightMode .themeToggle{background:#e8eef6;color:#152238}
+
+@media(max-width:760px){
+  .crewGrid{grid-template-columns:1fr}
+  .crewField.full{grid-column:auto}
+  .crewBody{padding:16px}
+  .crewFooter{flex-wrap:wrap}
+}
+
+
+/* V42 - Ajustements effectifs + vrai thème clair */
+.crewField .agentList{
+  max-height:145px!important;
+  min-height:0!important;
+}
+.crewField.full:has(#crewAgents){
+  max-width:100%;
+}
+.crewField .agentChoice{
+  min-height:34px;
+  padding:7px 10px!important;
+}
+.crewField .agentSearch input{
+  min-height:40px!important;
+}
+
+/* Bouton de thème compact et lisible */
+.themeToggle{
+  border-radius:999px!important;
+  padding:7px 11px!important;
+  min-width:112px!important;
+  justify-content:center;
+}
+.themeToggle .themeIcon{font-size:15px}
+.themeToggle #themeText{font-size:12px;font-weight:700}
+
+/* Thème clair global complet */
+body.lightMode{
+  background:#edf3f8!important;
+  color:#172033!important;
+}
+body.lightMode .app,
+body.lightMode main,
+body.lightMode .layout{
+  background:#edf3f8!important;
+  color:#172033!important;
+}
+body.lightMode .top{
+  background:#ffffff!important;
+  border-bottom-color:#cbd5e1!important;
+}
+body.lightMode aside{
+  background:#f8fafc!important;
+  border-right-color:#cbd5e1!important;
+}
+body.lightMode .nav button{
+  background:#ffffff!important;
+  color:#1e293b!important;
+  border-color:#cbd5e1!important;
+}
+body.lightMode .nav button:hover{
+  background:#eaf2ff!important;
+}
+body.lightMode .section,
+body.lightMode .card{
+  background:#ffffff!important;
+  color:#172033!important;
+  border-color:#cbd5e1!important;
+  box-shadow:0 6px 18px rgba(15,23,42,.06);
+}
+body.lightMode .card.green{
+  background:#eaf8ef!important;
+  border-color:#86c99b!important;
+  color:#14532d!important;
+}
+body.lightMode .card.red{
+  background:#fff0f0!important;
+  border-color:#e7a1a1!important;
+  color:#7f1d1d!important;
+}
+body.lightMode tr.dispo{
+  background:#e8f7ee!important;
+  color:#173b27!important;
+}
+body.lightMode tr.indispo{
+  background:#fff0f0!important;
+  color:#5f1f1f!important;
+}
+body.lightMode th,
+body.lightMode td{
+  border-bottom-color:#d8e1ea!important;
+}
+body.lightMode .pill{
+  background:#dbeafe!important;
+  color:#1e3a8a!important;
+}
+body.lightMode .mut,
+body.lightMode .tag{
+  color:#64748b!important;
+}
+body.lightMode input,
+body.lightMode select,
+body.lightMode textarea{
+  background:#ffffff!important;
+  color:#172033!important;
+  border-color:#b9c6d4!important;
+}
+body.lightMode .historyBox,
+body.lightMode .agentList,
+body.lightMode .eventCalendar,
+body.lightMode .linkCard,
+body.lightMode .linkLogo{
+  background:#ffffff!important;
+  color:#172033!important;
+  border-color:#cbd5e1!important;
+}
+body.lightMode .linkBody h3{
+  color:#172033!important;
+}
+body.lightMode .eventCalHead,
+body.lightMode .eventWeekDate{
+  background:#eef4fa!important;
+  color:#334155!important;
+}
+body.lightMode .eventDay{
+  background:#ffffff!important;
+  color:#172033!important;
+  border-color:#dbe3ec!important;
+}
+body.lightMode .eventDay.today{
+  background:#eaf2ff!important;
+}
+body.lightMode .eventTodayBox{
+  background:#ffffff!important;
+  color:#172033!important;
+  border-color:#8ab4f8!important;
+}
+body.lightMode .modal{
+  background:rgba(30,41,59,.35)!important;
+}
+body.lightMode .modal .box:not(.crewBox){
+  background:#ffffff!important;
+  color:#172033!important;
+  border-color:#cbd5e1!important;
+}
+body.lightMode .notifSwitch{
+  box-shadow:none!important;
+}
+body.lightMode .themeToggle{
+  background:#ffffff!important;
+  color:#172033!important;
+  border-color:#cbd5e1!important;
+}
+body.lightMode .crewBox{
+  background:#f8fafc!important;
+}
+body.lightMode .crewFooter{
+  background:#eef3f8!important;
+}
+body.lightMode .crewField .agentChoice{
+  background:#ffffff!important;
+  color:#172033!important;
+}
+body.lightMode .crewField .agentChoice:hover{
+  background:#edf5ff!important;
+}
+
+
+/* V43 - Correctif effectifs compacts et icônes stables */
+.crewField .agentSearch{
+  position:relative;
+  margin-bottom:8px;
+}
+.crewField .agentSearch::before{
+  content:'';
+  position:absolute;
+  left:12px;
+  top:50%;
+  transform:translateY(-50%);
+  width:15px;
+  height:15px;
+  border:2px solid #64748b;
+  border-radius:50%;
+  z-index:2;
+  pointer-events:none;
+}
+.crewField .agentSearch::after{
+  content:'';
+  position:absolute;
+  left:24px;
+  top:57%;
+  width:7px;
+  height:2px;
+  background:#64748b;
+  transform:rotate(45deg);
+  border-radius:2px;
+  z-index:2;
+  pointer-events:none;
+}
+.crewField .agentSearch input{
+  height:38px!important;
+  min-height:38px!important;
+  padding:8px 12px 8px 38px!important;
+  font-size:14px!important;
+}
+.crewField .agentList{
+  height:132px!important;
+  max-height:132px!important;
+  min-height:132px!important;
+  overflow-y:auto!important;
+  padding:0!important;
+}
+.crewField .agentChoice{
+  display:grid!important;
+  grid-template-columns:24px 1fr!important;
+  align-items:center!important;
+  gap:8px!important;
+  min-height:32px!important;
+  padding:5px 10px!important;
+  margin:0!important;
+  line-height:1.15!important;
+  font-size:13px!important;
+}
+.crewField .agentChoice input[type="checkbox"]{
+  width:16px!important;
+  height:16px!important;
+  min-height:16px!important;
+  margin:0!important;
+  padding:0!important;
+  accent-color:#2563eb;
+}
+.crewField .agentChoice span{
+  display:block!important;
+  text-align:left!important;
+  white-space:normal!important;
+  overflow:visible!important;
+  font-size:13px!important;
+  font-weight:600!important;
+}
+.crewHint{
+  margin-top:5px!important;
+  font-size:11px!important;
+}
+.navIcon{
+  font-family:Arial,Helvetica,sans-serif!important;
+  font-style:normal!important;
+}
+
+
+/* V44 - Colonne vacation */
+#crewRows td:nth-child(6){white-space:nowrap;line-height:1.25}
+#crewRows td:nth-child(6) b{font-size:12px}
+
+
+/* V45 - Interface PHENIX claire/sombre finalisée */
+:root{
+  --sidebar:#0759b7;
+  --sidebar2:#0b76df;
+  --sidebarActive:#2d8cff;
+  --softBlue:#eaf3ff;
+}
+.top{
+  background:linear-gradient(90deg,#083b81,#0869cf)!important;
+  border-bottom:0!important;
+  color:#fff!important;
+  box-shadow:0 2px 12px rgba(0,0,0,.18)
+}
+.top .tag,.top #clock{color:#dbeafe!important}
+.top .logo{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25)}
+
+.layout{grid-template-columns:220px 1fr!important}
+aside{
+  background:linear-gradient(180deg,var(--sidebar2),var(--sidebar))!important;
+  border-right:0!important;
+  padding:14px 10px!important;
+  box-shadow:3px 0 16px rgba(0,0,0,.14)
+}
+.nav{display:flex;flex-direction:column;gap:5px}
+.nav button{
+  min-height:48px!important;
+  margin:0!important;
+  padding:8px 10px!important;
+  border:0!important;
+  border-radius:9px!important;
+  background:transparent!important;
+  color:#fff!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:10px!important;
+  font-size:13px!important;
+  font-weight:600!important;
+  transition:.16s ease
+}
+.nav button:hover{
+  background:rgba(255,255,255,.13)!important;
+  transform:translateX(2px)
+}
+.nav button.activeNav{
+  background:linear-gradient(90deg,#2d8cff,#2482ed)!important;
+  box-shadow:0 7px 18px rgba(0,0,0,.16)
+}
+.navIcon{
+  width:30px!important;
+  height:30px!important;
+  flex:0 0 30px!important;
+  border:1px solid rgba(255,255,255,.68)!important;
+  border-radius:8px!important;
+  display:grid!important;
+  place-items:center!important;
+  color:#fff!important;
+  font-size:17px!important;
+  line-height:1!important;
+  font-family:Arial,Helvetica,sans-serif!important
+}
+.consigneCount{color:#fff!important}
+.consigneBell{right:7px!important;top:13px!important}
+
+.eventTodayBox{
+  background:rgba(0,39,94,.3)!important;
+  color:#fff!important;
+  border:1px solid rgba(255,255,255,.22)!important;
+  box-shadow:none!important;
+  margin-top:14px!important
+}
+.eventTodayTitle,.eventTodayBox .mut{color:#fff!important}
+
+.cards .card{
+  border-radius:14px!important;
+  box-shadow:0 8px 22px rgba(0,0,0,.12)
+}
+.section{
+  border-radius:14px!important;
+  box-shadow:0 8px 24px rgba(0,0,0,.10)
+}
+#dash table{border-radius:10px;overflow:hidden}
+#dash th{
+  background:rgba(255,255,255,.035);
+  padding-top:13px!important;
+  padding-bottom:13px!important
+}
+#crewRows tr{transition:.15s}
+#crewRows tr:hover{filter:brightness(1.05)}
+.vacationCell{min-width:112px;line-height:1.25}
+.vacDate{font-weight:700;margin-bottom:4px}
+.vacLine{display:flex;gap:7px;align-items:center;font-size:12px}
+.vacLine span{min-width:38px}
+.vacStart span,.vacStart b{color:#22c55e}
+.vacEnd span,.vacEnd b{color:#ef4444}
+
+.themeToggle{
+  min-width:82px!important;
+  height:34px!important;
+  border-radius:999px!important;
+  background:rgba(255,255,255,.14)!important;
+  color:#fff!important;
+  border:1px solid rgba(255,255,255,.25)!important
+}
+
+/* Thème clair PHENIX : bleu + surfaces claires */
+body.lightMode{
+  --t:#16233a;
+  --m:#607086;
+  --l:#d4deea;
+  background:#eef3f8!important;
+  color:#16233a!important
+}
+body.lightMode .app,
+body.lightMode main,
+body.lightMode .layout{background:#eef3f8!important;color:#16233a!important}
+body.lightMode .top{
+  background:linear-gradient(90deg,#0756b3,#0876df)!important;
+  color:#fff!important
+}
+body.lightMode aside{
+  background:linear-gradient(180deg,#0878df,#0751ad)!important
+}
+body.lightMode .section,
+body.lightMode .card{
+  background:#fff!important;
+  color:#16233a!important;
+  border-color:#d7e0ea!important;
+  box-shadow:0 8px 22px rgba(15,39,70,.08)!important
+}
+body.lightMode .card.green{
+  background:#edf9f1!important;
+  border-color:#a9d8b6!important;
+  color:#176432!important
+}
+body.lightMode .card.red{
+  background:#fff1f1!important;
+  border-color:#efb8b8!important;
+  color:#8d2424!important
+}
+body.lightMode tr.dispo{
+  background:#edf9f1!important;
+  color:#173926!important
+}
+body.lightMode tr.indispo{
+  background:#fff1f1!important;
+  color:#5f2020!important
+}
+body.lightMode #dash th{
+  background:#f5f8fc!important;
+  color:#263751!important
+}
+body.lightMode th,
+body.lightMode td{border-color:#dce5ee!important}
+body.lightMode .pill{
+  background:#dcecff!important;
+  color:#174785!important
+}
+body.lightMode input,
+body.lightMode select,
+body.lightMode textarea{
+  background:#fff!important;
+  color:#16233a!important;
+  border-color:#bcc9d8!important
+}
+body.lightMode .modal .box:not(.crewBox){
+  background:#fff!important;
+  color:#16233a!important
+}
+body.lightMode .eventCalendar,
+body.lightMode .historyBox,
+body.lightMode .linkCard,
+body.lightMode .agentList{
+  background:#fff!important;
+  color:#16233a!important;
+  border-color:#d4deea!important
+}
+body.lightMode .eventCalHead,
+body.lightMode .eventWeekDate{background:#edf4fc!important;color:#27415f!important}
+body.lightMode .eventDay{background:#fff!important;color:#16233a!important}
+body.lightMode .eventDay.today{background:#e9f3ff!important}
+body.lightMode .linkBody h3{color:#16233a!important}
+body.lightMode .mut,
+body.lightMode .tag{color:#63748a!important}
+body.lightMode .top .tag,
+body.lightMode .top #clock{color:#e5f1ff!important}
+body.lightMode .themeToggle{
+  background:rgba(255,255,255,.18)!important;
+  color:#fff!important
+}
+body.lightMode .crewBox{background:#f8fafc!important}
+body.lightMode .crewFooter{background:#edf3f8!important}
+
+/* Thème sombre : couleurs PHENIX d'origine */
+body:not(.lightMode) .top{
+  background:#08182a!important;
+  border-bottom:1px solid #21364f!important;
+}
+body:not(.lightMode) aside{
+  background:#09182a!important;
+  border-right:1px solid #21364f!important;
+  box-shadow:none!important;
+}
+body:not(.lightMode) .nav button{
+  background:transparent!important;
+  border:1px solid #21364f!important;
+  color:#eaf2ff!important;
+}
+body:not(.lightMode) .nav button:hover,
+body:not(.lightMode) .nav button.activeNav{
+  background:#13243b!important;
+  transform:none!important;
+}
+body:not(.lightMode) .navIcon{
+  border-color:#3b82f6!important;
+  color:#93c5fd!important;
+}
+body:not(.lightMode) tr.dispo{background:#052e1a!important}
+body:not(.lightMode) tr.indispo{background:#3b0b0b!important}
+
+/* Thème clair : vert/rouge plus visibles */
+body.lightMode tr.dispo{
+  background:#d7f2df!important;
+  color:#123d24!important;
+}
+body.lightMode tr.indispo{
+  background:#ffdede!important;
+  color:#641f1f!important;
+}
+body.lightMode .card.green{
+  background:#dff4e6!important;
+  border-color:#67b982!important;
+  color:#14532d!important;
+}
+body.lightMode .card.red{
+  background:#ffe1e1!important;
+  border-color:#df7f7f!important;
+  color:#7f1d1d!important;
+}
+body.lightMode tr.dispo:hover{background:#c8ead3!important}
+body.lightMode tr.indispo:hover{background:#f8cdcd!important}
+
+@media(max-width:900px){
+  .layout{grid-template-columns:1fr!important}
+  aside{box-shadow:none}
+  .nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .eventTodayBox{grid-column:1/-1}
+}
+
+
+/* V46 - Correctifs thème, recherche et vacation */
+.vacDate{display:none!important}
+.vacationCell{min-width:96px}
+.vacLine{justify-content:space-between;gap:10px}
+body.lightMode #crewRows tr.dispo td{border-bottom-color:#a9d8b6!important}
+body.lightMode #crewRows tr.indispo td{border-bottom-color:#e7a1a1!important}
+
+
+/* V47 - Vacation minimaliste et recherche agents fonctionnelle */
+.vacationOnly{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  white-space:nowrap;
+  font-size:13px;
+}
+.vacationOnly b:first-child{color:#22c55e}
+.vacationOnly b:last-child{color:#ef4444}
+.vacationOnly span{color:var(--m)}
+#crewAgents .agentChoice.hiddenBySearch{
+  display:none!important;
+}
+
+
+/* V48 - Dashboard compact et zoomable */
+.dashTableWrap{
+  width:100%;
+  max-height:58vh;
+  overflow:auto;
+  border:1px solid var(--l);
+  border-radius:12px;
+}
+.dashTableWrap table{
+  min-width:980px;
+}
+.dashTableWrap thead th{
+  position:sticky;
+  top:0;
+  z-index:3;
+  background:var(--p);
+  box-shadow:0 1px 0 var(--l);
+}
+.dashTools{justify-content:flex-end}
+#crewTable{
+  transform-origin:top left;
+  transition:font-size .15s ease;
+}
+body.dashCompact #crewTable th,
+body.dashCompact #crewTable td{
+  padding:6px 7px!important;
+  font-size:12px!important;
+  line-height:1.15!important;
+}
+body.dashCompact #crewTable .pill{
+  padding:2px 6px!important;
+  font-size:11px!important;
+}
+body.dashCompact #crewTable button.small{
+  min-width:65px!important;
+  padding:4px 6px!important;
+  font-size:10px!important;
+}
+body.dashCompact #crewTable .infoBtn{
+  width:22px!important;
+  height:22px!important;
+  font-size:11px!important;
+}
+body.dashCompact .cards{
+  gap:8px!important;
+  margin-bottom:10px!important;
+}
+body.dashCompact .card{
+  padding:10px 12px!important;
+}
+body.dashCompact .card b{
+  font-size:22px!important;
+}
+body.dashCompact #logSection{
+  padding:12px!important;
+}
+body.dashUltraCompact #crewTable th,
+body.dashUltraCompact #crewTable td{
+  padding:4px 5px!important;
+  font-size:10px!important;
+}
+body.dashUltraCompact #crewTable button.small{
+  min-width:56px!important;
+  padding:3px 5px!important;
+  font-size:9px!important;
+}
+body.dashUltraCompact .vacationOnly{
+  font-size:10px!important;
+  gap:4px!important;
+}
+@media(max-width:900px){
+  .dashTableHeader{align-items:flex-start}
+  .dashTools{justify-content:flex-start}
+  .dashTableWrap{max-height:62vh}
+}
+
+
+/* V49 - Outils de zoom réservés au rôle Dashboard */
+body:not(.dashboardMode) #dashZoomTools{display:none!important}
+
+
+/* V51 - Réparation consignes, flash, événements et codes */
+#indispoCode{font-size:22px;font-weight:800;letter-spacing:1px;text-transform:uppercase;border-color:#3b82f6}
+#indispoPreview{min-height:42px}
+body:not(.dashboardMode) #dashZoomTools{display:none!important}
+body.dashboardMode #createCrewBtn{display:none!important}
+body:not(.dashboardMode) #createCrewBtn{display:inline-block!important}
+
+
+/* V51.1 - Affichage simplifié INDISPO */
+.indispoTitle{
+  font-size:18px!important;
+  line-height:1.25!important;
+  margin:0 0 14px!important;
+}
+#indispoCode{
+  font-size:16px!important;
+  font-weight:400!important;
+  letter-spacing:0!important;
+  text-transform:uppercase;
+}
+#indispoPreview b{
+  font-size:14px!important;
+  font-weight:600!important;
+}
+
+
+
+/* V57 MOBILE - interface téléphone sans zoom */
+.mobileMenuBtn{display:none;min-width:44px;width:44px;height:44px;padding:0;font-size:24px;align-items:center;justify-content:center;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.24)}
+.mobileNavBackdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.58);z-index:40}
+@media(max-width:700px){
+  html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+  body{min-width:0;overflow-x:hidden;padding-bottom:env(safe-area-inset-bottom)}
+  button,input,select,textarea{font-size:16px}
+  button{min-height:44px;padding:10px 12px;touch-action:manipulation}
+  .small{min-height:40px;min-width:0;font-size:13px;padding:8px 10px}
+  .app{min-height:100dvh}
+  .top{position:sticky;top:0;z-index:35;padding:8px 10px;gap:8px;align-items:center}
+  .top>.brand{min-width:0;flex:1;gap:8px}
+  .top .logo{width:40px;height:40px;flex:0 0 40px}
+  .top .brand h1{font-size:20px;line-height:1.05}
+  .top .brand .tag{font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52vw}
+  .top>.right{display:flex;align-items:center;gap:6px;text-align:right}
+  .top #agentName{display:none}
+  .top #clock{display:none}
+  .top .right>.row{margin:0!important;gap:5px;flex-wrap:nowrap}
+  .top #themeBtn{min-width:44px!important;width:44px!important;height:44px!important;padding:0!important}
+  .top #themeText{display:none}
+  .top #notifBtn{min-width:44px!important;width:44px!important;height:44px!important;padding:0!important;border-radius:12px}
+  .top #notifText{display:none}
+  .top .notifKnob{left:9px;top:9px;width:24px;height:24px}
+  .top .notifSwitch.off .notifKnob{left:9px}
+  .top .danger.small{width:44px;min-width:44px;font-size:0;padding:0}
+  .top .danger.small::before{content:'↪';font-size:23px}
+  .mobileMenuBtn{display:inline-flex}
+  .layout{display:block!important;min-height:calc(100dvh - 61px)}
+  aside{position:fixed;left:0;top:0;bottom:0;width:min(84vw,320px);z-index:50;padding:calc(14px + env(safe-area-inset-top)) 10px calc(14px + env(safe-area-inset-bottom))!important;overflow-y:auto;transform:translateX(-105%);transition:transform .22s ease;box-shadow:8px 0 28px rgba(0,0,0,.35)!important}
+  body.mobileNavOpen aside{transform:translateX(0)}
+  body.mobileNavOpen .mobileNavBackdrop{display:block}
+  .nav{display:flex!important;grid-template-columns:none!important;gap:6px}
+  .nav::before{content:'PHENIX';display:block;color:#fff;font-size:20px;font-weight:800;padding:10px 12px 14px;border-bottom:1px solid rgba(255,255,255,.18);margin-bottom:4px}
+  .nav button{min-height:52px!important;font-size:15px!important}
+  #eventTodayBox{margin:12px 0 0!important}
+  main{padding:10px!important;width:100%;min-width:0}
+  .cards,.dashboardMode .cards{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;margin-bottom:10px!important}
+  .card{padding:11px!important;min-width:0}
+  .card span{font-size:12px}
+  .card b{font-size:24px!important}
+  .section{padding:12px!important;margin-bottom:10px!important;border-radius:12px!important;min-width:0}
+  .section h2{font-size:19px;margin:4px 0 10px}
+  .dashTableHeader{align-items:stretch!important;gap:8px}
+  .dashTableHeader>h2{width:100%;margin-bottom:2px}
+  .dashTools{width:100%;display:grid!important;grid-template-columns:1fr;gap:8px!important}
+  #dashZoomTools{display:none!important}
+  #createCrewBtn{width:100%;font-weight:700}
+  .dashTableWrap{border:0!important;max-height:none!important;overflow:visible!important;background:transparent!important}
+  .dashTableWrap table{min-width:0!important;width:100%!important;display:block}
+  #crewTable thead{display:none}
+  #crewTable tbody{display:grid;gap:10px}
+  #crewTable tr{display:block;border:1px solid var(--l);border-radius:14px;padding:10px;background:var(--p);box-shadow:0 5px 15px rgba(0,0,0,.12)}
+  #crewTable tr.dispo{border-left:5px solid #22c55e}
+  #crewTable tr.indispo{border-left:5px solid #ef4444}
+  #crewTable td{display:grid!important;grid-template-columns:94px minmax(0,1fr);gap:8px;align-items:start;width:100%!important;padding:7px 4px!important;border-bottom:1px solid rgba(255,255,255,.08)!important;font-size:14px!important;overflow-wrap:anywhere}
+  #crewTable td:last-child{border-bottom:0!important;grid-template-columns:1fr}
+  #crewTable td::before{font-weight:700;color:var(--m);font-size:12px;text-transform:uppercase;letter-spacing:.2px}
+  #crewTable td:nth-child(1)::before{content:'Info'}
+  #crewTable td:nth-child(2)::before{content:'Indicatif'}
+  #crewTable td:nth-child(3)::before{content:'Matricules'}
+  #crewTable td:nth-child(4)::before{content:'Intervention'}
+  #crewTable td:nth-child(5)::before{content:'Code blanc'}
+  #crewTable td:nth-child(6)::before{content:'Vacation'}
+  #crewTable td:nth-child(7)::before{content:'';display:none}
+  #crewTable td:nth-child(2){font-size:18px!important;font-weight:800}
+  #crewTable td:last-child .row,#crewTable td:last-child{display:flex!important;flex-wrap:wrap;gap:7px}
+  #crewTable td:last-child button{flex:1 1 44%;min-height:44px;min-width:105px;font-size:13px!important}
+  #crewTable .infoBtn{width:42px!important;height:42px!important;font-size:15px!important}
+  .vacationOnly{white-space:normal;flex-wrap:wrap}
+  .grid2{grid-template-columns:1fr!important}
+  table:not(#crewTable){display:block;width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table:not(#crewTable) th,table:not(#crewTable) td{white-space:nowrap}
+  .modal{padding:0!important;align-items:flex-end!important;overflow:hidden}
+  .modal .box,.modal .box:not(.crewBox){width:100vw!important;max-width:none!important;max-height:94dvh!important;margin:0!important;border-radius:18px 18px 0 0!important;padding:16px!important;padding-bottom:calc(16px + env(safe-area-inset-bottom))!important;overflow-y:auto!important}
+  .crewBox{width:100vw!important;max-height:96dvh!important;border-radius:18px 18px 0 0!important}
+  .crewHeader{padding:13px 15px}
+  .crewHeader h2{font-size:18px}
+  .crewHeaderSub{display:none}
+  .crewBody{padding:14px!important;max-height:calc(96dvh - 128px)!important}
+  .crewGrid{grid-template-columns:1fr!important;gap:13px!important}
+  .crewField input,.crewField select,.crewField textarea{min-height:48px!important;font-size:16px!important}
+  .crewField .agentList{height:180px!important;max-height:180px!important;min-height:180px!important}
+  .crewField .agentChoice{min-height:42px!important;font-size:14px!important}
+  .crewFooter{position:sticky;bottom:0;padding:10px 12px calc(10px + env(safe-area-inset-bottom))!important;display:grid!important;grid-template-columns:1fr 1fr;gap:8px}
+  .crewFooter button{width:100%;min-height:46px}
+  .flashLogin{top:10px;width:calc(100vw - 20px);padding:10px 12px;font-size:13px}
+  .login{min-height:100dvh;padding:12px}
+  .login .box{width:100%;padding:20px 16px;border-radius:18px}
+  .login .brand h1{font-size:24px}
+  .login .brand .tag{font-size:10px}
+  .login input{min-height:50px;font-size:16px}
+  .login #logbox>.primary{width:100%;min-height:50px;font-weight:700}
+  .eventToolbar{align-items:stretch}
+  .eventToolbar>.row{width:100%;display:grid;grid-template-columns:repeat(3,1fr)}
+  .eventCalendar{overflow-x:auto}
+  .eventCalHead,.eventGridMonth{min-width:700px}
+  .eventWeekDay{grid-template-columns:88px minmax(0,1fr)}
+  .linkGrid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:10px!important}
+  .linkCard{width:100%!important;min-height:108px!important;padding:9px 5px!important}
+  .linkLogo,.linkLogoImg{width:58px!important;height:58px!important}
+  .consigneHead{flex-direction:column}
+  .consigneHead>.row{width:100%}
+  .consigneHead>.row button{flex:1}
+}
+@media(max-width:380px){
+  .cards,.dashboardMode .cards{grid-template-columns:1fr!important}
+  .top .brand .tag{display:none}
+  .linkGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  #crewTable td{grid-template-columns:82px minmax(0,1fr)}
+}
+
+/* V58 - Onglet Paramètres */
+.settingsSection{max-width:760px;margin-left:auto;margin-right:auto}
+.settingsList{display:grid;gap:12px;margin-top:18px}
+.settingsItem{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:16px;border:1px solid var(--l);border-radius:14px;background:rgba(7,21,37,.48)}
+.settingsItem>div:first-child{min-width:0}.settingsItem b{display:block;margin-bottom:5px;font-size:16px}.settingsItem .mut{line-height:1.35}
+.settingsSwitch{position:relative;display:inline-flex;align-items:center;justify-content:flex-end;width:132px;min-width:132px;height:42px;padding:4px 10px 4px 44px;border-radius:999px;background:#16a34a;font-size:12px;font-weight:800}
+.settingsSwitch.off{justify-content:flex-start;padding:4px 44px 4px 10px;background:#dc2626}
+.settingsSwitchKnob{position:absolute;left:7px;top:7px;width:28px;height:28px;border-radius:50%;background:#fff;box-shadow:0 2px 8px #0006;transition:.2s}
+.settingsSwitch.off .settingsSwitchKnob{left:97px}
+.themeChoices{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.themeChoices button{min-width:112px;border:1px solid var(--l);background:#20395c}
+.themeChoices button.active{background:#2563eb;box-shadow:0 0 0 2px rgba(96,165,250,.3)}
+.settingsAction{min-width:132px}
+body.lightMode .settingsItem{background:#f8fafc!important;border-color:#d4deea!important}
+body.lightMode .themeChoices button{background:#e8eef6;color:#16233a;border-color:#c2cedb}
+body.lightMode .themeChoices button.active{background:#2563eb;color:#fff}
+@media(max-width:700px){
+  .top .brand .tag{display:none!important}
+  .top>.brand{max-width:calc(100vw - 120px)}
+  .top .right{flex:0 0 auto}
+  .settingsSection{max-width:none}
+  .settingsItem{align-items:stretch;flex-direction:column;padding:15px;gap:13px}
+  .settingsSwitch,.settingsAction{width:100%;min-width:0}
+  .themeChoices{display:grid;grid-template-columns:1fr 1fr;width:100%}
+  .themeChoices button{min-width:0;width:100%}
+}
+
+
+
+/* V59 - Navigation harmonisée et thème clair bleu PHENIX */
+.navIcon svg{width:19px;height:19px;display:block;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.desktopSoundControl{display:inline-flex}
+.mobileSoundSetting{display:none}
+
+/* Thème clair : bleu demandé, fond doux et cartes sobres */
+body.lightMode{
+  --sidebar:#0758b6;--sidebar2:#0758b6;--sidebarActive:#0d6fd8;
+  --bg:#edf3f8;--p:#ffffff;--p2:#f7f9fc;--t:#17243a;--m:#607086;--l:#cfd9e5;
+  background:#edf3f8!important;color:#17243a!important
+}
+body.lightMode .app,body.lightMode .layout,body.lightMode main{background:#edf3f8!important;color:#17243a!important}
+body.lightMode .top{background:#0758b6!important;box-shadow:0 2px 10px rgba(13,48,89,.18)!important}
+body.lightMode aside{background:#0758b6!important;border-right:0!important;box-shadow:3px 0 14px rgba(13,48,89,.14)!important}
+body.lightMode .nav button{background:rgba(255,255,255,.96)!important;color:#13243b!important;border:1px solid rgba(255,255,255,.92)!important;box-shadow:0 2px 8px rgba(0,33,79,.10)!important}
+body.lightMode .nav button:hover{background:#f3f8ff!important;color:#0758b6!important;transform:none!important}
+body.lightMode .nav button.activeNav{background:#dcecff!important;color:#0758b6!important;border-color:#b9d9ff!important;box-shadow:inset 4px 0 0 #0758b6,0 3px 10px rgba(0,33,79,.12)!important}
+body.lightMode .navIcon{color:#0758b6!important;border:1px solid #79b6f2!important;background:#eef6ff!important}
+body.lightMode .section,body.lightMode .card{background:#fff!important;border-color:#d4dee9!important;box-shadow:0 7px 20px rgba(27,55,87,.07)!important}
+body.lightMode .settingsItem{background:#f8fafc!important;border-color:#d4dee9!important}
+body.lightMode .themeChoices button{background:#eef3f8!important;color:#17243a!important;border-color:#c7d3df!important}
+body.lightMode .themeChoices button.active{background:#0758b6!important;color:#fff!important;border-color:#0758b6!important;box-shadow:0 0 0 3px rgba(7,88,182,.15)!important}
+body.lightMode .primary{background:#0758b6!important}
+body.lightMode .eventTodayBox{background:#fff!important;color:#17243a!important;border:1px solid #c8d8e8!important;box-shadow:0 5px 16px rgba(27,55,87,.08)!important}
+body.lightMode .eventTodayTitle,body.lightMode .eventTodayBox .mut{color:#17243a!important}
+body.lightMode .eventTodayBox .pill{background:#dcecff!important;color:#0758b6!important}
+
+@media(max-width:700px){
+  .desktopSoundControl{display:none!important}
+  .mobileSoundSetting{display:flex}
+  body.lightMode aside{box-shadow:8px 0 28px rgba(0,33,79,.25)!important}
+  body.lightMode .nav::before{color:#fff}
+}
+
+
+
+/* V4 - Thème clair homogène et page de connexion modernisée */
+:root{--phenix-blue:#0018A8;--phenix-blue-hover:#00127f;--phenix-blue-soft:#eef2ff}
+
+/* Le thème clair ne conserve aucune surface sombre dans les pages de contenu. */
+body.lightMode .consigneItem,
+body.lightMode .flashPreview,
+body.lightMode .eventTodayBox,
+body.lightMode .eventCalendar,
+body.lightMode .eventCalHead,
+body.lightMode .eventDay,
+body.lightMode .eventWeekDate,
+body.lightMode .eventWeekEvents,
+body.lightMode .historyBox,
+body.lightMode .agentList,
+body.lightMode .agentChoice,
+body.lightMode .linkCard,
+body.lightMode .linkLogo,
+body.lightMode .section,
+body.lightMode .card{
+  background:#fff!important;
+  color:#14213d!important;
+  border-color:#d7deea!important;
+}
+body.lightMode .consigneItem{box-shadow:0 5px 16px rgba(15,23,42,.06)!important}
+body.lightMode .consigneItem.unread{
+  background:#fff7f7!important;
+  border-color:#ef4444!important;
+  box-shadow:0 0 0 1px rgba(239,68,68,.08),0 6px 18px rgba(127,29,29,.06)!important
+}
+body.lightMode .consigneItem .consigneTitle,
+body.lightMode .consigneItem .consigneText,
+body.lightMode .consigneItem b,
+body.lightMode .consigneItem strong{color:#14213d!important}
+body.lightMode .consigneItem.unread .consigneTitle{color:#9f1d1d!important}
+body.lightMode .consigneItem .pill{
+  background:#edf3ff!important;
+  color:#123c80!important;
+  border:1px solid #cfdbef!important
+}
+body.lightMode .eventTodayBox{
+  box-shadow:0 6px 18px rgba(15,23,42,.06)!important;
+  border-color:#d7deea!important
+}
+body.lightMode .eventTodayTitle,
+body.lightMode .eventTodayBox .mut{color:#14213d!important}
+body.lightMode .eventCalHead,
+body.lightMode .eventWeekDate{background:#f4f6fa!important}
+body.lightMode .eventDay.today{background:#eef2ff!important;box-shadow:inset 0 0 0 2px var(--phenix-blue)!important}
+body.lightMode .linkCard:hover{border-color:var(--phenix-blue)!important;box-shadow:0 12px 28px rgba(0,24,168,.12)!important}
+
+/* Bleu demandé, utilisé comme accent et non comme grand fond omniprésent. */
+body.lightMode .top{
+  background:linear-gradient(90deg,var(--phenix-blue),#102ebd)!important;
+  color:#fff!important
+}
+body.lightMode aside{
+  background:#fff!important;
+  border-right:1px solid #dbe2ec!important;
+  box-shadow:2px 0 14px rgba(15,23,42,.06)!important
+}
+body.lightMode .nav button{
+  background:#fff!important;
+  color:#14213d!important;
+  border:1px solid transparent!important
+}
+body.lightMode .nav button:hover{background:#f3f5f9!important;color:var(--phenix-blue)!important}
+body.lightMode .nav button.activeNav{
+  background:var(--phenix-blue-soft)!important;
+  color:var(--phenix-blue)!important;
+  border-color:#dbe2ff!important;
+  box-shadow:none!important
+}
+body.lightMode .navIcon{
+  color:var(--phenix-blue)!important;
+  border-color:#b7c3f4!important;
+  background:#f7f9ff!important
+}
+body.lightMode .primary{background:var(--phenix-blue)!important}
+body.lightMode .primary:hover{background:var(--phenix-blue-hover)!important;filter:none}
+body.lightMode .themeToggle,
+body.lightMode .notifSwitch{color:#fff!important}
+
+/* Connexion claire : fond propre, carte blanche et contraste lisible. */
+body.lightMode .login{
+  background:linear-gradient(145deg,#f8fafc 0%,#eef2f7 58%,#e8edf5 100%)!important
+}
+body.lightMode .login::before{
+  inset:0!important;
+  transform:none!important;
+  animation:none!important;
+  background:
+    radial-gradient(circle at 12% 12%,rgba(0,24,168,.10),transparent 30%),
+    radial-gradient(circle at 88% 82%,rgba(0,24,168,.08),transparent 32%),
+    linear-gradient(155deg,transparent 0 62%,rgba(0,24,168,.045) 62% 68%,transparent 68%)!important
+}
+body.lightMode .login::after{
+  animation:none!important;
+  opacity:1!important;
+  background:linear-gradient(135deg,rgba(255,255,255,.45),transparent 42%)!important
+}
+body.lightMode .login>.box{
+  background:rgba(255,255,255,.96)!important;
+  color:#14213d!important;
+  border:1px solid #d7deea!important;
+  box-shadow:0 22px 55px rgba(15,23,42,.16)!important;
+  backdrop-filter:blur(12px)
+}
+body.lightMode .login .brand{justify-content:center;text-align:left}
+body.lightMode .login .brand h1{color:var(--phenix-blue)!important}
+body.lightMode .login .tag{color:#5f6f86!important}
+body.lightMode .login h2{color:#14213d!important;text-align:center;margin-top:24px}
+body.lightMode .login .field input{
+  background:#f8fafc!important;
+  color:#14213d!important;
+  border:1px solid #cbd5e1!important;
+  box-shadow:none!important
+}
+body.lightMode .login .field input:focus{
+  outline:3px solid rgba(0,24,168,.12)!important;
+  border-color:var(--phenix-blue)!important
+}
+body.lightMode .loginIcon,
+body.lightMode .passToggle{color:#60708a!important}
+body.lightMode .login .primary{
+  width:100%;min-height:44px;margin-top:4px;
+  background:var(--phenix-blue)!important;
+  box-shadow:0 8px 18px rgba(0,24,168,.18)
+}
+body.lightMode .flashLogin{
+  background:#fff7f7!important;
+  color:#7f1d1d!important;
+  border-color:#efb2b2!important;
+  box-shadow:0 10px 26px rgba(127,29,29,.10)!important
+}
+body.lightMode .flashLogin .flashText,
+body.lightMode .flashLogin .flashLabel{color:#7f1d1d!important}
+
+@media(max-width:700px){
+  body.lightMode aside{background:#fff!important}
+  body.lightMode .nav button{background:#fff!important;color:#14213d!important;border-color:#e1e6ee!important}
+  body.lightMode .nav button.activeNav{background:var(--phenix-blue-soft)!important;color:var(--phenix-blue)!important}
+  body.lightMode .login>.box{width:min(430px,92vw)!important;padding:22px!important}
+}
+
+
+
+/* V58 - Correctifs finaux du thème clair pour les fenêtres */
+body.lightMode .modal .box,
+body.lightMode .modal .box:not(.crewBox),
+body.lightMode .crewBox{
+  background:#ffffff!important;
+  color:#172033!important;
+  border-color:#cbd5e1!important;
+}
+body.lightMode .modal .box>.row:last-child,
+body.lightMode .crewFooter{
+  background:#f4f7fb!important;
+  color:#172033!important;
+  border-top-color:#d7e0ea!important;
+}
+body.lightMode .modal .box>.row:last-child button:not(.primary):not(.danger):not(.ok),
+body.lightMode .crewFooter button:not(.primary):not(.danger):not(.ok){
+  background:#e7edf5!important;
+  color:#172033!important;
+  border:1px solid #c7d2df!important;
+}
+body.lightMode .modal .box>.row:last-child .primary,
+body.lightMode .crewFooter .primary{
+  background:#0018A8!important;
+  color:#ffffff!important;
+}
+body.lightMode #indispoModal .box,
+body.lightMode #dispoModal .box{
+  background:#ffffff!important;
+  color:#172033!important;
+}
+body.lightMode #indispoModal .field,
+body.lightMode #dispoModal .field,
+body.lightMode #indispoPreview{
+  background:transparent!important;
+  color:#172033!important;
+}
+
+
+
+/* PHENIX V5.5 STABLE — correctif VISUEL SEULEMENT. Aucun HTML/JS de connexion modifié. */
+#login.login{
+  isolation:isolate!important;
+  min-height:100vh!important;
+  display:grid!important;
+  place-items:center!important;
+  position:relative!important;
+  overflow:hidden!important;
+  padding:110px 20px 30px!important;
+  background:
+    radial-gradient(circle at 18% 25%,rgba(255,255,255,.92) 0 3%,rgba(255,255,255,.28) 9%,transparent 25%),
+    radial-gradient(circle at 78% 24%,rgba(220,38,38,.90) 0 5%,rgba(220,38,38,.35) 13%,transparent 31%),
+    radial-gradient(circle at 74% 76%,rgba(255,255,255,.76) 0 4%,rgba(255,255,255,.20) 12%,transparent 29%),
+    radial-gradient(circle at 23% 76%,rgba(0,72,255,.94) 0 8%,rgba(0,72,255,.38) 19%,transparent 39%),
+    linear-gradient(125deg,#0018a8 0%,#003bd4 34%,#f7faff 52%,#0648d8 68%,#a70016 100%)!important;
+  background-size:145% 145%!important;
+  animation:phenixLoginBase 13s ease-in-out infinite alternate!important;
+}
+#login.login::before,#login.login::after{
+  content:""!important;position:absolute!important;inset:-18%!important;
+  display:block!important;pointer-events:none!important;z-index:0!important;
+}
+#login.login::before{
+  background:
+    radial-gradient(circle at 17% 38%,rgba(0,38,190,.98) 0 7%,rgba(0,72,255,.54) 17%,transparent 37%),
+    radial-gradient(circle at 82% 31%,rgba(220,18,45,.82) 0 6%,rgba(220,18,45,.30) 15%,transparent 35%),
+    radial-gradient(circle at 52% 77%,rgba(255,255,255,.88) 0 5%,rgba(255,255,255,.25) 15%,transparent 34%)!important;
+  filter:blur(24px)!important;
+  animation:phenixHaloA 10s ease-in-out infinite alternate!important;
+}
+#login.login::after{
+  background:
+    radial-gradient(circle at 34% 70%,rgba(255,255,255,.62) 0 3%,rgba(255,255,255,.15) 12%,transparent 28%),
+    radial-gradient(circle at 68% 58%,rgba(0,24,168,.75) 0 8%,rgba(0,24,168,.20) 23%,transparent 42%),
+    radial-gradient(circle at 91% 79%,rgba(190,0,30,.72) 0 5%,rgba(190,0,30,.22) 16%,transparent 34%)!important;
+  filter:blur(32px)!important;
+  animation:phenixHaloB 14s ease-in-out infinite alternate-reverse!important;
+}
+@keyframes phenixLoginBase{0%{background-position:0% 20%}100%{background-position:100% 80%}}
+@keyframes phenixHaloA{0%{transform:translate3d(-4%,-3%,0) scale(1)}100%{transform:translate3d(7%,5%,0) scale(1.12)}}
+@keyframes phenixHaloB{0%{transform:translate3d(4%,-5%,0) scale(1.08)}100%{transform:translate3d(-6%,7%,0) scale(.96)}}
+#login.login>.box{
+  position:relative!important;z-index:2!important;
+  width:min(460px,92vw)!important;margin:0!important;
+  background:rgba(5,20,75,.84)!important;
+  border:1px solid rgba(255,255,255,.48)!important;
+  box-shadow:0 26px 85px rgba(0,0,45,.48),inset 0 1px 0 rgba(255,255,255,.17)!important;
+  backdrop-filter:blur(18px) saturate(130%)!important;
+}
+#login.login>#flashLogin{
+  position:absolute!important;top:28px!important;left:50%!important;transform:translateX(-50%)!important;
+  z-index:3!important;width:min(900px,calc(100vw - 40px))!important;margin:0!important;
+  background:rgba(255,255,255,.94)!important;color:#7f1d1d!important;
+  border:1px solid rgba(220,38,38,.32)!important;box-shadow:0 14px 48px rgba(24,35,90,.24)!important;
+  justify-content:center!important;text-align:center!important;
+}
+#login.login>#flashLogin .flashLabel,#login.login>#flashLogin .flashText{color:#7f1d1d!important}
+#login.login .brand h1,#login.login h2,#login.login label{color:#fff!important}
+#login.login .tag,#login.login .mut{color:#dbeafe!important}
+#login.login input{background:rgba(255,255,255,.97)!important;color:#111827!important;border-color:rgba(255,255,255,.82)!important}
+#login.login input::placeholder{color:#64748b!important;opacity:1!important}
+#login.login .primary{background:linear-gradient(90deg,#0018a8,#075cff)!important;color:#fff!important;font-weight:800!important;position:relative!important;z-index:4!important}
+
+/* Identité PHENIX et lisibilité du thème clair */
+body.lightMode .top{background:#0018a8!important;color:#fff!important;border-bottom-color:#00118a!important}
+body.lightMode .top h1,body.lightMode .top .tag,body.lightMode .top .right,body.lightMode .top #agentName,body.lightMode .top #clock{color:#fff!important}
+body.lightMode #dash h1,body.lightMode #dash h2,body.lightMode #dash h3,
+body.lightMode #dash table,body.lightMode #dash th,body.lightMode #dash td{color:#172033!important}
+body.lightMode .nav button.activeNav{background:#0018a8!important;color:#fff!important;border-color:#0018a8!important}
+body.lightMode .nav button.activeNav .navIcon,body.lightMode .nav button.activeNav svg{color:#fff!important;stroke:#fff!important}
+/* Boutons opérationnels : texte toujours blanc */
+body.lightMode #crewRows button,body.lightMode #crewTable button,
+body.lightMode button.small.primary,body.lightMode button.small.ok,body.lightMode button.small.danger,
+body.lightMode .crewActions button{color:#fff!important;text-shadow:0 1px 1px rgba(0,0,0,.32)!important;font-weight:700!important}
+body.lightMode #crewRows button.primary,body.lightMode #crewRows button:not(.ok):not(.danger){background:#0b3560!important}
+body.lightMode #crewRows button.ok{background:#11943b!important}
+body.lightMode #crewRows button.danger{background:#d4262e!important}
+/* Statuts de lignes conservés */
+body.lightMode tr.dispo{background:#eaf8ec!important;color:#14532d!important}
+body.lightMode tr.indispo{background:#ffe0e0!important;color:#641313!important}
+body.lightMode tr.dispo td{border-bottom-color:#b9e6c1!important}
+body.lightMode tr.indispo td{border-bottom-color:#efaaaa!important}
+@media(max-width:700px){
+  #login.login{padding:95px 12px 18px!important}
+  #login.login>#flashLogin{top:12px!important;width:calc(100vw - 20px)!important}
+  #login.login>.box{width:calc(100vw - 24px)!important}
+}
+@media(prefers-reduced-motion:reduce){#login.login,#login.login::before,#login.login::after{animation:none!important}}
+
+/* V5.6 — correctif critique : permettre au JavaScript de masquer réellement l’écran de connexion.
+   L’ancien display:grid!important empêchait style.display="none" de fonctionner. */
+#login.login[style*="display: none"],
+#login.login[style*="display:none"]{display:none!important;}
+#app.app[style*="display: block"],
+#app.app[style*="display:block"]{display:block!important;}
+
+/* V5.7 - Icônes des onglets visibles en thème clair */
+body.lightMode .nav button .navIcon{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  flex:0 0 34px!important;
+  width:34px!important;
+  height:34px!important;
+  min-width:34px!important;
+  opacity:1!important;
+  visibility:visible!important;
+}
+body.lightMode .nav button .navIcon svg{
+  display:block!important;
+  width:20px!important;
+  height:20px!important;
+  opacity:1!important;
+  visibility:visible!important;
+  fill:none!important;
+  stroke:#0758b6!important;
+  color:#0758b6!important;
+}
+body.lightMode .nav button.activeNav .navIcon{
+  background:rgba(255,255,255,.18)!important;
+  border-color:rgba(255,255,255,.45)!important;
+  color:#fff!important;
+}
+body.lightMode .nav button.activeNav .navIcon svg,
+body.lightMode .nav button.activeNav .navIcon svg *{
+  stroke:#fff!important;
+  color:#fff!important;
+  opacity:1!important;
+  visibility:visible!important;
+}
+
+/* PHENIX V5.9 — badges plus compacts et chargement sobre */
+#crewRows td:nth-child(3) .pill{
+  background:#0b3b78!important;
+  color:#fff!important;
+  border:1px solid #175da9!important;
+  box-shadow:0 1px 4px rgba(2,34,73,.22)!important;
+  font-size:12px!important;
+  font-weight:650!important;
+  line-height:1.15!important;
+  padding:3px 7px!important;
+  min-width:31px;
+  text-align:center;
+}
+#crewRows tr.dispo td:nth-child(2) .pill{
+  background:#15803d!important;
+  color:#fff!important;
+  border:1px solid #166534!important;
+  box-shadow:0 1px 4px rgba(21,128,61,.22)!important;
+  font-size:12px!important;
+  font-weight:700!important;
+  line-height:1.15!important;
+  padding:3px 7px!important;
+}
+#crewRows tr.indispo td:nth-child(2) .pill{
+  background:#c81e1e!important;
+  color:#fff!important;
+  border:1px solid #991b1b!important;
+  box-shadow:0 1px 4px rgba(200,30,30,.22)!important;
+  font-size:12px!important;
+  font-weight:700!important;
+  line-height:1.15!important;
+  padding:3px 7px!important;
+}
+.phenixLoading{
+  position:fixed;inset:0;z-index:99999;display:none;place-items:center;
+  background:rgba(7,17,31,.82);
+}
+.phenixLoading.show{display:grid!important}
+.phenixLoadingCard{
+  width:min(390px,88vw);padding:30px 28px 26px;border-radius:14px;text-align:center;
+  color:#172033;background:#fff;border:1px solid #d7e0ea;
+  box-shadow:0 18px 48px rgba(0,0,0,.28);
+}
+.phenixLoadingLogo{
+  width:72px;height:72px;object-fit:contain;border-radius:12px;padding:5px;
+  background:#f6f8fb;border:1px solid #d7e0ea;
+}
+.phenixLoadingTitle{margin:13px 0 3px;font-size:27px;letter-spacing:1px;font-weight:800;color:#0758b6}
+.phenixLoadingText{margin:14px 0 0;color:#475569;font-size:13px;font-weight:600}
+.phenixProgress{height:5px;margin-top:20px;border-radius:4px;overflow:hidden;background:#e5eaf0}
+.phenixProgressBar{height:100%;width:0;background:#0758b6;animation:phenixLoadBar 2s ease-out forwards}
+@keyframes phenixLoadBar{from{width:0}to{width:100%}}
+@media(prefers-reduced-motion:reduce){.phenixProgressBar{animation:none;width:100%}}
+
+
+/* V59 - Radio compact + sonar sécurisé derrière la connexion */
+.crewServiceRadios{display:flex;align-items:center;gap:18px;min-height:24px}
+.crewServiceRadios label{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:400;cursor:pointer}
+.crewServiceRadios input[type="radio"]{width:14px!important;height:14px!important;min-height:14px!important;margin:0!important;padding:0!important;accent-color:#2563eb}
+.login{isolation:isolate}
+.loginSonar{
+  position:absolute;left:50%;top:50%;width:min(78vw,760px);aspect-ratio:1;
+  transform:translate(-50%,-50%);border-radius:50%;pointer-events:none;z-index:0;opacity:.24;
+  background:
+    repeating-radial-gradient(circle,transparent 0 52px,rgba(96,165,250,.62) 53px 54px),
+    linear-gradient(90deg,transparent 49.8%,rgba(96,165,250,.62) 50%,transparent 50.2%),
+    linear-gradient(transparent 49.8%,rgba(96,165,250,.62) 50%,transparent 50.2%)
+}
+.loginSonar::after{
+  content:'';position:absolute;inset:0;border-radius:50%;
+  background:conic-gradient(from -90deg,transparent 0deg,rgba(96,165,250,.03) 300deg,rgba(96,165,250,.10) 325deg,rgba(96,165,250,.26) 340deg,rgba(191,219,254,.82) 349deg,rgba(255,255,255,.92) 351deg,transparent 360deg);
+  animation:phenixSafeRadar 7s linear infinite
+}
+@keyframes phenixSafeRadar{to{transform:rotate(360deg)}}
+.login>.box,.login>.flashLogin{position:relative;z-index:3!important}
+@media(max-width:700px){.loginSonar{width:115vw;opacity:.18}}
+@media(prefers-reduced-motion:reduce){.loginSonar::after{animation:none!important}}
+
+
+/* V60 - Correctif visibilité des onglets selon le rôle
+   IMPORTANT : cette règle doit rester à la fin du CSS. */
+.nav button.hidden{
+  display:none!important;
+}
+body.operatorMode #personnelBtn,
+body.operatorMode #linksBtn,
+body.operatorMode #historyBtn,
+body.operatorMode #adminBtn{
+  display:none!important;
+}
+
+
+/* V61 - Contraste amélioré du thème clair */
+body.lightMode{--bg:#e8eef5;--card:#fff;--line:#c5d1df;--muted:#52657a;--text:#0b1f38}
+body.lightMode .topbar{background:#082b63!important;border-bottom:1px solid #174d91!important;box-shadow:0 3px 12px rgba(15,42,80,.16)}
+body.lightMode .sidebar{background:#f4f7fb!important;border-right:1px solid #c4cfdd!important}
+body.lightMode .nav button{background:#fff!important;color:#10243e!important;border:1px solid #d4dce7!important;box-shadow:0 4px 12px rgba(25,48,79,.08)!important}
+body.lightMode .nav button:hover{background:#edf4ff!important;border-color:#91b5ea!important}
+body.lightMode .nav button.active{background:#1035bd!important;color:#fff!important;border-color:#1035bd!important;box-shadow:0 5px 15px rgba(16,53,189,.22)!important}
+body.lightMode .nav button .ico{color:#075ec7!important;border-color:#9dbbf0!important;background:#f7faff!important}
+body.lightMode .nav button.active .ico{color:#fff!important;border-color:#7790ef!important;background:#3453c8!important}
+body.lightMode .card,body.lightMode .panel,body.lightMode .todayCard{background:#fff!important;border-color:#c7d2df!important;box-shadow:0 5px 16px rgba(31,54,84,.08)}
+body.lightMode input,body.lightMode select,body.lightMode textarea{background:#fff!important;color:#10243e!important;border-color:#aebdce!important}
+body.lightMode input:focus,body.lightMode select:focus,body.lightMode textarea:focus{border-color:#246bc5!important;box-shadow:0 0 0 3px rgba(36,107,197,.13)!important}
+body.lightMode .muted,body.lightMode .small,body.lightMode .sub{color:#53677d!important}
+body.lightMode table th{background:#e8f0fa!important;color:#122b4b!important;border-color:#bdcad9!important}
+body.lightMode table td{color:#10243e!important;border-color:#ccd6e1!important}
+
+
+/* V62 - Thème clair HAUT CONTRASTE */
+body.lightMode{
+  --bg:#dce6f1!important;
+  --card:#ffffff!important;
+  --line:#91a6bc!important;
+  --muted:#3c526b!important;
+  --text:#071a31!important;
+}
+body.lightMode .content{background:#dce6f1!important}
+body.lightMode .sidebar{
+  background:#eef3f8!important;
+  border-right:2px solid #9fb1c4!important;
+}
+body.lightMode .topbar{
+  background:#06275b!important;
+  border-bottom:2px solid #1d62b5!important;
+  box-shadow:0 4px 16px rgba(4,31,70,.25)!important;
+}
+body.lightMode .nav button{
+  background:#fff!important;
+  color:#0a2342!important;
+  border:2px solid #b4c3d3!important;
+  box-shadow:0 3px 9px rgba(22,48,80,.11)!important;
+  font-weight:700!important;
+}
+body.lightMode .nav button:hover{
+  background:#dcecff!important;
+  color:#063f88!important;
+  border-color:#397dd1!important;
+}
+body.lightMode .nav button.active{
+  background:#0d43c7!important;
+  color:#fff!important;
+  border-color:#082f9e!important;
+  box-shadow:0 5px 15px rgba(13,67,199,.32)!important;
+}
+body.lightMode .nav button .ico{
+  color:#0759b7!important;
+  background:#e7f1ff!important;
+  border:2px solid #72a4df!important;
+}
+body.lightMode .nav button.active .ico{
+  color:#fff!important;
+  background:#315bd0!important;
+  border-color:#8ba6ff!important;
+}
+body.lightMode .card,
+body.lightMode .panel,
+body.lightMode .todayCard,
+body.lightMode .crewCard{
+  background:#fff!important;
+  border:2px solid #aebdcd!important;
+  box-shadow:0 5px 14px rgba(24,48,76,.13)!important;
+}
+body.lightMode h1,body.lightMode h2,body.lightMode h3,
+body.lightMode .title,body.lightMode .sectionTitle{
+  color:#071d39!important;
+}
+body.lightMode .muted,body.lightMode .small,body.lightMode .sub{
+  color:#3d536b!important;
+}
+body.lightMode input,body.lightMode select,body.lightMode textarea{
+  background:#fff!important;
+  color:#071d39!important;
+  border:2px solid #91a7bd!important;
+}
+body.lightMode input:focus,body.lightMode select:focus,body.lightMode textarea:focus{
+  border-color:#0d62c7!important;
+  box-shadow:0 0 0 3px rgba(13,98,199,.20)!important;
+}
+body.lightMode table{
+  border:1px solid #9eb0c2!important;
+}
+body.lightMode table th{
+  background:#cbdced!important;
+  color:#071d39!important;
+  border-color:#9aafc4!important;
+  font-weight:800!important;
+}
+body.lightMode table td{
+  background:#fff!important;
+  color:#0b213b!important;
+  border-color:#b6c4d2!important;
+}
+body.lightMode table tr:nth-child(even) td{background:#f0f5fa!important}
+body.lightMode .btn{
+  border-width:2px!important;
+  font-weight:700!important;
+}
+body.lightMode .btn.primary,
+body.lightMode button.primary{
+  background:#0b56b5!important;
+  border-color:#07458f!important;
+  color:#fff!important;
+}
+body.lightMode .status.available,
+body.lightMode .available,
+body.lightMode .dispo{
+  color:#075d32!important;
+}
+body.lightMode .status.unavailable,
+body.lightMode .unavailable,
+body.lightMode .indispo{
+  color:#a41515!important;
+}
+
+</style></head><body>
+<div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
+  <div class="phenixLoadingCard">
+    <img class="phenixLoadingLogo" src="/logo.png" alt="Logo PHENIX">
+    <div class="phenixLoadingTitle">PHENIX</div>
+    <div class="phenixProgress"><div class="phenixProgressBar"></div></div>
+    <div class="phenixLoadingText">Chargement des équipages en cours…</div>
+  </div>
+</div>
+
+<div id="login" class="login"><div class="loginSonar" aria-hidden="true"></div><div id="flashLogin" class="flashLogin hidden"><span class="flashIcon">📢</span><span id="flashLoginLabel" class="flashLabel">INFO :</span><span id="flashLoginText" class="flashText"></span></div><div class="box">
+  <div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div>
+  <div id="setup" class="hidden"><h2>Première installation</h2><p class="mut">Crée le premier compte admin. Ensuite, seul l'admin créera les autres accès.</p><div class="field"><input id="suName" placeholder="Nom affiché admin"></div><div class="field"><input id="suLogin" placeholder="Identifiant admin"></div><div class="field"><input id="suPass" type="password" placeholder="Mot de passe admin"></div><button class="primary" onclick="setupAdmin()">Créer le premier admin</button></div>
+  <div id="logbox"><h2>Connexion</h2>
+  <div class="field">
+    <div class="loginField">
+      <svg class="loginIcon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2"/></svg>
+      <input id="loginId" placeholder="Identifiant">
+    </div>
+  </div>
+  <div class="field">
+    <div class="loginField">
+      <svg class="loginIcon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2" stroke="currentColor" stroke-width="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <input id="loginPass" type="password" placeholder="Mot de passe" onkeydown="if(event.key==='Enter')login()">
+      <button type="button" class="passToggle" onclick="toggleLoginPassword()" title="Afficher / masquer le mot de passe"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/></svg></button>
+    </div>
+  </div>
+  <button class="primary" onclick="login()">Se connecter</button>
+</div>
+  <div id="msg" class="err"></div>
+</div></div>
+<div id="app" class="app"><div id="mobileNavBackdrop" class="mobileNavBackdrop" onclick="closeMobileNav()"></div><div class="top"><button type="button" class="mobileMenuBtn" onclick="toggleMobileNav()" aria-label="Ouvrir le menu">☰</button><div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div><div class="right"><b id="agentName">Agent</b><div class="tag" id="clock"></div><div class="row topUserActions" style="justify-content:flex-end;margin-top:6px"><button id="notifBtn" class="notifSwitch desktopSoundControl" onclick="toggleNotifications()" title="Alertes sonores"><span class="notifKnob"></span><span id="notifText">ALERTES ON</span></button><button class="small danger" onclick="logout()">Déconnexion</button></div></div></div>
+<div class="layout"><aside><div class="nav"><button onclick="show('dash')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5"/><path d="M9.5 20v-6h5v6"/></svg></span>Tableau de bord</button><button id="personnelBtn" onclick="show('personnel')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/><path d="M8 11.5h8"/></svg></span>Personnel</button><button onclick="show('notes')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h6"/></svg></span>Notes privées</button><button id="linksBtn" onclick="show('links')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a4 4 0 0 0 5.7 0l2.3-2.3a4 4 0 1 0-5.7-5.7L11 6.3"/><path d="M14 11a4 4 0 0 0-5.7 0L6 13.3A4 4 0 0 0 11.7 19l1.3-1.3"/></svg></span>Liens utiles</button><button onclick="show('events')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 9h18M7 13h2M11 13h2M15 13h2M7 17h2M11 17h2"/></svg></span>Événements</button><button id="historyBtn" onclick="show('history')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>Historique</button><button class="consigneNav" onclick="show('consignes')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/><path d="m6.5 8 .5.5 1-1"/></svg></span>Consignes <span id="consigneCount" class="consigneCount">(0)</span><span id="consigneBell" class="consigneBell">🔔</span></button><button id="settingsBtn" onclick="show('settings')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg></span>Paramètres</button><button id="adminBtn" onclick="show('admin')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 12H6.5a3.5 3.5 0 1 1 3.5-3.5V18a3 3 0 1 1-3-3h10a3 3 0 1 1-3 3V8.5A3.5 3.5 0 1 1 17.5 12H9Z"/></svg></span>Administration</button></div><div id="eventTodayBox" class="eventTodayBox hidden"></div></aside><main>
+<section id="dash"><div class="cards"><div class="card"><span>Équipages</span><br><b id="cTotal">0</b></div><div class="card green"><span>Disponibles</span><br><b id="cDispo">0</b></div><div class="card red"><span>Indisponibles</span><br><b id="cIndispo">0</b></div><div class="card"><span>Effectifs</span><br><b id="cEff">0</b></div></div><div class="section"><div class="row dashTableHeader" style="justify-content:space-between"><h2>Tableau de bord opérationnel</h2><div class="row dashTools"><div id="dashZoomTools" class="row"><button class="small" onclick="setDashZoom(-1)" title="Réduire l'affichage">Zoom −</button><button class="small" onclick="resetDashZoom()" title="Réinitialiser le zoom">100 %</button><button class="small" onclick="setDashZoom(1)" title="Agrandir l'affichage">Zoom +</button><button id="compactDashBtn" class="small" onclick="toggleDashCompact()">Mode compact</button></div><button type="button" id="createCrewBtn" class="primary" onclick="openCrew()">Créer équipage</button></div></div><div id="dashTableWrap" class="dashTableWrap"><table id="crewTable"><thead><tr><th>Info</th><th>Indicatif</th><th>Matricules</th><th>Intervention</th><th>Code Blanc</th><th>Vacation</th><th>Actions</th></tr></thead><tbody id="crewRows"></tbody></table></div></div><div id="logSection" class="section"><h2>Journal de la dernière heure</h2><div id="logs"></div></div></section>
+<section id="settings" class="hidden"><div class="section settingsSection"><h2>Paramètres</h2><p class="mut">Personnalise l’affichage et les alertes de PHENIX sur cet appareil.</p><div class="settingsList"><div class="settingsItem mobileSoundSetting"><div><b>Alertes sonores</b><div class="mut">Active ou désactive le son lors d’un changement de statut.</div></div><button id="settingsSoundBtn" class="settingsSwitch" onclick="toggleNotifications()" aria-pressed="true"><span class="settingsSwitchKnob"></span><span id="settingsSoundText">Activées</span></button></div><div class="settingsItem settingsThemeItem"><div><b>Thème de l’application</b><div class="mut">Choisis le thème clair ou sombre.</div></div><div class="themeChoices" role="group" aria-label="Thème"><button id="settingsThemeDark" onclick="applyTheme('dark')">🌙 Sombre</button><button id="settingsThemeLight" onclick="applyTheme('light')">☀️ Clair</button></div></div><div class="settingsItem"><div><b>Mot de passe</b><div class="mut">Modifie le mot de passe de ton compte.</div></div><button class="primary settingsAction" onclick="changePass()">Modifier</button></div></div></div></section><section id="personnel" class="hidden"><div class="section"><div class="row" style="justify-content:space-between"><h2>Personnel</h2><button class="primary" onclick="addAgent()">Ajouter agent</button></div><p class="mut">Réservé Admin : ajout et modification des matricules, noms et prénoms. Les opérateurs sélectionnent ensuite uniquement les matricules dans les équipages.</p><table><thead><tr><th>Matricule</th><th>Nom</th><th>Prénom</th><th>Actif</th><th></th></tr></thead><tbody id="agentRows"></tbody></table><button class="primary" onclick="saveAgents()">Enregistrer le personnel</button></div></section>
+<section id="notes" class="hidden"><div class="section"><h2>Notes privées</h2><p class="mut">Chaque agent voit uniquement ses propres notes.</p><textarea id="note" oninput="noteDirty=true"></textarea><br><br><button class="primary" onclick="saveNote()">Enregistrer mes notes</button></div></section><section id="consignes" class="hidden">
+  <div class="section">
+    <div class="row" style="justify-content:space-between">
+      <h2>Consignes <span id="consigneTitleBadge" class="pill">0 non lue</span></h2>
+      <button id="newConsigneBtn" class="primary" onclick="openConsigneForm()">Nouvelle consigne</button>
+    </div>
+    <p class="mut">Les consignes affichées dépendent de votre brigade. Les superviseurs et administrateurs voient toutes les consignes.</p>
+    <div id="consignesList"></div>
+  </div>
+  <div id="consigneForm" class="section hidden">
+    <h2 id="consigneFormTitle">Créer une consigne</h2>
+    <input id="consigneId" type="hidden">
+    <div class="field"><label>Titre</label><input id="consigneTitre" placeholder="Titre de la consigne"></div>
+    <div class="field"><label>Corps de texte</label><textarea id="consigneTexte" placeholder="Contenu de la consigne"></textarea></div>
+    <div class="grid2">
+      <div class="field"><label>Brigade concernée</label><select id="consigneBrigade"><option value="all">Toutes les brigades</option><option value="jour">Brigade de jour</option><option value="nuit">Brigade de nuit</option></select></div>
+      <div class="field"><label>Priorité</label><select id="consignePriorite"><option value="info">Information</option><option value="important">Important</option><option value="urgent">Urgent</option></select></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Date de début</label><input id="consigneDebut" type="date"></div>
+      <div class="field"><label>Date de fin</label><input id="consigneFin" type="date"></div>
+    </div>
+    <div class="field"><label>Rappel</label><select id="consigneRecurrence"><option value="none">Une seule fois</option><option value="daily">Tous les jours à 04h00</option><option value="weekly">Une fois par semaine à 04h00</option></select></div>
+    <div class="field"><label>Jour(s) de rappel</label><div class="dayPick">
+      <label><input type="checkbox" value="1">L</label>
+      <label><input type="checkbox" value="2">M</label>
+      <label><input type="checkbox" value="3">M</label>
+      <label><input type="checkbox" value="4">J</label>
+      <label><input type="checkbox" value="5">V</label>
+      <label><input type="checkbox" value="6">S</label>
+      <label><input type="checkbox" value="0">D</label>
+    </div></div>
+    <div class="row">
+      <button class="primary" onclick="saveConsigne()">Enregistrer la consigne</button>
+      <button id="deleteConsigneBtn" class="danger" onclick="deleteConsigne()">Supprimer</button>
+      <button onclick="closeConsigneForm()">Annuler</button>
+    </div>
+  </div>
+</section>
+
+<section id="links" class="hidden">
+  <div class="section">
+    <div class="row" style="justify-content:space-between">
+      <h2>Liens utiles</h2>
+      <button id="newLinkBtn" class="primary" onclick="openLinkForm()">Ajouter un lien</button>
+    </div>
+    <p class="mut">Accès rapide aux outils : main courante, intranet, planning, cartographie, procédures...</p>
+    <div id="linksList" class="linkGrid"></div>
+  </div>
+  <div id="linkForm" class="section hidden">
+    <h2 id="linkFormTitle">Ajouter un lien</h2>
+    <input id="linkId" type="hidden">
+    <div class="grid2">
+      <div class="field"><label>Nom</label><input id="linkName" placeholder="Exemple : Main courante"></div>
+      <div class="field"><label>URL</label><input id="linkUrl" placeholder="https://..."></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Logo / emoji</label><input id="linkLogo" placeholder="Ex : logocartoweb.png ou 📋"></div>
+      <div class="field"><label>Description</label><input id="linkDesc" placeholder="Description facultative"></div>
+    </div>
+    <div class="field">
+      <label>Visible par</label>
+      <label><input id="linkJour" type="checkbox" style="width:auto"> Brigade de jour</label>
+      <label><input id="linkNuit" type="checkbox" style="width:auto"> Brigade de nuit</label>
+    </div>
+    <div class="row">
+      <button class="primary" onclick="saveLink()">Enregistrer le lien</button>
+      <button id="deleteLinkBtn" class="danger" onclick="deleteLink()">Supprimer</button>
+      <button onclick="closeLinkForm()">Annuler</button>
+    </div>
+  </div>
+</section>
+
+
+<section id="events" class="hidden"><div class="section"><div class="eventToolbar"><div class="row"><h2>Événements</h2><button class="small" onclick="moveCalendar(-1)">◀</button><button class="small" onclick="goTodayCalendar()">Aujourd’hui</button><button class="small" onclick="moveCalendar(1)">▶</button><span id="calendarTitle" class="pill"></span></div><div class="row"><button class="small" onclick="setCalendarView('month')">Mois</button><button class="small" onclick="setCalendarView('week')">Semaine</button><button id="newEventBtn" class="primary" onclick="openEventForm()">Nouvel événement</button></div></div><div id="eventCalendar" class="eventCalendar"></div></div></section>
+<div id="eventModal" class="modal"><div class="box"><h2 id="eventFormTitle">Nouvel événement</h2><input id="eventId" type="hidden"><div class="grid2"><div class="field"><label>Nom de l’événement</label><input id="eventTitle" placeholder="Ex : Réunion, formation, cérémonie..."></div><div class="field"><label>Code événement</label><input id="eventCode" maxlength="20" placeholder="Ex : EV12"></div></div><div class="grid2"><div class="field"><label>Début</label><input id="eventStart" type="datetime-local"></div><div class="field"><label>Fin</label><input id="eventEnd" type="datetime-local"></div></div><div class="field"><label>Description</label><textarea id="eventDesc" placeholder="Détails facultatifs"></textarea></div><div class="field"><label>Couleur</label><div class="colorPick"><label><input type="radio" name="eventColor" value="blue" checked><span class="colorDot"></span> Bleu</label><label><input type="radio" name="eventColor" value="red"><span class="colorDot red"></span> Rouge</label><label><input type="radio" name="eventColor" value="green"><span class="colorDot green"></span> Vert</label><label><input type="radio" name="eventColor" value="orange"><span class="colorDot orange"></span> Orange</label><label><input type="radio" name="eventColor" value="purple"><span class="colorDot purple"></span> Violet</label><label><input type="radio" name="eventColor" value="gray"><span class="colorDot gray"></span> Gris</label></div></div><div class="row"><button class="primary" onclick="saveEvent()">Enregistrer l’événement</button><button id="deleteEventBtn" class="danger" onclick="deleteEvent()">Supprimer</button><button onclick="closeEventForm()">Annuler</button></div></div></div><section id="history" class="hidden">
+  <div class="section">
+    <h2>Historique utilisateurs</h2>
+    <p class="mut">Accessible aux administrateurs et superviseurs. Affiche les actions des 7 derniers jours.</p>
+    <div id="historyUsers"></div>
+  </div>
+  <div class="section">
+    <h2 id="historyTitle">Historique</h2>
+    <div id="historyList" class="historyBox"><span class="mut">Sélectionne un utilisateur.</span></div>
+  </div>
+</section>
+
+<section id="admin" class="hidden"><div class="grid2"><div class="section"><h2>Utilisateurs</h2><div id="users"></div><h3>Créer / modifier</h3><input id="uId" type="hidden"><div class="field"><input id="uName" placeholder="Nom affiché"></div><div class="field"><input id="uLogin" placeholder="Identifiant"></div><div class="field"><input id="uPass" type="password" placeholder="Mot de passe / nouveau mot de passe"></div><div class="field"><select id="uRole"><option value="operateur">Opérateur</option><option value="superviseur">Superviseur</option><option value="admin">Admin</option><option value="dashboard">Dashboard</option></select></div><div class="field"><label>Brigades autorisées</label><label><input id="uBrigadeJour" type="checkbox" style="width:auto"> Brigade de jour</label><label><input id="uBrigadeNuit" type="checkbox" style="width:auto"> Brigade de nuit</label><small class="mut">Les administrateurs et superviseurs voient toutes les consignes.</small></div><button class="primary" onclick="saveUser()">Enregistrer utilisateur</button></div><div class="section"><h2>Paramètres Admin</h2><h3>Natures d'intervention</h3><p class="mut">Format : CODE | Intitulé (ex. A01 | Accident)</p><textarea id="interList"></textarea><h3>Indicatifs pré-enregistrés</h3><textarea id="callList"></textarea><br><br><button class="primary" onclick="saveLists()">Enregistrer listes</button></div>
+<div class="section flashAdmin">
+  <h2>Texte Flash</h2>
+  <p class="mut">Texte affiché en haut de la page de connexion pour tous les utilisateurs.</p>
+  <div class="field"><label>Titre</label><input id="flashTitleAdmin" placeholder="Exemple : INFO, ALERTE, NOTE..."></div>
+  <div class="field"><label>Message</label><textarea id="flashTextAdmin" placeholder="Exemple : Bienvenue sur PHENIX - Restez vigilants."></textarea></div>
+  <label class="flashToggleRow"><input id="flashEnabledAdmin" type="checkbox"> Activer le texte flash</label>
+  <button class="primary" onclick="saveFlashText()">Enregistrer le texte flash</button>
+</div></div></section>
+</main></div></div>
+<div id="crewModal" class="modal">
+  <div class="box crewBox">
+    <div class="crewHeader">
+      <div class="crewHeaderLeft">
+        <div class="crewHeaderIcon">👥</div>
+        <div>
+          <h2 id="crewModalTitle">Création d’un équipage</h2>
+          <div class="crewHeaderSub">Renseignez les informations de vacation et les effectifs</div>
+        </div>
+      </div>
+      <button type="button" class="crewClose" onclick="closeModal('crewModal')" title="Fermer">×</button>
+    </div>
+
+    <div class="crewBody">
+      <input id="crewId" type="hidden">
+
+      <div class="crewGrid">
+        <div class="crewField">
+          <label>Indicatif</label>
+          <select id="crewCall"></select>
+        </div>
+        <div class="crewField">
+          <label>Service</label>
+          <div class="crewServiceRadios">
+            <label><input type="radio" name="crewService" value="JOUR" checked> JOUR</label>
+            <label><input type="radio" name="crewService" value="NUIT"> NUIT</label>
+          </div>
+        </div>
+
+        <div class="crewField">
+          <label>Heure de repas</label>
+          <select id="crewMeal">
+            <option value="">Aucune</option>
+            <option>12h00</option>
+            <option>12h30</option>
+            <option>13h00</option>
+            <option>13h30</option>
+          </select>
+        </div>
+
+        <div class="crewField">
+          <label>Début de vacation</label>
+          <input id="crewShiftStart" type="datetime-local">
+        </div>
+
+        <div class="crewField">
+          <label>Fin de vacation</label>
+          <input id="crewShiftEnd" type="datetime-local">
+        </div>
+
+        <div class="crewField full">
+          <label>Effectifs</label>
+          <div class="agentSearch">
+            <input id="crewAgentSearch" placeholder="Rechercher un agent..." oninput="filterCrewAgents()">
+          </div>
+          <div id="crewAgents" class="agentList"></div>
+          <span class="crewHint">Vous pouvez sélectionner plusieurs agents.</span>
+        </div>
+
+        <div class="crewField full">
+          <label>Observations</label>
+          <textarea id="crewObs" placeholder="Observations facultatives"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="crewFooter">
+      <button type="button" id="delCrew" class="danger" onclick="deleteCrew()">Supprimer</button>
+      <button type="button" onclick="closeModal('crewModal')">Fermer</button>
+      <button type="button" class="primary" onclick="saveCrew()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+<div id="indispoModal" class="modal"><div class="box"><h2 class="indispoTitle">Passer l’équipage en INDISPO</h2><input id="indispoId" type="hidden"><div class="field"><label>Code</label><input id="indispoCode" autocomplete="off" placeholder=""><small class="mut">Saisissez le code puis appuyez sur Entrée. Le code 00 supprime immédiatement l’équipage.</small></div><div class="field"><label>Nature d’intervention</label><select id="indispoSelect"></select></div><div id="indispoPreview" class="section" style="margin:8px 0;padding:10px"><span class="mut">Saisissez un code ou choisissez une nature d’intervention.</span></div><div class="row"><button class="primary" onclick="setIndispo()">Valider INDISPO</button><button onclick="closeModal('indispoModal')">Annuler</button></div></div></div>
+
+<div id="infoModal" class="modal"><div class="box"><h2 id="infoTitle">Infos équipage</h2><div id="infoBody"></div><br><button onclick="closeModal('infoModal')">Fermer</button></div></div>
+<script>
+let S={user:null,agents:[],callsigns:[],interventions:[],crews:[],logs:[],users:[],note:'',consignes:[],links:[],events:[],flash:{enabled:false,title:'INFO',text:''}}; let activeSection='dash'; let calendarView='month'; let calendarDate=new Date(); let noteDirty=false; let notificationsEnabled=localStorage.getItem('notificationsEnabled')!=='false'; let previousCrews=[]; const alertSound=new Audio('/alerte.wav');
+const $=id=>document.getElementById(id); async function api(url,opt={}){const r=await fetch(url,{headers:{'Content-Type':'application/json'},credentials:'same-origin',...opt});const j=await r.json().catch(()=>({}));if(!r.ok)throw Error(j.error||('Erreur '+r.status));return j}
+
+function applyTheme(theme){
+  const light=theme==='light';
+  document.body.classList.toggle('lightMode',light);
+  const txt=$('themeText'), icon=document.querySelector('#themeBtn .themeIcon');
+  if(txt)txt.textContent=light?'Clair':'Sombre';
+  if(icon)icon.textContent=light?'☀️':'🌙';
+  localStorage.setItem('phenixTheme',light?'light':'dark');
+  updateSettingsUI();
+}
+function toggleTheme(){
+  applyTheme(document.body.classList.contains('lightMode')?'dark':'light');
+}
+
+
+let dashZoom=Number(localStorage.getItem('dashZoom')||100);
+let dashCompact=localStorage.getItem('dashCompact')==='true';
+
+function applyDashDisplay(){
+  dashZoom=Math.max(70,Math.min(120,dashZoom));
+  document.documentElement.style.setProperty('--dashZoom',dashZoom+'%');
+  const table=$('crewTable');
+  if(table)table.style.fontSize=dashZoom+'%';
+  document.body.classList.toggle('dashCompact',dashCompact);
+  const btn=$('compactDashBtn');
+  if(btn)btn.textContent=dashCompact?'Mode normal':'Mode compact';
+  localStorage.setItem('dashZoom',String(dashZoom));
+  localStorage.setItem('dashCompact',String(dashCompact));
+}
+function setDashZoom(step){
+  dashZoom+=step*10;
+  applyDashDisplay();
+}
+function resetDashZoom(){
+  dashZoom=100;
+  applyDashDisplay();
+}
+function toggleDashCompact(){
+  dashCompact=!dashCompact;
+  applyDashDisplay();
+}
+function autoCompactDashboard(){
+  const isDashboard=!!(S.user&&S.user.role==='dashboard');
+  if(!isDashboard){
+    document.body.classList.remove('dashCompact','dashUltraCompact');
+    return;
+  }
+  const count=(S.crews||[]).length;
+  document.body.classList.toggle('dashUltraCompact',count>=16);
+  if(count>=10 && localStorage.getItem('dashCompact')===null){
+    dashCompact=true;
+  }
+  applyDashDisplay();
+}
+
+function tick(){$('clock')&&($('clock').textContent=new Date().toLocaleString('fr-FR'))}function err(e){$('msg').textContent=e.message||e;setTimeout(()=>{$('msg').textContent=''},7000)}
+function updateSettingsUI(){
+  const soundBtn=$('settingsSoundBtn'), soundText=$('settingsSoundText');
+  if(soundBtn){soundBtn.classList.toggle('off',!notificationsEnabled);soundBtn.setAttribute('aria-pressed',String(notificationsEnabled))}
+  if(soundText)soundText.textContent=notificationsEnabled?'Activées':'Désactivées';
+  const light=document.body.classList.contains('lightMode');
+  $('settingsThemeDark')?.classList.toggle('active',!light);
+  $('settingsThemeLight')?.classList.toggle('active',light);
+}
+function updateNotifButton(){const btn=$('notifBtn');const txt=$('notifText');if(btn)btn.classList.toggle('off',!notificationsEnabled);if(txt)txt.textContent=notificationsEnabled?'ALERTES ON':'ALERTES OFF';updateSettingsUI()}
+function toggleNotifications(){notificationsEnabled=!notificationsEnabled;localStorage.setItem('notificationsEnabled',notificationsEnabled);updateNotifButton();if(notificationsEnabled){alertSound.currentTime=0;alertSound.play().then(()=>{alertSound.pause();alertSound.currentTime=0}).catch(()=>{})}}
+function checkCrewChanges(newCrews){if(!Array.isArray(newCrews))return;if(previousCrews.length===0){previousCrews=JSON.parse(JSON.stringify(newCrews));return}let changed=false;for(const crew of newCrews){const old=previousCrews.find(c=>c.id===crew.id);if(old&&old.status!==crew.status){changed=true;break}}previousCrews=JSON.parse(JSON.stringify(newCrews));if(changed&&notificationsEnabled){alertSound.currentTime=0;alertSound.play().catch(()=>{})}}
+
+async function init(){applyTheme(localStorage.getItem('phenixTheme')||'dark');applyDashDisplay();tick();setInterval(tick,1000);try{const st=await api('/api/status');S.flash=st.flash||{enabled:false,title:'INFO',text:''};renderFlash();if(st.user){$('login').style.display='none';$('app').style.display='block';await refresh();document.querySelector('.nav button[onclick="show(\'dash\')"]')?.classList.add('activeNav')}else{$('setup').classList.toggle('hidden',!st.setupRequired);$('logbox').classList.toggle('hidden',st.setupRequired)}}catch(e){err(Error('Serveur non joignable : vérifie que Render est lancé'))}}
+async function setupAdmin(){try{await api('/api/setup',{method:'POST',body:JSON.stringify({displayName:$('suName').value,login:$('suLogin').value,password:$('suPass').value})});showPhenixLoading();$('login').style.display='none';$('app').style.display='block';await Promise.all([refresh(),phenixDelay(2000)]);hidePhenixLoading()}catch(e){hidePhenixLoading();err(e)}}
+function phenixDelay(ms){return new Promise(resolve=>setTimeout(resolve,ms))}function showPhenixLoading(){$('phenixLoading')?.classList.add('show')}function hidePhenixLoading(){$('phenixLoading')?.classList.remove('show')}async function login(){try{await api('/api/login',{method:'POST',body:JSON.stringify({login:$('loginId').value,password:$('loginPass').value})});showPhenixLoading();$('login').style.display='none';$('app').style.display='block';await Promise.all([refresh(),phenixDelay(2000)]);hidePhenixLoading()}catch(e){hidePhenixLoading();err(e)}}
+async function logout(){await api('/api/logout',{method:'POST'});location.reload()}async function changePass(){const oldPassword=prompt('Ancien mot de passe');if(oldPassword===null)return;const newPassword=prompt('Nouveau mot de passe');if(!newPassword)return;try{await api('/api/password',{method:'POST',body:JSON.stringify({oldPassword,newPassword})});alert('Mot de passe modifié')}catch(e){alert(e.message)}}
+async function refresh(){return refreshSafe(true)}
+async function refreshSafe(force=false){if(!force && shouldPauseRefresh()) return; S=await api('/api/data');$('agentName').textContent=S.user.displayName;const dash=S.user.role==='dashboard';
+document.body.classList.toggle('dashboardMode',dash);
+if($('dashZoomTools'))$('dashZoomTools').classList.toggle('hidden',!dash);applyRoleNavigation();$('createCrewBtn').classList.toggle('hidden',dash);if((dash||phenixRole()==='operateur')&&!['dash','notes','consignes','events','settings'].includes(activeSection))activeSection='dash';checkCrewChanges(S.crews);renderAll(force);updateNotifButton()}
+function shouldPauseRefresh(){const el=document.activeElement; if(el && ['INPUT','TEXTAREA','SELECT'].includes(el.tagName)) return true; return ['personnel','admin','notes'].includes(activeSection)}
+function show(id){
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('activeNav',b.getAttribute('onclick')===`show('${id}')`));
+  const role=phenixRole();
+  if(role==='dashboard' && !['dash','consignes','events','settings'].includes(id)){id='dash'}
+  if(role==='operateur' && !['dash','notes','events','consignes','settings'].includes(id)){id='dash'}
+  if(role==='superviseur' && id==='admin'){id='dash'}
+  activeSection=id;['dash','personnel','notes','links','events','history','consignes','settings','admin'].forEach(x=>$(x).classList.toggle('hidden',x!==id)); if(id==='notes') $('note').value=S.note||''; if(id==='consignes') renderConsignes(); if(id==='links') renderLinks(); if(id==='events') renderEvents(); if(id==='history') renderHistoryUsers()}
+function an(m){const a=S.agents.find(x=>x.matricule===m);return a?`${a.matricule} ${a.nom||''} ${a.prenom||''}`.trim():m}
+
+function phenixRole(){
+  return String(S.user&&S.user.role||'')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'');
+}
+function applyRoleNavigation(){
+  const role=phenixRole();
+  const isOperator=role==='operateur';
+  const isDashboard=role==='dashboard';
+  const isSupervisor=role==='superviseur';
+  const isAdmin=role==='admin';
+
+  document.body.classList.toggle('operatorMode',isOperator);
+  document.body.classList.toggle('supervisorMode',isSupervisor);
+  document.body.classList.toggle('adminMode',isAdmin);
+
+  const personnel=$('personnelBtn');
+  const links=$('linksBtn');
+  const history=$('historyBtn');
+  const admin=$('adminBtn');
+
+  if(personnel) personnel.classList.toggle('hidden', !(isSupervisor||isAdmin));
+  if(links) links.classList.toggle('hidden', isOperator||isDashboard);
+  if(history) history.classList.toggle('hidden', !(isSupervisor||isAdmin));
+  if(admin) admin.classList.toggle('hidden', !isAdmin);
+
+  const notesBtn=document.querySelector('button[onclick="show(\'notes\')"]');
+  const eventsBtn=document.querySelector('button[onclick="show(\'events\')"]');
+  const consignesBtn=document.querySelector('button[onclick="show(\'consignes\')"]');
+  const settingsBtn=$('settingsBtn');
+
+  if(notesBtn) notesBtn.classList.toggle('hidden', isDashboard);
+  if(eventsBtn) eventsBtn.classList.remove('hidden');
+  if(consignesBtn) consignesBtn.classList.remove('hidden');
+  if(settingsBtn) settingsBtn.classList.remove('hidden');
+
+  if(isOperator && !['dash','notes','events','consignes','settings'].includes(activeSection)){
+    activeSection='dash';
+  }
+}
+
+function canOperate(){return S.user && S.user.role!=='dashboard'}
+function renderAll(force=false){renderCrews();renderAgents();renderAdmin(force);renderConsignes();renderLinks();renderEvents();renderFlash();if(activeSection!=='notes' || force || !noteDirty){$('note').value=S.note||'';noteDirty=false;}const logsRecent=S.logs.filter(l=>{
+  const recent=Date.now()-new Date(l.date).getTime()<=60*60*1000;
+  const msg=String(l.msg||'');
+  const allowed=
+    msg.includes('Création équipage') ||
+    msg.includes('Suppression équipage') ||
+    msg.includes(' DISPO') ||
+    msg.includes(' INDISPO');
+  return recent && allowed;
+});$('logs').innerHTML=logsRecent.length?logsRecent.map(l=>`<div><span class="mut">${new Date(l.date).toLocaleString('fr-FR')}</span> — <b>${l.user}</b> : ${l.msg}</div>`).join(''):'<span class="mut">Aucun événement sur la dernière heure.</span>';$('cTotal').textContent=S.crews.length;$('cDispo').textContent=S.crews.filter(c=>c.status==='DISPO').length;$('cIndispo').textContent=S.crews.filter(c=>c.status==='INDISPO').length;$('cEff').textContent=new Set(S.crews.flatMap(c=>c.matricules||[])).size;autoCompactDashboard()}
+
+function formatVacationCell(c){
+  const fmtTime=v=>{
+    if(!v)return '—';
+    const d=new Date(v);
+    if(isNaN(d.getTime()))return '—';
+    return d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  };
+  return `<div class="vacationOnly">
+    <b>${fmtTime(c.shiftStart)}</b>
+    <span>→</span>
+    <b>${fmtTime(c.shiftEnd)}</b>
+  </div>`;
+}
+
+function renderCrews(){const readonly=!canOperate();$('crewRows').innerHTML=S.crews.map(c=>`<tr class="${c.status==='INDISPO'?'indispo':'dispo'}"><td><button class="infoBtn" title="Infos équipage" onclick='showCrewInfo(${JSON.stringify(c.id)})'>i</button></td><td><b>${c.callsign}</b><br><span class="pill">${c.status}</span></td><td>${(c.matricules||[]).map(m=>`<span class="pill">${m}</span>`).join('')}</td><td>${esc(c.intervention||'—')}</td><td>${c.meal||'—'}</td><td>${formatVacationCell(c)}</td><td>${readonly?'<span class="mut">Lecture seule</span>':`<button class="small" onclick='openCrew(${JSON.stringify(c.id)})'>Modifier</button> <button class="small ok" onclick='statusCrew(${JSON.stringify(c.id)},"DISPO")'>DISPO</button> <button class="small danger" onclick='openIndispo(${JSON.stringify(c.id)})'>INDISPO</button>`}</td></tr>`).join('')}
+function formatVacation(c){
+  if(!c.shiftStart&&!c.shiftEnd)return 'Non renseignée';
+  const fmt=v=>v?new Date(v).toLocaleString('fr-FR'):'—';
+  return fmt(c.shiftStart)+' → '+fmt(c.shiftEnd);
+}
+function showCrewInfo(id){const c=S.crews.find(x=>x.id===id);if(!c)return;$('infoTitle').textContent='Infos '+c.callsign;const names=(c.matricules||[]).map(m=>'<div class="pill">'+an(m)+'</div>').join('')||'—';$('infoBody').innerHTML='<h3>Agents</h3>'+names+'<h3>Vacation</h3><div class="section">'+formatVacation(c)+'</div><h3>Heure de repas</h3><div class="section">'+(c.meal||'Aucune')+'</div><h3>Observations</h3><div class="section">'+(c.observations||'Aucune observation')+'</div>';$('infoModal').style.display='grid'}
+function parseInterventionLine(line){
+  const raw=String(line||'').trim();
+  const m=raw.match(/^([^|:-]{1,20})\s*[|:-]\s*(.+)$/);
+  return m?{code:m[1].trim().toUpperCase(),label:m[2].trim(),raw}:{code:'',label:raw,raw};
+}
+function fillIndispoChoices(){
+  const sel=$('indispoSelect');
+  if(sel){
+    sel.innerHTML=(S.interventions||[]).map(line=>{
+      const p=parseInterventionLine(line);
+      return `<option value="${esc(p.raw).replaceAll('"','&quot;')}" data-code="${esc(p.code)}">${esc(p.label)}</option>`;
+    }).join('');
+  }
+}
+function fillSelects(selected=[]){
+  $('crewCall').innerHTML=S.callsigns.map(x=>`<option>${esc(x)}</option>`).join('');
+  $('crewAgents').innerHTML=S.agents.filter(a=>a.actif).map(a=>{
+    const label=an(a.matricule);
+    const search=(a.matricule+' '+(a.nom||'')+' '+(a.prenom||'')+' '+label).toLowerCase();
+    return `<label class="agentChoice" data-search="${esc(search).replaceAll('"','&quot;')}"><input type="checkbox" value="${esc(a.matricule)}" ${selected.includes(a.matricule)?'checked':''}> <span>${esc(label)}</span></label>`;
+  }).join('');
+  fillIndispoChoices();
+  if($('crewAgentSearch')){$('crewAgentSearch').value='';filterCrewAgents();}
+}
+
+function normalizeAgentSearch(value){
+  return String(value||'')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'')
+    .toLowerCase()
+    .trim();
+}
+
+function filterCrewAgents(){
+  const input=$('crewAgentSearch');
+  const q=normalizeAgentSearch(input?input.value:'');
+  document.querySelectorAll('#crewAgents .agentChoice').forEach(row=>{
+    const text=normalizeAgentSearch(row.dataset.search||row.textContent||'');
+    row.classList.toggle('hiddenBySearch',!!q && !text.includes(q));
+  });
+}
+
+function baseCrewCallsign(value){
+  return String(value||'').replace(/\s+(JOUR|NUIT)\s*$/i,'').trim();
+}
+function crewServiceFromCallsign(value){
+  return /\s+NUIT\s*$/i.test(String(value||''))?'NUIT':'JOUR';
+}
+function setCrewService(service){
+  const input=document.querySelector('input[name="crewService"][value="'+(service==='NUIT'?'NUIT':'JOUR')+'"]');
+  if(input) input.checked=true;
+}
+function getCrewService(){
+  return document.querySelector('input[name="crewService"]:checked')?.value||'JOUR';
+}
+function buildCrewCallsign(value,service){
+  const base=baseCrewCallsign(value);
+  return base+(service==='NUIT'?' NUIT':' JOUR');
+}
+
+function openCrew(id){
+  const crewId=id==null?'':String(id);
+  const c=S.crews.find(x=>String(x.id)===crewId)||{
+    matricules:[],observations:'',meal:'',callsign:S.callsigns[0],shiftStart:'',shiftEnd:''
+  };
+  fillSelects(c.matricules||[]);
+  $('crewId').value=crewId;
+  $('crewCall').value=baseCrewCallsign(c.callsign)||S.callsigns[0]||'';
+  setCrewService(crewServiceFromCallsign(c.callsign));
+  $('crewMeal').value=c.meal||'';
+  $('crewObs').value=c.observations||'';
+  $('crewShiftStart').value=c.shiftStart||defaultShiftDate(8);
+  $('crewShiftEnd').value=c.shiftEnd||defaultShiftDate(16);
+  $('crewModalTitle').textContent=crewId?'Modification d’un équipage':'Création d’un équipage';
+  $('delCrew').classList.toggle('hidden',!crewId);
+  $('crewModal').style.display='grid';
+}
+function defaultShiftDate(hour){
+  const d=new Date();
+  d.setHours(hour,0,0,0);
+  d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
+  return d.toISOString().slice(0,16);
+}
+function closeModal(id){$(id).style.display='none'}
+async function saveCrew(){
+  try{
+    const matricules=Array.from(document.querySelectorAll('#crewAgents input:checked')).map(o=>o.value);
+    const shiftStart=$('crewShiftStart').value;
+    const shiftEnd=$('crewShiftEnd').value;
+    if(!$('crewCall').value){
+      alert('Indicatif obligatoire.');
+      $('crewCall').focus();
+      return;
+    }
+    if(shiftStart&&shiftEnd&&new Date(shiftEnd)<=new Date(shiftStart)){
+      alert('La fin de vacation doit être après le début.');
+      return;
+    }
+    await api('/api/crew',{
+      method:'POST',
+      body:JSON.stringify({
+        crew:{
+          id:$('crewId').value,
+          callsign:buildCrewCallsign($('crewCall').value,getCrewService()),
+          matricules,
+          meal:$('crewMeal').value,
+          observations:$('crewObs').value,
+          shiftStart,
+          shiftEnd
+        }
+      })
+    });
+    closeModal('crewModal');
+    await refresh();
+  }catch(e){
+    alert('Impossible d’enregistrer l’équipage : '+e.message);
+  }
+}
+async function deleteCrew(){if(confirm('Supprimer cet équipage ?')){await api('/api/crew/'+$('crewId').value,{method:'DELETE'});closeModal('crewModal');refresh()}}
+async function statusCrew(id,status){
+  if(!canOperate()){alert('Accès lecture seule');return}
+  try{
+    await api('/api/crew/'+id+'/status',{method:'POST',body:JSON.stringify({status:'DISPO'})});
+    await refresh();
+  }catch(e){
+    alert('Impossible de modifier le statut : '+e.message);
+  }
+}
+function findChoiceByCode(code){
+  const q=String(code||'').trim().toUpperCase();
+  if(!q)return null;
+  const nature=(S.interventions||[]).map(parseInterventionLine).find(x=>x.code===q);
+  return nature?{source:'nature',code:q,intervention:nature.label,eventId:''}:null;
+}
+function updateIndispoPreview(){
+  const code=String($('indispoCode')?.value||'').trim().toUpperCase();
+  const found=findChoiceByCode(code);
+  const nature=parseInterventionLine($('indispoSelect')?.value||'');
+  const text=found?found.intervention:nature.label;
+  $('indispoPreview').innerHTML=text
+    ?`<b>${esc(text)}</b>`
+    :'<span class="mut">Saisissez un code ou choisissez une nature d’intervention.</span>';
+}
+function openIndispo(id){
+  if(!canOperate()){alert('Accès lecture seule');return}
+  fillIndispoChoices();
+  $('indispoId').value=id;
+  $('indispoCode').value='';
+  updateIndispoPreview();
+  $('indispoModal').style.display='grid';
+  setTimeout(()=>{$('indispoCode')?.focus();},60);
+}
+async function setIndispo(){
+  try{
+    const id=$('indispoId').value;
+    const typed=String($('indispoCode').value||'').trim().toUpperCase();
+
+    if(typed==='00'){
+      await api('/api/crew/'+id,{method:'DELETE'});
+      closeModal('indispoModal');
+      await refresh();
+      return;
+    }
+
+    const found=findChoiceByCode(typed);
+    const nature=parseInterventionLine($('indispoSelect').value||'');
+    const payload=found
+      ?{status:'INDISPO',code:found.code,intervention:found.intervention,source:'nature',eventId:''}
+      :{status:'INDISPO',code:typed||nature.code,intervention:nature.label||'Intervention',source:'nature',eventId:''};
+    await api('/api/crew/'+id+'/status',{method:'POST',body:JSON.stringify(payload)});
+    closeModal('indispoModal');
+    await refresh();
+  }catch(e){
+    alert('Impossible de modifier le statut : '+e.message);
+  }
+}
+function renderAgents(){$('agentRows').innerHTML=S.agents.map((a,i)=>`<tr><td><input value="${a.matricule}" onchange="S.agents[${i}].matricule=this.value"></td><td><input value="${a.nom||''}" onchange="S.agents[${i}].nom=this.value"></td><td><input value="${a.prenom||''}" onchange="S.agents[${i}].prenom=this.value"></td><td><input type="checkbox" ${a.actif?'checked':''} onchange="S.agents[${i}].actif=this.checked"></td><td><button class="small danger" onclick="S.agents.splice(${i},1);renderAgents()">Retirer</button></td></tr>`).join('')}function addAgent(){if(S.user.role!=='admin'){alert('Réservé admin');return}S.agents.push({matricule:'',nom:'',prenom:'',actif:true});renderAgents()}async function saveAgents(){if(S.user.role!=='admin'){alert('Réservé admin');return}await api('/api/agents',{method:'POST',body:JSON.stringify({agents:S.agents})});alert('Personnel enregistré');refresh()}async function saveNote(){await api('/api/note',{method:'POST',body:JSON.stringify({note:$('note').value})});noteDirty=false;S.note=$('note').value;alert('Notes enregistrées')}
+function renderAdmin(force=false){if(S.user.role!=='admin')return;if(activeSection!=='admin'||force||document.activeElement.id!=='interList')$('interList').value=S.interventions.join('\n');if(activeSection!=='admin'||force||document.activeElement.id!=='callList')$('callList').value=S.callsigns.join('\n');$('users').innerHTML=(S.users||[]).map(u=>`<div class="row"><b>${u.displayName}</b><span class="mut">${u.login} / ${u.role}</span><button class="small" onclick='editUser(${JSON.stringify(u)})'>Modifier</button><button class="small danger" onclick='delUser(${JSON.stringify(u.id)})'>Supprimer</button></div>`).join('')}function editUser(u){$('uId').value=u.id;$('uName').value=u.displayName;$('uLogin').value=u.login;$('uRole').value=u.role;$('uPass').value='';$('uBrigadeJour').checked=!!(u.brigades&&u.brigades.jour);$('uBrigadeNuit').checked=!!(u.brigades&&u.brigades.nuit)}async function saveUser(){try{await api('/api/admin/users',{method:'POST',body:JSON.stringify({id:$('uId').value,displayName:$('uName').value,login:$('uLogin').value,password:$('uPass').value,role:$('uRole').value,brigades:{jour:$('uBrigadeJour').checked,nuit:$('uBrigadeNuit').checked}})});['uId','uName','uLogin','uPass'].forEach(id=>$(id).value='');$('uBrigadeJour').checked=false;$('uBrigadeNuit').checked=false;refresh()}catch(e){alert(e.message)}}async function delUser(id){if(confirm('Supprimer utilisateur ?')){await api('/api/admin/users/'+id,{method:'DELETE'});refresh()}}async function saveLists(){await api('/api/admin/lists',{method:'POST',body:JSON.stringify({interventions:$('interList').value.split('\n').map(x=>x.trim()).filter(Boolean),callsigns:$('callList').value.split('\n').map(x=>x.trim()).filter(Boolean)})});refresh()}
+
+
+
+
+
+function renderFlash(){
+  const f=S.flash||{};
+  const box=$('flashLogin');
+  const label=$('flashLoginLabel');
+  const txt=$('flashLoginText');
+  const title=String(f.title||'INFO').trim()||'INFO';
+  if(label)label.textContent=title+' :';
+  if(txt)txt.textContent=f.text||'';
+  if(box)box.classList.toggle('hidden',!(f.enabled&&String(f.text||'').trim()));
+  if(S.user&&S.user.role==='admin'){
+    if($('flashTitleAdmin')&&document.activeElement.id!=='flashTitleAdmin')$('flashTitleAdmin').value=title;
+    if($('flashTextAdmin')&&document.activeElement.id!=='flashTextAdmin')$('flashTextAdmin').value=f.text||'';
+    if($('flashEnabledAdmin'))$('flashEnabledAdmin').checked=!!f.enabled;
+  }
+}
+async function saveFlashText(){
+  try{
+    await api('/api/admin/flash',{method:'POST',body:JSON.stringify({title:$('flashTitleAdmin').value,text:$('flashTextAdmin').value,enabled:$('flashEnabledAdmin').checked})});
+    alert('Texte flash enregistré');
+    await refresh();
+  }catch(e){alert(e.message)}
+}
+
+
+function canManageLinks(){return S.user&&['admin','superviseur'].includes(S.user.role)}
+function linkVisible(l){
+  if(!S.user)return false;
+  if(['admin','superviseur'].includes(S.user.role))return true;
+  const b=S.user.brigades||{};
+  const v=l.visible||{};
+  return (v.jour&&b.jour)||(v.nuit&&b.nuit)||(!v.jour&&!v.nuit);
+}
+function logoHtml(l){
+    let logo = String(l.logo || "🔗").trim();
+
+    if(!logo) logo = "🔗";
+
+    if(
+        !logo.includes("/") &&
+        !logo.includes(".png") &&
+        !logo.includes(".jpg") &&
+        !logo.includes(".jpeg") &&
+        !logo.includes(".svg") &&
+        !logo.includes(".webp") &&
+        !logo.startsWith("http")
+    ){
+        return `<div class="linkLogo">${esc(logo)}</div>`;
+    }
+
+    if(!logo.startsWith("/") && !logo.startsWith("http")){
+        logo = "/" + logo;
+    }
+
+    return `
+        <img
+            class="linkLogoImg"
+            src="${esc(logo)}"
+            alt=""
+            onerror="this.outerHTML='<div class=&quot;linkLogo&quot;>🔗</div>'">
+    `;
+}
+function renderLinks(){
+  const btn=$('newLinkBtn'); if(btn)btn.classList.toggle('hidden',!canManageLinks());
+  const list=$('linksList'); if(!list)return;
+  const arr=(S.links||[]).filter(linkVisible);
+  if(!arr.length){list.innerHTML='<span class="mut">Aucun lien utile disponible.</span>';return}
+  list.innerHTML=arr.map(l=>`<div class="linkCard" onclick='openUsefulLink(${JSON.stringify(l.url)})'>${logoHtml(l)}<div class="linkBody"><h3 title="${esc(l.name)}">${esc(l.name)}</h3>${canManageLinks()?`<div class="linkActions" onclick="event.stopPropagation()"><button class="small" title="Modifier" onclick='editLink(${JSON.stringify(l.id)})'>Modifier</button><button class="small danger" title="Supprimer" onclick='removeLink(${JSON.stringify(l.id)})'>Supprimer</button></div>`:''}</div></div>`).join('');
+}
+function openUsefulLink(url){
+  const u=String(url||'').trim();
+  if(!u)return;
+  window.open(u,'_blank','noopener');
+}
+function openLinkForm(){if(!canManageLinks()){alert('Réservé superviseur/admin');return}$('linkForm').classList.remove('hidden');$('linkFormTitle').textContent='Ajouter un lien';$('linkId').value='';$('linkName').value='';$('linkUrl').value='';$('linkLogo').value='';$('linkDesc').value='';$('linkJour').checked=true;$('linkNuit').checked=true;$('deleteLinkBtn').classList.add('hidden')}
+function closeLinkForm(){$('linkForm').classList.add('hidden')}
+function editLink(id){const l=(S.links||[]).find(x=>x.id===id);if(!l)return;openLinkForm();$('linkFormTitle').textContent='Modifier un lien';$('linkId').value=l.id;$('linkName').value=l.name||'';$('linkUrl').value=l.url||'';$('linkLogo').value=l.logo||'';$('linkDesc').value=l.description||'';$('linkJour').checked=!!(l.visible&&l.visible.jour);$('linkNuit').checked=!!(l.visible&&l.visible.nuit);$('deleteLinkBtn').classList.remove('hidden')}
+async function saveLink(){
+  await api('/api/links',{method:'POST',body:JSON.stringify({id:$('linkId').value,name:$('linkName').value,url:$('linkUrl').value,logo:$('linkLogo').value,description:$('linkDesc').value,visible:{jour:$('linkJour').checked,nuit:$('linkNuit').checked}})});
+  closeLinkForm();await refresh();
+}
+async function deleteLink(){if(!$('linkId').value)return;if(confirm('Supprimer ce lien ?')){await removeLink($('linkId').value);closeLinkForm()}}
+async function removeLink(id){await api('/api/links/'+id,{method:'DELETE'});await refresh()}
+function renderHistoryUsers(){
+  if(!['admin','superviseur'].includes(S.user.role)){show('dash');return}
+  const box=$('historyUsers'); if(!box)return;
+  const users=S.users||[];
+  if(!users.length){box.innerHTML='<span class="mut">Aucun utilisateur chargé. Vérifie que ton server.js renvoie bien users pour les rôles admin/superviseur.</span>';return}
+  box.innerHTML=users.map(u=>`<div class="row"><b>${esc(u.displayName)}</b><span class="mut">${esc(u.login)} / ${esc(u.role)}</span><button class="small primary" onclick='loadUserHistory(${JSON.stringify(u.id)},${JSON.stringify(u.displayName)})'>Historique</button></div>`).join('');
+}
+async function loadUserHistory(id,name){
+  try{
+    const r=await api('/api/history/'+id);
+    $('historyTitle').textContent='Historique de '+name+' - 7 derniers jours';
+    const arr=r.logs||[];
+    $('historyList').innerHTML=arr.length?arr.map(l=>`<div class="historyItem"><span class="mut">${new Date(l.date).toLocaleString('fr-FR')}</span><br><b>${esc(l.user||name)}</b> : ${esc(l.msg||l.action||'')}</div>`).join(''):'<span class="mut">Aucune action sur les 7 derniers jours.</span>';
+  }catch(e){alert(e.message)}
+}
+
+
+
+function canManageEvents(){return S.user&&['admin','superviseur'].includes(S.user.role)}
+function eventColorClass(c){return ['red','green','orange','purple','gray'].includes(c)?c:''}
+function dtLocal(d){const x=new Date(d);x.setMinutes(x.getMinutes()-x.getTimezoneOffset());return x.toISOString().slice(0,16)}
+function sameDay(a,b){return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate()}
+function eventOnDay(ev,day){const s=new Date(ev.start),e=new Date(ev.end);const a=new Date(day);a.setHours(0,0,0,0);const b=new Date(day);b.setHours(23,59,59,999);return s<=b&&e>=a}
+function fmtTimeRange(ev){const s=new Date(ev.start),e=new Date(ev.end);return s.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})+' - '+e.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}
+function renderEvents(){if($('newEventBtn'))$('newEventBtn').classList.toggle('hidden',!canManageEvents());const cal=$('eventCalendar');if(!cal)return;if(calendarView==='week')renderWeekEvents();else renderMonthEvents();renderTodayEventsBox()}
+function renderMonthEvents(){const cal=$('eventCalendar');const y=calendarDate.getFullYear(),m=calendarDate.getMonth();$('calendarTitle').textContent=calendarDate.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});const first=new Date(y,m,1),start=new Date(first);start.setDate(first.getDate()-((first.getDay()+6)%7));const days=[];for(let i=0;i<42;i++){const d=new Date(start);d.setDate(start.getDate()+i);days.push(d)}const head=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(x=>`<div>${x}</div>`).join('');cal.innerHTML=`<div class="eventCalHead">${head}</div><div class="eventGridMonth">${days.map(d=>{const evs=(S.events||[]).filter(ev=>eventOnDay(ev,d)).sort((a,b)=>new Date(a.start)-new Date(b.start));return `<div class="eventDay ${d.getMonth()!==m?'otherMonth':''} ${sameDay(d,new Date())?'today':''}"><div class="eventDayNum">${d.getDate()}</div>${evs.map(ev=>`<button class="eventPill ${eventColorClass(ev.color)}" onclick='editEvent(${JSON.stringify(ev.id)})'>${esc(ev.title)}</button>`).join('')}</div>`}).join('')}</div>`}
+function renderWeekEvents(){const cal=$('eventCalendar');const base=new Date(calendarDate),mon=new Date(base);mon.setDate(base.getDate()-((base.getDay()+6)%7));const days=[];for(let i=0;i<7;i++){const d=new Date(mon);d.setDate(mon.getDate()+i);days.push(d)}$('calendarTitle').textContent='Semaine du '+mon.toLocaleDateString('fr-FR');cal.innerHTML=`${days.map(d=>{const evs=(S.events||[]).filter(ev=>eventOnDay(ev,d)).sort((a,b)=>new Date(a.start)-new Date(b.start));return `<div class="eventWeekDay"><div class="eventWeekDate">${d.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'2-digit'})}</div><div class="eventWeekEvents">${evs.length?evs.map(ev=>`<button class="eventPill ${eventColorClass(ev.color)}" onclick='editEvent(${JSON.stringify(ev.id)})'>${fmtTimeRange(ev)} — ${esc(ev.title)}</button>`).join(''):'<span class="mut">Aucun événement</span>'}</div></div>`}).join('')}`}
+function setCalendarView(v){calendarView=v;renderEvents()}function moveCalendar(d){if(calendarView==='week')calendarDate.setDate(calendarDate.getDate()+d*7);else calendarDate.setMonth(calendarDate.getMonth()+d);renderEvents()}function goTodayCalendar(){calendarDate=new Date();renderEvents()}
+function openEventForm(){if(!canManageEvents()){alert('Réservé superviseur/admin');return}$('eventModal').style.display='grid';$('eventFormTitle').textContent='Nouvel événement';$('eventId').value='';$('eventTitle').value='';$('eventCode').value='';const s=new Date();s.setMinutes(0,0,0);const e=new Date(s);e.setHours(e.getHours()+1);$('eventStart').value=dtLocal(s);$('eventEnd').value=dtLocal(e);$('eventDesc').value='';document.querySelectorAll('input[name="eventColor"]').forEach(x=>x.checked=x.value==='blue');$('deleteEventBtn').classList.add('hidden')}
+function closeEventForm(){$('eventModal').style.display='none'}
+function editEvent(id){const ev=(S.events||[]).find(x=>x.id===id);if(!ev)return;if(!canManageEvents()){alert(ev.title+'\n'+fmtTimeRange(ev)+(ev.description?'\n\n'+ev.description:''));return}openEventForm();$('eventFormTitle').textContent='Modifier un événement';$('eventId').value=ev.id;$('eventTitle').value=ev.title||'';$('eventCode').value=ev.code||'';$('eventStart').value=dtLocal(ev.start);$('eventEnd').value=dtLocal(ev.end);$('eventDesc').value=ev.description||'';document.querySelectorAll('input[name="eventColor"]').forEach(x=>x.checked=x.value===(ev.color||'blue'));$('deleteEventBtn').classList.remove('hidden')}
+async function saveEvent(){const color=(document.querySelector('input[name="eventColor"]:checked')||{}).value||'blue';await api('/api/events',{method:'POST',body:JSON.stringify({id:$('eventId').value,title:$('eventTitle').value,code:$('eventCode').value,start:$('eventStart').value,end:$('eventEnd').value,description:$('eventDesc').value,color})});closeEventForm();await refresh()}
+async function deleteEvent(){if(!$('eventId').value)return;if(confirm('Supprimer cet événement ?')){await api('/api/events/'+$('eventId').value,{method:'DELETE'});closeEventForm();await refresh()}}
+function renderTodayEventsBox(){const box=$('eventTodayBox');if(!box)return;const arr=(S.events||[]).filter(ev=>eventOnDay(ev,new Date())).sort((a,b)=>new Date(a.start)-new Date(b.start));if(!arr.length){box.classList.add('hidden');box.innerHTML='';return}box.classList.remove('hidden');box.innerHTML='<div class="eventTodayTitle">📅 Aujourd’hui</div>'+arr.map(ev=>`<div class="eventTodayEntry"><span class="pill">${fmtTimeRange(ev)}</span><b>${esc(ev.title)}</b>${ev.description?`<span class="mut">${esc(ev.description)}</span>`:''}</div>`).join('')}
+
+function canManageConsignes(){return S.user&&['admin','superviseur'].includes(S.user.role)}
+function consigneUnreadCount(){return (S.consignes||[]).filter(c=>!c.read).length}
+function updateConsigneBadge(){const unread=consigneUnreadCount();const total=(S.consignes||[]).length;const c=$('consigneCount');const bell=$('consigneBell');const t=$('consigneTitleBadge');if(c)c.textContent='('+total+')';if(bell)bell.classList.toggle('on',unread>0);if(t)t.textContent=unread+' non lue'+(unread>1?'s':'')}
+function brigadeLabel(v){return v==='jour'?'Brigade de jour':v==='nuit'?'Brigade de nuit':'Toutes brigades'}
+function prioriteLabel(v){return v==='urgent'?'Urgent':v==='important'?'Important':'Information'}
+function esc(s){return String(s||'').replaceAll('<','&lt;')}
+function renderConsignes(){
+  updateConsigneBadge();
+  const btn=$('newConsigneBtn'); if(btn) btn.classList.toggle('hidden',!canManageConsignes());
+  const list=$('consignesList'); if(!list)return;
+  const arr=(S.consignes||[]).slice().sort((a,b)=>(b.unread?1:0)-(a.unread?1:0)||new Date(b.createdAt||0)-new Date(a.createdAt||0));
+  if(!arr.length){list.innerHTML='<span class="mut">Aucune consigne active.</span>';return}
+  list.innerHTML=arr.map(c=>`<div class="consigneItem ${c.read?'':'unread'}">
+    <div class="consigneHead">
+      <div><div class="consigneTitle"><span class="alertIcon">⚠</span>${esc(c.title)}</div><div class="consigneMeta"><span class="pill">${brigadeLabel(c.brigade)}</span><span class="pill">${prioriteLabel(c.priority)}</span>${c.endDate?`<span class="pill">Jusqu’au ${new Date(c.endDate).toLocaleDateString('fr-FR')}</span>`:''}</div></div>
+      <div class="row">${canManageConsignes()?`<button class="small" onclick='editConsigne(${JSON.stringify(c.id)})'>Modifier</button>`:''}${!c.read?`<button class="small ok" onclick='readConsigne(${JSON.stringify(c.id)})'>Marquer lu</button>`:'<span class="pill">Lu</span>'}</div>
+    </div>
+    <div class="consigneText">${esc(c.body)}</div>
+  </div>`).join('');
+}
+function openConsigneForm(){if(!canManageConsignes()){alert('Réservé superviseur/admin');return}$('consigneForm').classList.remove('hidden');$('consigneFormTitle').textContent='Créer une consigne';$('consigneId').value='';$('consigneTitre').value='';$('consigneTexte').value='';$('consigneBrigade').value='all';$('consignePriorite').value='info';$('consigneDebut').value='';$('consigneFin').value='';$('consigneRecurrence').value='none';document.querySelectorAll('.dayPick input').forEach(x=>x.checked=false);$('deleteConsigneBtn').classList.add('hidden')}
+function closeConsigneForm(){$('consigneForm').classList.add('hidden')}
+function editConsigne(id){const c=(S.consignes||[]).find(x=>x.id===id);if(!c)return;openConsigneForm();$('consigneFormTitle').textContent='Modifier une consigne';$('consigneId').value=c.id;$('consigneTitre').value=c.title||'';$('consigneTexte').value=c.body||'';$('consigneBrigade').value=c.brigade||'all';$('consignePriorite').value=c.priority||'info';$('consigneDebut').value=c.startDate||'';$('consigneFin').value=c.endDate||'';$('consigneRecurrence').value=c.recurrence||'none';document.querySelectorAll('.dayPick input').forEach(x=>x.checked=(c.days||[]).includes(Number(x.value)));$('deleteConsigneBtn').classList.remove('hidden')}
+async function saveConsigne(){const days=Array.from(document.querySelectorAll('.dayPick input:checked')).map(x=>Number(x.value));await api('/api/consignes',{method:'POST',body:JSON.stringify({id:$('consigneId').value,title:$('consigneTitre').value,body:$('consigneTexte').value,brigade:$('consigneBrigade').value,priority:$('consignePriorite').value,startDate:$('consigneDebut').value,endDate:$('consigneFin').value,recurrence:$('consigneRecurrence').value,days})});closeConsigneForm();await refresh()}
+async function deleteConsigne(){if(!$('consigneId').value)return;if(confirm('Supprimer cette consigne ?')){await api('/api/consignes/'+$('consigneId').value,{method:'DELETE'});closeConsigneForm();await refresh()}}
+async function readConsigne(id){await api('/api/consignes/'+id+'/read',{method:'POST'});await refresh()}
+
+function toggleLoginPassword(){
+  const p=$('loginPass');
+  if(!p)return;
+  p.type=p.type==='password'?'text':'password';
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.target&&e.target.id==='indispoCode'&&e.key==='Enter'){
+    e.preventDefault();
+    setIndispo().catch(x=>alert(x.message||x));
+  }
+});
+document.addEventListener('input',e=>{
+  if(e.target&&e.target.id==='indispoCode')updateIndispoPreview();
+});
+document.addEventListener('change',e=>{
+  if(e.target&&e.target.id==='indispoSelect'){
+    const p=parseInterventionLine(e.target.value);
+    if(p.code)$('indispoCode').value=p.code;
+    updateIndispoPreview();
+  }
+});
+
+
+
+// V57 MOBILE - navigation latérale tactile
+function toggleMobileNav(){document.body.classList.toggle('mobileNavOpen')}
+function closeMobileNav(){document.body.classList.remove('mobileNavOpen')}
+document.addEventListener('click',e=>{
+  if(window.innerWidth<=700 && e.target.closest && e.target.closest('aside .nav button')) closeMobileNav();
+});
+window.addEventListener('resize',()=>{if(window.innerWidth>700)closeMobileNav()});
+
+setInterval(()=>{if($('app').style.display==='block')refreshSafe(false).catch(()=>{})},3000);init();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async ()=>{
+    try{
+      const regs=await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r=>r.unregister()));
+      if('caches' in window){
+        const names=await caches.keys();
+        await Promise.all(names.map(n=>caches.delete(n)));
+      }
+    }catch(e){}
+  });
+}
+</script>
+
+</body></html>
