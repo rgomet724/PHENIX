@@ -1485,6 +1485,152 @@ body.lightMode .muted,body.lightMode .small,body.lightMode .sub{color:#53677d!im
 body.lightMode table th{background:#e8f0fa!important;color:#122b4b!important;border-color:#bdcad9!important}
 body.lightMode table td{color:#10243e!important;border-color:#ccd6e1!important}
 
+
+/* V62 - Thème clair HAUT CONTRASTE */
+body.lightMode{
+  --bg:#dce6f1!important;
+  --card:#ffffff!important;
+  --line:#91a6bc!important;
+  --muted:#3c526b!important;
+  --text:#071a31!important;
+}
+body.lightMode .content{background:#dce6f1!important}
+body.lightMode .sidebar{
+  background:#eef3f8!important;
+  border-right:2px solid #9fb1c4!important;
+}
+body.lightMode .topbar{
+  background:#06275b!important;
+  border-bottom:2px solid #1d62b5!important;
+  box-shadow:0 4px 16px rgba(4,31,70,.25)!important;
+}
+body.lightMode .nav button{
+  background:#fff!important;
+  color:#0a2342!important;
+  border:2px solid #b4c3d3!important;
+  box-shadow:0 3px 9px rgba(22,48,80,.11)!important;
+  font-weight:700!important;
+}
+body.lightMode .nav button:hover{
+  background:#dcecff!important;
+  color:#063f88!important;
+  border-color:#397dd1!important;
+}
+body.lightMode .nav button.active{
+  background:#0d43c7!important;
+  color:#fff!important;
+  border-color:#082f9e!important;
+  box-shadow:0 5px 15px rgba(13,67,199,.32)!important;
+}
+body.lightMode .nav button .ico{
+  color:#0759b7!important;
+  background:#e7f1ff!important;
+  border:2px solid #72a4df!important;
+}
+body.lightMode .nav button.active .ico{
+  color:#fff!important;
+  background:#315bd0!important;
+  border-color:#8ba6ff!important;
+}
+body.lightMode .card,
+body.lightMode .panel,
+body.lightMode .todayCard,
+body.lightMode .crewCard{
+  background:#fff!important;
+  border:2px solid #aebdcd!important;
+  box-shadow:0 5px 14px rgba(24,48,76,.13)!important;
+}
+body.lightMode h1,body.lightMode h2,body.lightMode h3,
+body.lightMode .title,body.lightMode .sectionTitle{
+  color:#071d39!important;
+}
+body.lightMode .muted,body.lightMode .small,body.lightMode .sub{
+  color:#3d536b!important;
+}
+body.lightMode input,body.lightMode select,body.lightMode textarea{
+  background:#fff!important;
+  color:#071d39!important;
+  border:2px solid #91a7bd!important;
+}
+body.lightMode input:focus,body.lightMode select:focus,body.lightMode textarea:focus{
+  border-color:#0d62c7!important;
+  box-shadow:0 0 0 3px rgba(13,98,199,.20)!important;
+}
+body.lightMode table{
+  border:1px solid #9eb0c2!important;
+}
+body.lightMode table th{
+  background:#cbdced!important;
+  color:#071d39!important;
+  border-color:#9aafc4!important;
+  font-weight:800!important;
+}
+body.lightMode table td{
+  background:#fff!important;
+  color:#0b213b!important;
+  border-color:#b6c4d2!important;
+}
+body.lightMode table tr:nth-child(even) td{background:#f0f5fa!important}
+body.lightMode .btn{
+  border-width:2px!important;
+  font-weight:700!important;
+}
+body.lightMode .btn.primary,
+body.lightMode button.primary{
+  background:#0b56b5!important;
+  border-color:#07458f!important;
+  color:#fff!important;
+}
+body.lightMode .status.available,
+body.lightMode .available,
+body.lightMode .dispo{
+  color:#075d32!important;
+}
+body.lightMode .status.unavailable,
+body.lightMode .unavailable,
+body.lightMode .indispo{
+  color:#a41515!important;
+}
+
+
+/* V63 - Disponibilité équipages beaucoup plus lisible en thème clair */
+body.lightMode .crewCard.available,
+body.lightMode .crewCard.dispo,
+body.lightMode .crewCard[data-status="available"],
+body.lightMode .crewCard[data-status="dispo"]{
+  background:#d9fbe7!important;
+  border:3px solid #16a34a!important;
+  box-shadow:0 0 0 2px rgba(22,163,74,.10),0 7px 18px rgba(22,163,74,.22)!important;
+}
+body.lightMode .crewCard.unavailable,
+body.lightMode .crewCard.indispo,
+body.lightMode .crewCard[data-status="unavailable"],
+body.lightMode .crewCard[data-status="indispo"]{
+  background:#ffe0e0!important;
+  border:3px solid #dc2626!important;
+  box-shadow:0 0 0 2px rgba(220,38,38,.10),0 7px 18px rgba(220,38,38,.22)!important;
+}
+body.lightMode .status.available,
+body.lightMode .available .status,
+body.lightMode .dispo .status,
+body.lightMode .badge.available,
+body.lightMode .badge.dispo{
+  background:#16a34a!important;
+  border-color:#087a32!important;
+  color:#fff!important;
+  font-weight:800!important;
+}
+body.lightMode .status.unavailable,
+body.lightMode .unavailable .status,
+body.lightMode .indispo .status,
+body.lightMode .badge.unavailable,
+body.lightMode .badge.indispo{
+  background:#dc2626!important;
+  border-color:#a81212!important;
+  color:#fff!important;
+  font-weight:800!important;
+}
+
 </style></head><body>
 <div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
   <div class="phenixLoadingCard">
