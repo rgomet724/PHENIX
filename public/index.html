@@ -1659,6 +1659,34 @@ body.lightMode #crewTable .badge{
   color:#fff!important;
 }
 
+
+/* V65 - Etats équipages très visibles en thème clair */
+body.lightMode #crewTable tbody tr:has(.status.ok),
+body.lightMode #crewTable tbody tr:has(.status.available),
+body.lightMode #crewTable tbody tr:has(.badge.available),
+body.lightMode #crewTable tbody tr:has(.badge.dispo){
+  background:#a8e6b8!important;
+  box-shadow:inset 7px 0 0 #087a32!important;
+}
+body.lightMode #crewTable tbody tr:has(.status.bad),
+body.lightMode #crewTable tbody tr:has(.status.unavailable),
+body.lightMode #crewTable tbody tr:has(.badge.unavailable),
+body.lightMode #crewTable tbody tr:has(.badge.indispo){
+  background:#f5aaaa!important;
+  box-shadow:inset 7px 0 0 #b91c1c!important;
+}
+body.lightMode #crewTable tbody tr:has(.status.ok) td,
+body.lightMode #crewTable tbody tr:has(.status.available) td,
+body.lightMode #crewTable tbody tr:has(.badge.available) td,
+body.lightMode #crewTable tbody tr:has(.badge.dispo) td,
+body.lightMode #crewTable tbody tr:has(.status.bad) td,
+body.lightMode #crewTable tbody tr:has(.status.unavailable) td,
+body.lightMode #crewTable tbody tr:has(.badge.unavailable) td,
+body.lightMode #crewTable tbody tr:has(.badge.indispo) td{
+  background:transparent!important;
+  color:#06182d!important;
+}
+
 </style></head><body>
 <div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
   <div class="phenixLoadingCard">
