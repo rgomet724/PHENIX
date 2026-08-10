@@ -1687,6 +1687,57 @@ body.lightMode #crewTable tbody tr:has(.badge.indispo) td{
   color:#06182d!important;
 }
 
+
+/* V66 - Etats équipages visibles de loin, sans icônes coche/croix */
+body.lightMode #crewTable tbody tr:has(.status.ok),
+body.lightMode #crewTable tbody tr:has(.status.available),
+body.lightMode #crewTable tbody tr:has(.badge.available),
+body.lightMode #crewTable tbody tr:has(.badge.dispo){
+  background:linear-gradient(90deg,#c8f3d1 0%,#eaf9ed 100%)!important;
+  box-shadow:inset 10px 0 0 #009b2f!important;
+  outline:1px solid #18a844!important;
+}
+body.lightMode #crewTable tbody tr:has(.status.bad),
+body.lightMode #crewTable tbody tr:has(.status.unavailable),
+body.lightMode #crewTable tbody tr:has(.badge.unavailable),
+body.lightMode #crewTable tbody tr:has(.badge.indispo){
+  background:linear-gradient(90deg,#ffc4c4 0%,#ffeaea 100%)!important;
+  box-shadow:inset 10px 0 0 #e00000!important;
+  outline:1px solid #e52a2a!important;
+}
+body.lightMode #crewTable tbody tr td{
+  background:transparent!important;
+  color:#071426!important;
+}
+body.lightMode #crewTable .status.ok,
+body.lightMode #crewTable .status.available,
+body.lightMode #crewTable .badge.available,
+body.lightMode #crewTable .badge.dispo{
+  background:#009b2f!important;
+  border:2px solid #007923!important;
+  color:#fff!important;
+  font-weight:900!important;
+  font-size:13px!important;
+  padding:5px 12px!important;
+  box-shadow:0 2px 6px rgba(0,120,35,.25)!important;
+}
+body.lightMode #crewTable .status.bad,
+body.lightMode #crewTable .status.unavailable,
+body.lightMode #crewTable .badge.unavailable,
+body.lightMode #crewTable .badge.indispo{
+  background:#e00000!important;
+  border:2px solid #b90000!important;
+  color:#fff!important;
+  font-weight:900!important;
+  font-size:13px!important;
+  padding:5px 12px!important;
+  box-shadow:0 2px 6px rgba(185,0,0,.25)!important;
+}
+/* Boutons d'action : texte uniquement, aucune coche/croix ajoutée */
+body.lightMode #crewTable button{
+  font-weight:800!important;
+}
+
 </style></head><body>
 <div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
   <div class="phenixLoadingCard">
