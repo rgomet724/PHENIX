@@ -1485,6 +1485,100 @@ body.lightMode .muted,body.lightMode .small,body.lightMode .sub{color:#53677d!im
 body.lightMode table th{background:#e8f0fa!important;color:#122b4b!important;border-color:#bdcad9!important}
 body.lightMode table td{color:#10243e!important;border-color:#ccd6e1!important}
 
+
+
+/* V69 - Thème sombre PHENIX : fond sombre conservé + barre haute bleu PHENIX */
+body:not(.lightMode){
+  --bg:#07111f;
+  --p:#0d1b2e;
+  --p2:#13243b;
+  --t:#eaf2ff;
+  --m:#9bb0c9;
+  --l:#21364f;
+  background:linear-gradient(135deg,#06101d,#0b1d34)!important;
+  color:var(--t)!important;
+}
+body:not(.lightMode) .app,
+body:not(.lightMode) .layout,
+body:not(.lightMode) main{
+  background:linear-gradient(135deg,#06101d,#0b1d34)!important;
+  color:#eaf2ff!important;
+}
+
+/* Bleu demandé sur la barre supérieure */
+body:not(.lightMode) .top{
+  background:#071db8!important;
+  border-bottom:1px solid #1838d8!important;
+  color:#fff!important;
+  box-shadow:0 3px 14px rgba(0,0,0,.30)!important;
+}
+body:not(.lightMode) .top .tag,
+body:not(.lightMode) .top #clock{
+  color:#fff!important;
+}
+body:not(.lightMode) .top .logo{
+  background:rgba(255,255,255,.10)!important;
+  border-color:rgba(255,255,255,.25)!important;
+}
+
+/* Restauration du menu et des surfaces sombres d'origine */
+body:not(.lightMode) aside{
+  background:#09182a!important;
+  border-right:1px solid #21364f!important;
+  box-shadow:none!important;
+}
+body:not(.lightMode) .nav button{
+  background:transparent!important;
+  border:1px solid #21364f!important;
+  color:#eaf2ff!important;
+}
+body:not(.lightMode) .nav button:hover,
+body:not(.lightMode) .nav button.activeNav{
+  background:#13243b!important;
+  color:#fff!important;
+}
+body:not(.lightMode) .navIcon{
+  border-color:#3b82f6!important;
+  color:#93c5fd!important;
+}
+body:not(.lightMode) .section,
+body:not(.lightMode) .card{
+  background:rgba(13,27,46,.88)!important;
+  color:#eaf2ff!important;
+  border-color:#21364f!important;
+}
+body:not(.lightMode) #dash th{
+  background:rgba(255,255,255,.035)!important;
+  color:#eaf2ff!important;
+}
+body:not(.lightMode) th,
+body:not(.lightMode) td{
+  border-color:#21364f!important;
+}
+body:not(.lightMode) tr.dispo{background:#052e1a!important;color:#eaf2ff!important}
+body:not(.lightMode) tr.indispo{background:#3b0b0b!important;color:#eaf2ff!important}
+body:not(.lightMode) input,
+body:not(.lightMode) select,
+body:not(.lightMode) textarea{
+  background:#071525!important;
+  color:#eaf2ff!important;
+  border-color:#21364f!important;
+}
+body:not(.lightMode) .historyBox,
+body:not(.lightMode) .agentList,
+body:not(.lightMode) .eventCalendar,
+body:not(.lightMode) .linkCard,
+body:not(.lightMode) .linkLogo{
+  background:#071525!important;
+  color:#eaf2ff!important;
+  border-color:#21364f!important;
+}
+body:not(.lightMode) .themeToggle{
+  background:rgba(255,255,255,.14)!important;
+  color:#fff!important;
+  border-color:rgba(255,255,255,.25)!important;
+}
+
 </style></head><body>
 <div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
   <div class="phenixLoadingCard">
