@@ -1765,6 +1765,159 @@ body:not(.lightMode) #crewTable tbody tr td{background:transparent!important;col
 body:not(.lightMode) #crewTable .status.ok,body:not(.lightMode) #crewTable .status.available,body:not(.lightMode) #crewTable .badge.available,body:not(.lightMode) #crewTable .badge.dispo{background:#237a4a!important;border-color:#3fa66d!important;color:#fff!important;box-shadow:none!important}
 body:not(.lightMode) #crewTable .status.bad,body:not(.lightMode) #crewTable .status.unavailable,body:not(.lightMode) #crewTable .badge.unavailable,body:not(.lightMode) #crewTable .badge.indispo{background:#a83d45!important;border-color:#d45c63!important;color:#fff!important;box-shadow:none!important}
 
+
+/* V68 - Mode nuit = structure du thème clair, fond sombre */
+body:not(.lightMode){
+  --bg:#17212b!important;
+  --card:#f8fafc!important;
+  --line:#c8d3df!important;
+  --muted:#53677d!important;
+  --text:#0b1f38!important;
+  background:#17212b!important;
+  color:#0b1f38!important;
+}
+
+/* Fond général sombre, mais cartes et interface comme le thème clair */
+body:not(.lightMode) .content{
+  background:#17212b!important;
+}
+
+/* Barre haute : même bleu franc que le thème clair */
+body:not(.lightMode) .topbar{
+  background:#082b63!important;
+  border-bottom:2px solid #174d91!important;
+  box-shadow:0 3px 12px rgba(0,0,0,.28)!important;
+  color:#fff!important;
+}
+
+/* Menu : même rendu clair, posé sur un fond sombre */
+body:not(.lightMode) .sidebar{
+  background:#202c38!important;
+  border-right:1px solid #405064!important;
+}
+body:not(.lightMode) .nav button{
+  background:#f8fafc!important;
+  color:#10243e!important;
+  border:1px solid #cbd6e2!important;
+  box-shadow:0 4px 12px rgba(0,0,0,.18)!important;
+}
+body:not(.lightMode) .nav button:hover{
+  background:#e8f1ff!important;
+  border-color:#78a8e1!important;
+}
+body:not(.lightMode) .nav button.active{
+  background:#1035bd!important;
+  color:#fff!important;
+  border-color:#1035bd!important;
+  box-shadow:0 5px 15px rgba(0,0,0,.25)!important;
+}
+body:not(.lightMode) .nav button .ico{
+  color:#075ec7!important;
+  border-color:#9dbbf0!important;
+  background:#f7faff!important;
+}
+body:not(.lightMode) .nav button.active .ico{
+  color:#fff!important;
+  border-color:#7790ef!important;
+  background:#3453c8!important;
+}
+
+/* Cartes blanches/gris très clair comme en thème clair */
+body:not(.lightMode) .card,
+body:not(.lightMode) .panel,
+body:not(.lightMode) .todayCard,
+body:not(.lightMode) .crewCard{
+  background:#f8fafc!important;
+  color:#0b1f38!important;
+  border:1px solid #c7d2df!important;
+  box-shadow:0 6px 18px rgba(0,0,0,.22)!important;
+}
+body:not(.lightMode) h1,
+body:not(.lightMode) h2,
+body:not(.lightMode) h3,
+body:not(.lightMode) .title,
+body:not(.lightMode) .sectionTitle{
+  color:#f4f8fc!important;
+}
+/* Titres contenus dans une carte restent foncés */
+body:not(.lightMode) .card h1,
+body:not(.lightMode) .card h2,
+body:not(.lightMode) .card h3,
+body:not(.lightMode) .panel h1,
+body:not(.lightMode) .panel h2,
+body:not(.lightMode) .panel h3{
+  color:#0b1f38!important;
+}
+
+body:not(.lightMode) input,
+body:not(.lightMode) select,
+body:not(.lightMode) textarea{
+  background:#fff!important;
+  color:#10243e!important;
+  border-color:#aebdce!important;
+}
+body:not(.lightMode) input:focus,
+body:not(.lightMode) select:focus,
+body:not(.lightMode) textarea:focus{
+  border-color:#246bc5!important;
+  box-shadow:0 0 0 3px rgba(36,107,197,.16)!important;
+}
+
+/* Tableaux identiques au thème clair */
+body:not(.lightMode) table{
+  background:#fff!important;
+  color:#10243e!important;
+  border-color:#b9c7d5!important;
+}
+body:not(.lightMode) table th{
+  background:#e8f0fa!important;
+  color:#122b4b!important;
+  border-color:#bdcad9!important;
+}
+body:not(.lightMode) table td{
+  color:#10243e!important;
+  border-color:#ccd6e1!important;
+}
+body:not(.lightMode) table tbody tr:nth-child(even) td{
+  background:transparent!important;
+}
+
+/* Equipages : garder les états très visibles */
+body:not(.lightMode) #crewTable tbody tr:has(.status.ok),
+body:not(.lightMode) #crewTable tbody tr:has(.status.available),
+body:not(.lightMode) #crewTable tbody tr:has(.badge.available),
+body:not(.lightMode) #crewTable tbody tr:has(.badge.dispo){
+  background:linear-gradient(90deg,#c8f3d1 0%,#eaf9ed 100%)!important;
+  box-shadow:inset 10px 0 0 #009b2f!important;
+}
+body:not(.lightMode) #crewTable tbody tr:has(.status.bad),
+body:not(.lightMode) #crewTable tbody tr:has(.status.unavailable),
+body:not(.lightMode) #crewTable tbody tr:has(.badge.unavailable),
+body:not(.lightMode) #crewTable tbody tr:has(.badge.indispo){
+  background:linear-gradient(90deg,#ffc4c4 0%,#ffeaea 100%)!important;
+  box-shadow:inset 10px 0 0 #e00000!important;
+}
+body:not(.lightMode) #crewTable tbody tr td{
+  background:transparent!important;
+  color:#071426!important;
+}
+body:not(.lightMode) #crewTable .status.ok,
+body:not(.lightMode) #crewTable .status.available,
+body:not(.lightMode) #crewTable .badge.available,
+body:not(.lightMode) #crewTable .badge.dispo{
+  background:#009b2f!important;
+  border-color:#007923!important;
+  color:#fff!important;
+}
+body:not(.lightMode) #crewTable .status.bad,
+body:not(.lightMode) #crewTable .status.unavailable,
+body:not(.lightMode) #crewTable .badge.unavailable,
+body:not(.lightMode) #crewTable .badge.indispo{
+  background:#e00000!important;
+  border-color:#b90000!important;
+  color:#fff!important;
+}
+
 </style></head><body>
 <div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
   <div class="phenixLoadingCard">
