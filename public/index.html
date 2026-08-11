@@ -946,7 +946,7 @@ body:not(.dashboardMode) #createCrewBtn{display:inline-block!important}
   #crewTable td:nth-child(2)::before{content:'Indicatif'}
   #crewTable td:nth-child(3)::before{content:'Matricules'}
   #crewTable td:nth-child(4)::before{content:'Intervention'}
-  #crewTable td:nth-child(5)::before{content:'Code Blanc'}
+  #crewTable td:nth-child(5)::before{content:'Code blanc'}
   #crewTable td:nth-child(6)::before{content:'Vacation'}
   #crewTable td:nth-child(7)::before{content:'';display:none}
   #crewTable td:nth-child(2){font-size:18px!important;font-weight:800}
@@ -1319,7 +1319,7 @@ body.lightMode .nav button.activeNav .navIcon,body.lightMode .nav button.activeN
 /* Boutons opérationnels : texte toujours blanc */
 body.lightMode #crewRows button,body.lightMode #crewTable button,
 body.lightMode button.small.primary,body.lightMode button.small.ok,body.lightMode button.small.danger,
-body.lightMode .crew button{color:#fff!important;text-shadow:0 1px 1px rgba(0,0,0,.32)!important;font-weight:700!important}
+body.lightMode .crewActions button{color:#fff!important;text-shadow:0 1px 1px rgba(0,0,0,.32)!important;font-weight:700!important}
 body.lightMode #crewRows button.primary,body.lightMode #crewRows button:not(.ok):not(.danger){background:#0b3560!important}
 body.lightMode #crewRows button.ok{background:#11943b!important}
 body.lightMode #crewRows button.danger{background:#d4262e!important}
@@ -1484,6 +1484,286 @@ body.lightMode input:focus,body.lightMode select:focus,body.lightMode textarea:f
 body.lightMode .muted,body.lightMode .small,body.lightMode .sub{color:#53677d!important}
 body.lightMode table th{background:#e8f0fa!important;color:#122b4b!important;border-color:#bdcad9!important}
 body.lightMode table td{color:#10243e!important;border-color:#ccd6e1!important}
+
+
+/* V62 - Thème clair HAUT CONTRASTE */
+body.lightMode{
+  --bg:#dce6f1!important;
+  --card:#ffffff!important;
+  --line:#91a6bc!important;
+  --muted:#3c526b!important;
+  --text:#071a31!important;
+}
+body.lightMode .content{background:#dce6f1!important}
+body.lightMode .sidebar{
+  background:#eef3f8!important;
+  border-right:2px solid #9fb1c4!important;
+}
+body.lightMode .topbar{
+  background:#06275b!important;
+  border-bottom:2px solid #1d62b5!important;
+  box-shadow:0 4px 16px rgba(4,31,70,.25)!important;
+}
+body.lightMode .nav button{
+  background:#fff!important;
+  color:#0a2342!important;
+  border:2px solid #b4c3d3!important;
+  box-shadow:0 3px 9px rgba(22,48,80,.11)!important;
+  font-weight:700!important;
+}
+body.lightMode .nav button:hover{
+  background:#dcecff!important;
+  color:#063f88!important;
+  border-color:#397dd1!important;
+}
+body.lightMode .nav button.active{
+  background:#0d43c7!important;
+  color:#fff!important;
+  border-color:#082f9e!important;
+  box-shadow:0 5px 15px rgba(13,67,199,.32)!important;
+}
+body.lightMode .nav button .ico{
+  color:#0759b7!important;
+  background:#e7f1ff!important;
+  border:2px solid #72a4df!important;
+}
+body.lightMode .nav button.active .ico{
+  color:#fff!important;
+  background:#315bd0!important;
+  border-color:#8ba6ff!important;
+}
+body.lightMode .card,
+body.lightMode .panel,
+body.lightMode .todayCard,
+body.lightMode .crewCard{
+  background:#fff!important;
+  border:2px solid #aebdcd!important;
+  box-shadow:0 5px 14px rgba(24,48,76,.13)!important;
+}
+body.lightMode h1,body.lightMode h2,body.lightMode h3,
+body.lightMode .title,body.lightMode .sectionTitle{
+  color:#071d39!important;
+}
+body.lightMode .muted,body.lightMode .small,body.lightMode .sub{
+  color:#3d536b!important;
+}
+body.lightMode input,body.lightMode select,body.lightMode textarea{
+  background:#fff!important;
+  color:#071d39!important;
+  border:2px solid #91a7bd!important;
+}
+body.lightMode input:focus,body.lightMode select:focus,body.lightMode textarea:focus{
+  border-color:#0d62c7!important;
+  box-shadow:0 0 0 3px rgba(13,98,199,.20)!important;
+}
+body.lightMode table{
+  border:1px solid #9eb0c2!important;
+}
+body.lightMode table th{
+  background:#cbdced!important;
+  color:#071d39!important;
+  border-color:#9aafc4!important;
+  font-weight:800!important;
+}
+body.lightMode table td{
+  background:#fff!important;
+  color:#0b213b!important;
+  border-color:#b6c4d2!important;
+}
+body.lightMode table tr:nth-child(even) td{background:#f0f5fa!important}
+body.lightMode .btn{
+  border-width:2px!important;
+  font-weight:700!important;
+}
+body.lightMode .btn.primary,
+body.lightMode button.primary{
+  background:#0b56b5!important;
+  border-color:#07458f!important;
+  color:#fff!important;
+}
+body.lightMode .status.available,
+body.lightMode .available,
+body.lightMode .dispo{
+  color:#075d32!important;
+}
+body.lightMode .status.unavailable,
+body.lightMode .unavailable,
+body.lightMode .indispo{
+  color:#a41515!important;
+}
+
+
+/* V63 - Disponibilité équipages beaucoup plus lisible en thème clair */
+body.lightMode .crewCard.available,
+body.lightMode .crewCard.dispo,
+body.lightMode .crewCard[data-status="available"],
+body.lightMode .crewCard[data-status="dispo"]{
+  background:#d9fbe7!important;
+  border:3px solid #16a34a!important;
+  box-shadow:0 0 0 2px rgba(22,163,74,.10),0 7px 18px rgba(22,163,74,.22)!important;
+}
+body.lightMode .crewCard.unavailable,
+body.lightMode .crewCard.indispo,
+body.lightMode .crewCard[data-status="unavailable"],
+body.lightMode .crewCard[data-status="indispo"]{
+  background:#ffe0e0!important;
+  border:3px solid #dc2626!important;
+  box-shadow:0 0 0 2px rgba(220,38,38,.10),0 7px 18px rgba(220,38,38,.22)!important;
+}
+body.lightMode .status.available,
+body.lightMode .available .status,
+body.lightMode .dispo .status,
+body.lightMode .badge.available,
+body.lightMode .badge.dispo{
+  background:#16a34a!important;
+  border-color:#087a32!important;
+  color:#fff!important;
+  font-weight:800!important;
+}
+body.lightMode .status.unavailable,
+body.lightMode .unavailable .status,
+body.lightMode .indispo .status,
+body.lightMode .badge.unavailable,
+body.lightMode .badge.indispo{
+  background:#dc2626!important;
+  border-color:#a81212!important;
+  color:#fff!important;
+  font-weight:800!important;
+}
+
+
+/* V64 - Lisibilité DISPO / INDISPO : couleur de ligne visible mais texte intact */
+body.lightMode #crewTable tbody tr{
+  transition:background-color .15s ease,border-color .15s ease;
+}
+body.lightMode #crewTable tbody tr:has(.status.ok),
+body.lightMode #crewTable tbody tr:has(.status.available),
+body.lightMode #crewTable tbody tr:has(.badge.available),
+body.lightMode #crewTable tbody tr:has(.badge.dispo){
+  background:#d7f7df!important;
+  box-shadow:inset 5px 0 0 #159447!important;
+}
+body.lightMode #crewTable tbody tr:has(.status.bad),
+body.lightMode #crewTable tbody tr:has(.status.unavailable),
+body.lightMode #crewTable tbody tr:has(.badge.unavailable),
+body.lightMode #crewTable tbody tr:has(.badge.indispo){
+  background:#ffdada!important;
+  box-shadow:inset 5px 0 0 #d62828!important;
+}
+body.lightMode #crewTable tbody tr td{
+  background:transparent!important;
+  color:#071a31!important;
+}
+body.lightMode #crewTable .status,
+body.lightMode #crewTable .badge{
+  color:#fff!important;
+}
+
+
+/* V65 - Etats équipages très visibles en thème clair */
+body.lightMode #crewTable tbody tr:has(.status.ok),
+body.lightMode #crewTable tbody tr:has(.status.available),
+body.lightMode #crewTable tbody tr:has(.badge.available),
+body.lightMode #crewTable tbody tr:has(.badge.dispo){
+  background:#a8e6b8!important;
+  box-shadow:inset 7px 0 0 #087a32!important;
+}
+body.lightMode #crewTable tbody tr:has(.status.bad),
+body.lightMode #crewTable tbody tr:has(.status.unavailable),
+body.lightMode #crewTable tbody tr:has(.badge.unavailable),
+body.lightMode #crewTable tbody tr:has(.badge.indispo){
+  background:#f5aaaa!important;
+  box-shadow:inset 7px 0 0 #b91c1c!important;
+}
+body.lightMode #crewTable tbody tr:has(.status.ok) td,
+body.lightMode #crewTable tbody tr:has(.status.available) td,
+body.lightMode #crewTable tbody tr:has(.badge.available) td,
+body.lightMode #crewTable tbody tr:has(.badge.dispo) td,
+body.lightMode #crewTable tbody tr:has(.status.bad) td,
+body.lightMode #crewTable tbody tr:has(.status.unavailable) td,
+body.lightMode #crewTable tbody tr:has(.badge.unavailable) td,
+body.lightMode #crewTable tbody tr:has(.badge.indispo) td{
+  background:transparent!important;
+  color:#06182d!important;
+}
+
+
+/* V66 - Etats équipages visibles de loin, sans icônes coche/croix */
+body.lightMode #crewTable tbody tr:has(.status.ok),
+body.lightMode #crewTable tbody tr:has(.status.available),
+body.lightMode #crewTable tbody tr:has(.badge.available),
+body.lightMode #crewTable tbody tr:has(.badge.dispo){
+  background:linear-gradient(90deg,#c8f3d1 0%,#eaf9ed 100%)!important;
+  box-shadow:inset 10px 0 0 #009b2f!important;
+  outline:1px solid #18a844!important;
+}
+body.lightMode #crewTable tbody tr:has(.status.bad),
+body.lightMode #crewTable tbody tr:has(.status.unavailable),
+body.lightMode #crewTable tbody tr:has(.badge.unavailable),
+body.lightMode #crewTable tbody tr:has(.badge.indispo){
+  background:linear-gradient(90deg,#ffc4c4 0%,#ffeaea 100%)!important;
+  box-shadow:inset 10px 0 0 #e00000!important;
+  outline:1px solid #e52a2a!important;
+}
+body.lightMode #crewTable tbody tr td{
+  background:transparent!important;
+  color:#071426!important;
+}
+body.lightMode #crewTable .status.ok,
+body.lightMode #crewTable .status.available,
+body.lightMode #crewTable .badge.available,
+body.lightMode #crewTable .badge.dispo{
+  background:#009b2f!important;
+  border:2px solid #007923!important;
+  color:#fff!important;
+  font-weight:900!important;
+  font-size:13px!important;
+  padding:5px 12px!important;
+  box-shadow:0 2px 6px rgba(0,120,35,.25)!important;
+}
+body.lightMode #crewTable .status.bad,
+body.lightMode #crewTable .status.unavailable,
+body.lightMode #crewTable .badge.unavailable,
+body.lightMode #crewTable .badge.indispo{
+  background:#e00000!important;
+  border:2px solid #b90000!important;
+  color:#fff!important;
+  font-weight:900!important;
+  font-size:13px!important;
+  padding:5px 12px!important;
+  box-shadow:0 2px 6px rgba(185,0,0,.25)!important;
+}
+/* Boutons d'action : texte uniquement, aucune coche/croix ajoutée */
+body.lightMode #crewTable button{
+  font-weight:800!important;
+}
+
+
+/* V67 - Thème sombre PHENIX : centre opérationnel sobre */
+body:not(.lightMode){--bg:#09111b!important;--card:#101b28!important;--line:#26384b!important;--muted:#91a3b7!important;--text:#edf4fb!important;background:#09111b!important;color:#edf4fb!important}
+body:not(.lightMode) .content{background:radial-gradient(circle at 80% 5%,rgba(22,78,126,.12),transparent 32%),#09111b!important}
+body:not(.lightMode) .topbar{background:#071522!important;border-bottom:1px solid #27445f!important;box-shadow:0 4px 18px rgba(0,0,0,.28)!important}
+body:not(.lightMode) .sidebar{background:#0b1622!important;border-right:1px solid #263b50!important}
+body:not(.lightMode) .nav button{background:#101d2b!important;color:#dce8f3!important;border:1px solid #20364a!important;box-shadow:none!important}
+body:not(.lightMode) .nav button:hover{background:#15283a!important;border-color:#3b607d!important;color:#fff!important}
+body:not(.lightMode) .nav button.active{background:#173a59!important;color:#fff!important;border-color:#3f7096!important;box-shadow:inset 4px 0 0 #5ba6d6!important}
+body:not(.lightMode) .nav button .ico{background:#0b1926!important;color:#8dc7ec!important;border-color:#31536e!important}
+body:not(.lightMode) .nav button.active .ico{background:#204d70!important;color:#fff!important;border-color:#6da6ca!important}
+body:not(.lightMode) .card,body:not(.lightMode) .panel,body:not(.lightMode) .todayCard,body:not(.lightMode) .crewCard{background:#101b28!important;border:1px solid #293c4f!important;box-shadow:0 8px 22px rgba(0,0,0,.16)!important}
+body:not(.lightMode) h1,body:not(.lightMode) h2,body:not(.lightMode) h3,body:not(.lightMode) .title,body:not(.lightMode) .sectionTitle{color:#f1f6fb!important}
+body:not(.lightMode) .muted,body:not(.lightMode) .small,body:not(.lightMode) .sub{color:#91a3b7!important}
+body:not(.lightMode) input,body:not(.lightMode) select,body:not(.lightMode) textarea{background:#0a1520!important;color:#edf4fb!important;border:1px solid #354a5f!important}
+body:not(.lightMode) input:focus,body:not(.lightMode) select:focus,body:not(.lightMode) textarea:focus{border-color:#5b96be!important;box-shadow:0 0 0 3px rgba(91,150,190,.13)!important}
+body:not(.lightMode) table{border-color:#2b3d4f!important}
+body:not(.lightMode) table th{background:#142434!important;color:#d9e8f4!important;border-color:#31475b!important}
+body:not(.lightMode) table td{color:#e7eef5!important;border-color:#263a4c!important}
+body:not(.lightMode) table tbody tr:nth-child(even) td{background:#0e1a26!important}
+body:not(.lightMode) .btn.primary,body:not(.lightMode) button.primary{background:#285d83!important;border-color:#3f789e!important;color:#fff!important}
+body:not(.lightMode) #crewTable tbody tr:has(.status.ok),body:not(.lightMode) #crewTable tbody tr:has(.status.available),body:not(.lightMode) #crewTable tbody tr:has(.badge.available),body:not(.lightMode) #crewTable tbody tr:has(.badge.dispo){background:#102a21!important;box-shadow:inset 7px 0 0 #32a564!important}
+body:not(.lightMode) #crewTable tbody tr:has(.status.bad),body:not(.lightMode) #crewTable tbody tr:has(.status.unavailable),body:not(.lightMode) #crewTable tbody tr:has(.badge.unavailable),body:not(.lightMode) #crewTable tbody tr:has(.badge.indispo){background:#32191d!important;box-shadow:inset 7px 0 0 #d85454!important}
+body:not(.lightMode) #crewTable tbody tr td{background:transparent!important;color:#edf4fb!important}
+body:not(.lightMode) #crewTable .status.ok,body:not(.lightMode) #crewTable .status.available,body:not(.lightMode) #crewTable .badge.available,body:not(.lightMode) #crewTable .badge.dispo{background:#237a4a!important;border-color:#3fa66d!important;color:#fff!important;box-shadow:none!important}
+body:not(.lightMode) #crewTable .status.bad,body:not(.lightMode) #crewTable .status.unavailable,body:not(.lightMode) #crewTable .badge.unavailable,body:not(.lightMode) #crewTable .badge.indispo{background:#a83d45!important;border-color:#d45c63!important;color:#fff!important;box-shadow:none!important}
 
 </style></head><body>
 <div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
@@ -1851,7 +2131,7 @@ function formatVacationCell(c){
   </div>`;
 }
 
-function renderCrews(){const readonly=!canOperate();$('crewRows').innerHTML=S.crews.map(c=>`<tr class="${c.status==='INDISPO'?'indispo':'dispo'}"><td><button class="infoBtn" title="Infos équipage" onclick='showCrewInfo(${JSON.stringify(c.id)})'>i</button></td><td><b>${c.callsign}</b><br><span class="pill">${c.status}</span></td><td>${(c.matricules||[]).map(m=>`<span class="pill">${m}</span>`).join('')}</td><td>${esc(c.intervention||'—')}</td><td>${c.meal||'—'}</td><td>${formatVacationCell(c)}</td><td>${readonly?'<span class="mut"> </span>':`<button class="small" onclick='openCrew(${JSON.stringify(c.id)})'>Modifier</button> <button class="small ok" onclick='statusCrew(${JSON.stringify(c.id)},"DISPO")'>DISPO</button> <button class="small danger" onclick='openIndispo(${JSON.stringify(c.id)})'>INDISPO</button>`}</td></tr>`).join('')}
+function renderCrews(){const readonly=!canOperate();$('crewRows').innerHTML=S.crews.map(c=>`<tr class="${c.status==='INDISPO'?'indispo':'dispo'}"><td><button class="infoBtn" title="Infos équipage" onclick='showCrewInfo(${JSON.stringify(c.id)})'>i</button></td><td><b>${c.callsign}</b><br><span class="pill">${c.status}</span></td><td>${(c.matricules||[]).map(m=>`<span class="pill">${m}</span>`).join('')}</td><td>${esc(c.intervention||'—')}</td><td>${c.meal||'—'}</td><td>${formatVacationCell(c)}</td><td>${readonly?'<span class="mut">Lecture seule</span>':`<button class="small" onclick='openCrew(${JSON.stringify(c.id)})'>Modifier</button> <button class="small ok" onclick='statusCrew(${JSON.stringify(c.id)},"DISPO")'>DISPO</button> <button class="small danger" onclick='openIndispo(${JSON.stringify(c.id)})'>INDISPO</button>`}</td></tr>`).join('')}
 function formatVacation(c){
   if(!c.shiftStart&&!c.shiftEnd)return 'Non renseignée';
   const fmt=v=>v?new Date(v).toLocaleString('fr-FR'):'—';
@@ -1978,7 +2258,7 @@ async function saveCrew(){
 }
 async function deleteCrew(){if(confirm('Supprimer cet équipage ?')){await api('/api/crew/'+$('crewId').value,{method:'DELETE'});closeModal('crewModal');refresh()}}
 async function statusCrew(id,status){
-  if(!canOperate()){alert('Accès ');return}
+  if(!canOperate()){alert('Accès lecture seule');return}
   try{
     await api('/api/crew/'+id+'/status',{method:'POST',body:JSON.stringify({status:'DISPO'})});
     await refresh();
@@ -2002,7 +2282,7 @@ function updateIndispoPreview(){
     :'<span class="mut">Saisissez un code ou choisissez une nature d’intervention.</span>';
 }
 function openIndispo(id){
-  if(!canOperate()){alert('Accès ');return}
+  if(!canOperate()){alert('Accès lecture seule');return}
   fillIndispoChoices();
   $('indispoId').value=id;
   $('indispoCode').value='';
