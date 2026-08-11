@@ -1851,7 +1851,7 @@ function formatVacationCell(c){
   </div>`;
 }
 
-function renderCrews(){const readonly=!canOperate();$('crewRows').innerHTML=S.crews.map(c=>`<tr class="${c.status==='INDISPO'?'indispo':'dispo'}"><td><button class="infoBtn" title="Infos équipage" onclick='showCrewInfo(${JSON.stringify(c.id)})'>i</button></td><td><b>${c.callsign}</b><br><span class="pill">${c.status}</span></td><td>${(c.matricules||[]).map(m=>`<span class="pill">${m}</span>`).join('')}</td><td>${esc(c.intervention||'—')}</td><td>${c.meal||'—'}</td><td>${formatVacationCell(c)}</td><td>${readonly?'<span class="mut">Lecture seule</span>':`<button class="small" onclick='openCrew(${JSON.stringify(c.id)})'>Modifier</button> <button class="small ok" onclick='statusCrew(${JSON.stringify(c.id)},"DISPO")'>DISPO</button> <button class="small danger" onclick='openIndispo(${JSON.stringify(c.id)})'>INDISPO</button>`}</td></tr>`).join('')}
+function renderCrews(){const readonly=!canOperate();$('crewRows').innerHTML=S.crews.map(c=>`<tr class="${c.status==='INDISPO'?'indispo':'dispo'}"><td><button class="infoBtn" title="Infos équipage" onclick='showCrewInfo(${JSON.stringify(c.id)})'>i</button></td><td><b>${c.callsign}</b><br><span class="pill">${c.status}</span></td><td>${(c.matricules||[]).map(m=>`<span class="pill">${m}</span>`).join('')}</td><td>${esc(c.intervention||'—')}</td><td>${c.meal||'—'}</td><td>${formatVacationCell(c)}</td><td>${readonly?'<span class="mut"> </span>':`<button class="small" onclick='openCrew(${JSON.stringify(c.id)})'>Modifier</button> <button class="small ok" onclick='statusCrew(${JSON.stringify(c.id)},"DISPO")'>DISPO</button> <button class="small danger" onclick='openIndispo(${JSON.stringify(c.id)})'>INDISPO</button>`}</td></tr>`).join('')}
 function formatVacation(c){
   if(!c.shiftStart&&!c.shiftEnd)return 'Non renseignée';
   const fmt=v=>v?new Date(v).toLocaleString('fr-FR'):'—';
@@ -1978,7 +1978,7 @@ async function saveCrew(){
 }
 async function deleteCrew(){if(confirm('Supprimer cet équipage ?')){await api('/api/crew/'+$('crewId').value,{method:'DELETE'});closeModal('crewModal');refresh()}}
 async function statusCrew(id,status){
-  if(!canOperate()){alert('Accès lecture seule');return}
+  if(!canOperate()){alert('Accès ');return}
   try{
     await api('/api/crew/'+id+'/status',{method:'POST',body:JSON.stringify({status:'DISPO'})});
     await refresh();
@@ -2002,7 +2002,7 @@ function updateIndispoPreview(){
     :'<span class="mut">Saisissez un code ou choisissez une nature d’intervention.</span>';
 }
 function openIndispo(id){
-  if(!canOperate()){alert('Accès lecture seule');return}
+  if(!canOperate()){alert('Accès ');return}
   fillIndispoChoices();
   $('indispoId').value=id;
   $('indispoCode').value='';
