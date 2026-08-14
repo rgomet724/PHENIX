@@ -1760,6 +1760,184 @@ body.adminMode .signatureAdminToggle{display:inline-flex!important}
   backdrop-filter:blur(8px)!important;
 }
 
+
+
+/* V75 - Connexion PHENIX sobre avec profondeur, sans radar */
+.login{
+  background:
+    radial-gradient(ellipse at 20% 15%,rgba(24,86,155,.20),transparent 34%),
+    radial-gradient(ellipse at 82% 82%,rgba(15,58,108,.18),transparent 38%),
+    linear-gradient(135deg,#050d18 0%,#08182a 46%,#0b2038 100%)!important;
+  overflow:hidden!important;
+}
+.login::before{
+  content:''!important;
+  position:absolute!important;
+  inset:-15%!important;
+  z-index:-2!important;
+  pointer-events:none!important;
+  background:
+    linear-gradient(120deg,transparent 24%,rgba(42,108,178,.055) 25%,transparent 26%),
+    linear-gradient(120deg,transparent 48%,rgba(42,108,178,.035) 49%,transparent 50%),
+    linear-gradient(120deg,transparent 72%,rgba(42,108,178,.045) 73%,transparent 74%)!important;
+  background-size:100% 100%!important;
+  animation:phenixAmbient 18s ease-in-out infinite alternate!important;
+}
+.login::after{
+  content:''!important;
+  position:absolute!important;
+  left:-10%!important;
+  right:-10%!important;
+  bottom:-34%!important;
+  top:auto!important;
+  width:auto!important;
+  height:58%!important;
+  z-index:-1!important;
+  pointer-events:none!important;
+  border-radius:50% 50% 0 0!important;
+  transform:none!important;
+  opacity:1!important;
+  background:
+    radial-gradient(ellipse at center top,rgba(24,91,158,.18),rgba(7,20,36,.02) 58%,transparent 72%)!important;
+  animation:none!important;
+}
+@keyframes phenixAmbient{
+  from{transform:translate3d(-1.5%,0,0) scale(1)}
+  to{transform:translate3d(1.5%,-1%,0) scale(1.025)}
+}
+.login .box{
+  background:linear-gradient(160deg,rgba(9,24,42,.97),rgba(7,18,32,.96))!important;
+  border:1px solid rgba(87,135,183,.30)!important;
+  box-shadow:0 24px 70px rgba(0,0,0,.46),inset 0 1px 0 rgba(255,255,255,.035)!important;
+  backdrop-filter:blur(10px)!important;
+}
+.login .brand .logo{
+  box-shadow:0 8px 24px rgba(0,0,0,.28)!important;
+}
+.login .primary{
+  background:linear-gradient(180deg,#155a9b,#0d447a)!important;
+  border-color:#2b6fa8!important;
+}
+@media(prefers-reduced-motion:reduce){
+  .login::before{animation:none!important}
+}
+
+
+
+/* V76 - Nouveau fond de connexion nettement différent, sobre, sans radar */
+.login{
+  background:
+    linear-gradient(125deg,#050b14 0%,#081321 38%,#0b1f35 72%,#0d2a49 100%)!important;
+  position:relative!important;
+  overflow:hidden!important;
+}
+
+/* Grande forme bleue diagonale à gauche */
+.login::before{
+  content:''!important;
+  position:absolute!important;
+  z-index:-2!important;
+  pointer-events:none!important;
+  width:68vw!important;
+  height:150vh!important;
+  left:-32vw!important;
+  top:-25vh!important;
+  inset:auto!important;
+  transform:rotate(18deg)!important;
+  border-radius:80px!important;
+  background:linear-gradient(
+    180deg,
+    rgba(20,83,150,.42) 0%,
+    rgba(12,54,103,.26) 46%,
+    rgba(8,31,61,.08) 100%
+  )!important;
+  box-shadow:0 0 90px rgba(16,73,132,.14)!important;
+  animation:none!important;
+}
+
+/* Deuxième panneau très discret à droite */
+.login::after{
+  content:''!important;
+  position:absolute!important;
+  z-index:-1!important;
+  pointer-events:none!important;
+  width:54vw!important;
+  height:130vh!important;
+  right:-27vw!important;
+  left:auto!important;
+  top:-14vh!important;
+  bottom:auto!important;
+  inset:auto!important;
+  transform:rotate(-16deg)!important;
+  border-radius:70px!important;
+  opacity:1!important;
+  background:linear-gradient(
+    180deg,
+    rgba(29,92,157,.23) 0%,
+    rgba(14,54,99,.16) 52%,
+    rgba(7,26,48,.04) 100%
+  )!important;
+  box-shadow:none!important;
+  animation:none!important;
+}
+
+/* Bloc connexion : simple, net, institutionnel */
+.login .box{
+  background:#08182a!important;
+  border:1px solid #284761!important;
+  box-shadow:0 22px 65px rgba(0,0,0,.48)!important;
+  backdrop-filter:none!important;
+}
+
+/* Ligne bleue discrète en haut du bloc */
+.login .box::before{
+  content:''!important;
+  position:absolute!important;
+  left:22px!important;
+  right:22px!important;
+  top:0!important;
+  height:3px!important;
+  border-radius:0 0 4px 4px!important;
+  background:#0b65b8!important;
+}
+
+/* Champs et bouton harmonisés */
+.login .field input{
+  background:#0b1d30!important;
+  color:#eef6ff!important;
+  border:1px solid #2b465e!important;
+}
+.login .field input:focus{
+  border-color:#3c79ad!important;
+  box-shadow:0 0 0 3px rgba(60,121,173,.14)!important;
+}
+.login .primary{
+  background:#0b5ea7!important;
+  border:1px solid #2778b9!important;
+  box-shadow:none!important;
+}
+.login .primary:hover{
+  background:#0c69bb!important;
+  filter:none!important;
+}
+.login .brand h1{color:#f4f8fc!important}
+.login .tag{color:#9eb2c6!important}
+
+/* Aucun ancien effet animé sur la connexion */
+.login *{
+  animation-duration:0s;
+}
+@media(max-width:700px){
+  .login::before{
+    width:105vw!important;
+    left:-67vw!important;
+  }
+  .login::after{
+    width:90vw!important;
+    right:-60vw!important;
+  }
+}
+
 </style></head><body>
 <div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
   <div class="phenixLoadingCard">
@@ -2717,7 +2895,7 @@ function buildMailSignatureHtml(){
   <img src="${PHENIX_SIG_PM_LOGO}" width="82" alt="Police Municipale" style="display:block;width:112px;height:auto;border:0;background:transparent">
 </td>
 <td valign="top" style="border-left:4px solid #0b3fa5;padding-left:14px;background:transparent">
-  <div style="font-size:22px;font-weight:800;color:#0b2d5c">${identite}</div>
+  <div style="font-size:18px;font-weight:700;color:#0b2d5c">${identite}</div>
   ${signatureExtraHtml('afterIdentity')}${signatureLinksHtml('afterIdentity')}
   <div style="font-size:13px;font-weight:700;margin-top:2px">${gradeFonction}</div>
   ${signatureExtraHtml('afterRole')}${signatureLinksHtml('afterRole')}
