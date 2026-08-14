@@ -1938,6 +1938,188 @@ body.adminMode .signatureAdminToggle{display:inline-flex!important}
   }
 }
 
+
+
+/* V77 - Connexion vraiment simple : aucun radar, aucune forme rouge/bleue */
+#login.login{
+  min-height:100vh!important;
+  background:#081421!important;
+  background-image:linear-gradient(180deg,#081421 0%,#0b1b2d 100%)!important;
+  position:relative!important;
+  overflow:hidden!important;
+}
+#login.login::before,
+#login.login::after{
+  content:none!important;
+  display:none!important;
+  background:none!important;
+  background-image:none!important;
+  animation:none!important;
+  box-shadow:none!important;
+  opacity:0!important;
+}
+#login.login .loginSonar,
+#login.login .loginMotion,
+#login.login .loginOrb,
+#login.login .loginRadar,
+#login.login .loginScan,
+#login.login #loginParticles,
+#login.login .loginParticle{
+  display:none!important;
+  visibility:hidden!important;
+  opacity:0!important;
+  animation:none!important;
+}
+#login.login>.box{
+  background:#0c1b2c!important;
+  border:1px solid #29435a!important;
+  box-shadow:0 18px 45px rgba(0,0,0,.38)!important;
+  backdrop-filter:none!important;
+}
+#login.login>.box::before,
+#login.login>.box::after{
+  content:none!important;
+  display:none!important;
+}
+#login.login .brand h1{color:#f4f8fc!important}
+#login.login .tag{color:#9db0c4!important}
+#login.login .field input{
+  background:#0a1725!important;
+  color:#eef5fb!important;
+  border:1px solid #2b4155!important;
+  box-shadow:none!important;
+}
+#login.login .field input:focus{
+  border-color:#4c79a1!important;
+  box-shadow:0 0 0 2px rgba(76,121,161,.12)!important;
+}
+#login.login .primary{
+  background:#0d5a9e!important;
+  border:1px solid #2b75ae!important;
+  box-shadow:none!important;
+}
+#login.login .primary:hover{
+  background:#1168b4!important;
+  filter:none!important;
+}
+
+
+
+/* V78 - Connexion inspirée de la référence : arcs fixes en bas à droite */
+#login.login{
+  min-height:100vh!important;
+  position:relative!important;
+  overflow:hidden!important;
+  background:#172f72!important;
+  background-image:linear-gradient(135deg,#193573 0%,#18326f 55%,#142a62 100%)!important;
+}
+
+/* Aucun ancien radar / sonar / animation */
+#login.login .loginSonar,
+#login.login .loginMotion,
+#login.login .loginOrb,
+#login.login .loginRadar,
+#login.login .loginScan,
+#login.login #loginParticles,
+#login.login .loginParticle{
+  display:none!important;
+  visibility:hidden!important;
+  opacity:0!important;
+  animation:none!important;
+}
+
+/* Série d'arcs bleus fixes, placés en bas à droite */
+#login.login::before{
+  content:''!important;
+  display:block!important;
+  position:absolute!important;
+  z-index:-2!important;
+  pointer-events:none!important;
+  width:760px!important;
+  height:760px!important;
+  right:-390px!important;
+  bottom:-390px!important;
+  left:auto!important;
+  top:auto!important;
+  inset:auto!important;
+  border-radius:50%!important;
+  transform:none!important;
+  opacity:.95!important;
+  animation:none!important;
+  box-shadow:
+    0 0 0 22px rgba(12,69,157,.92),
+    0 0 0 45px rgba(20,53,129,.98),
+    0 0 0 68px rgba(13,73,164,.86),
+    0 0 0 91px rgba(23,51,122,.98),
+    0 0 0 114px rgba(12,67,151,.78),
+    0 0 0 137px rgba(24,51,119,.98),
+    0 0 0 160px rgba(13,66,146,.66),
+    0 0 0 183px rgba(24,50,116,.98),
+    0 0 0 206px rgba(13,62,137,.52),
+    0 0 0 229px rgba(23,48,111,.98)!important;
+  background:#0d4b9c!important;
+}
+
+/* Une légère lumière derrière les arcs, sans mouvement */
+#login.login::after{
+  content:''!important;
+  display:block!important;
+  position:absolute!important;
+  z-index:-3!important;
+  pointer-events:none!important;
+  width:900px!important;
+  height:900px!important;
+  right:-430px!important;
+  bottom:-450px!important;
+  left:auto!important;
+  top:auto!important;
+  inset:auto!important;
+  border-radius:50%!important;
+  transform:none!important;
+  opacity:1!important;
+  animation:none!important;
+  box-shadow:none!important;
+  background:radial-gradient(circle,rgba(22,91,177,.24) 0%,rgba(20,63,135,.10) 48%,transparent 72%)!important;
+}
+
+/* Carte de connexion fixe et simple */
+#login.login>.box{
+  position:relative!important;
+  z-index:2!important;
+  background:#0b1b2d!important;
+  border:1px solid rgba(111,145,180,.38)!important;
+  box-shadow:0 22px 55px rgba(0,0,0,.34)!important;
+  backdrop-filter:none!important;
+}
+#login.login>.box::before,
+#login.login>.box::after{
+  content:none!important;
+  display:none!important;
+}
+
+/* Rien ne bouge sur l'écran de connexion */
+#login.login,
+#login.login::before,
+#login.login::after,
+#login.login>.box{
+  animation:none!important;
+}
+
+@media(max-width:800px){
+  #login.login::before{
+    width:520px!important;
+    height:520px!important;
+    right:-320px!important;
+    bottom:-300px!important;
+  }
+  #login.login::after{
+    width:620px!important;
+    height:620px!important;
+    right:-360px!important;
+    bottom:-350px!important;
+  }
+}
+
 </style></head><body>
 <div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
   <div class="phenixLoadingCard">
@@ -1948,7 +2130,7 @@ body.adminMode .signatureAdminToggle{display:inline-flex!important}
   </div>
 </div>
 
-<div id="login" class="login"><div class="loginSonar" aria-hidden="true"></div><div id="flashLogin" class="flashLogin hidden"><span class="flashIcon">📢</span><span id="flashLoginLabel" class="flashLabel">INFO :</span><span id="flashLoginText" class="flashText"></span></div><div class="box">
+<div id="login" class="login"><div id="flashLogin" class="flashLogin hidden"><span class="flashIcon">📢</span><span id="flashLoginLabel" class="flashLabel">INFO :</span><span id="flashLoginText" class="flashText"></span></div><div class="box">
   <div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div>
   <div id="setup" class="hidden"><h2>Première installation</h2><p class="mut">Crée le premier compte admin. Ensuite, seul l'admin créera les autres accès.</p><div class="field"><input id="suName" placeholder="Nom affiché admin"></div><div class="field"><input id="suLogin" placeholder="Identifiant admin"></div><div class="field"><input id="suPass" type="password" placeholder="Mot de passe admin"></div><button class="primary" onclick="setupAdmin()">Créer le premier admin</button></div>
   <div id="logbox"><h2>Connexion</h2>
