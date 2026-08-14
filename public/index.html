@@ -1462,7 +1462,6 @@ body.lightMode .nav button.activeNav .navIcon svg *{
   display:none!important;
 }
 body.operatorMode #personnelBtn,
-body.operatorMode #linksBtn,
 body.operatorMode #historyBtn,
 body.operatorMode #adminBtn{
   display:none!important;
@@ -2140,6 +2139,85 @@ body.adminMode .signatureAdminToggle{display:inline-flex!important}
 }
 #login.login > .box {position:relative!important;z-index:2!important;}
 
+
+
+/* V81 - Fenêtre création équipage corrigée en mode sombre */
+body:not(.lightMode) #crewModal .crewBox{
+  background:#0b1726!important;
+  color:#edf4fb!important;
+  border:1px solid #24496d!important;
+  box-shadow:0 24px 70px rgba(0,0,0,.52)!important;
+}
+body:not(.lightMode) #crewModal .crewHeader{
+  background:linear-gradient(180deg,#0c4d92,#0a3c76)!important;
+  border-bottom:1px solid #2b5f8f!important;
+}
+body:not(.lightMode) #crewModal .crewHeader h2,
+body:not(.lightMode) #crewModal .crewHeaderSub{
+  color:#fff!important;
+}
+body:not(.lightMode) #crewModal .crewBody{
+  background:#0b1726!important;
+}
+body:not(.lightMode) #crewModal .crewField label{
+  color:#d8e4f1!important;
+}
+body:not(.lightMode) #crewModal .crewField input,
+body:not(.lightMode) #crewModal .crewField select,
+body:not(.lightMode) #crewModal .crewField textarea{
+  background:#0f2134!important;
+  color:#eef5fb!important;
+  border:1px solid #31506d!important;
+  box-shadow:none!important;
+}
+body:not(.lightMode) #crewModal .crewField input::placeholder,
+body:not(.lightMode) #crewModal .crewField textarea::placeholder{
+  color:#8ea4ba!important;
+}
+body:not(.lightMode) #crewModal .crewField input:focus,
+body:not(.lightMode) #crewModal .crewField select:focus,
+body:not(.lightMode) #crewModal .crewField textarea:focus{
+  border-color:#4f87b7!important;
+  box-shadow:0 0 0 3px rgba(79,135,183,.14)!important;
+}
+body:not(.lightMode) #crewModal .agentSearch input{
+  background:#10243a!important;
+  color:#eef5fb!important;
+  border-color:#31506d!important;
+}
+body:not(.lightMode) #crewModal .agentList{
+  background:#0c1c2d!important;
+  color:#eef5fb!important;
+  border:1px solid #31506d!important;
+}
+body:not(.lightMode) #crewModal .agentChoice{
+  background:#0c1c2d!important;
+  color:#eef5fb!important;
+  border-bottom:1px solid #213b53!important;
+}
+body:not(.lightMode) #crewModal .agentChoice:hover{
+  background:#14304a!important;
+}
+body:not(.lightMode) #crewModal .crewHint{
+  color:#94a8bc!important;
+}
+body:not(.lightMode) #crewModal .crewFooter{
+  background:#0a1624!important;
+  border-top:1px solid #28435b!important;
+}
+body:not(.lightMode) #crewModal .crewFooter button:not(.primary):not(.danger){
+  background:#162a3d!important;
+  color:#edf4fb!important;
+  border-color:#35536d!important;
+}
+body:not(.lightMode) #crewModal .crewServiceRadios label{
+  color:#d8e4f1!important;
+}
+body:not(.lightMode) #crewModal input[type="radio"],
+body:not(.lightMode) #crewModal input[type="checkbox"]{
+  accent-color:#3b82f6!important;
+}
+
 </style></head><body>
 <div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
   <div class="phenixLoadingCard">
@@ -2429,13 +2507,13 @@ async function logout(){await api('/api/logout',{method:'POST'});location.reload
 async function refresh(){return refreshSafe(true)}
 async function refreshSafe(force=false){if(!force && shouldPauseRefresh()) return; S=await api('/api/data');$('agentName').textContent=S.user.displayName;const dash=S.user.role==='dashboard';
 document.body.classList.toggle('dashboardMode',dash);
-if($('dashZoomTools'))$('dashZoomTools').classList.toggle('hidden',!dash);applyRoleNavigation();$('createCrewBtn').classList.toggle('hidden',dash);if((dash||phenixRole()==='operateur')&&!['dash','notes','consignes','events','settings'].includes(activeSection))activeSection='dash';checkCrewChanges(S.crews);renderAll(force);updateNotifButton()}
+if($('dashZoomTools'))$('dashZoomTools').classList.toggle('hidden',!dash);applyRoleNavigation();$('createCrewBtn').classList.toggle('hidden',dash);if((dash||phenixRole()==='operateur')&&!['dash','notes','links','consignes','events','settings'].includes(activeSection))activeSection='dash';checkCrewChanges(S.crews);renderAll(force);updateNotifButton()}
 function shouldPauseRefresh(){const el=document.activeElement; if(el && ['INPUT','TEXTAREA','SELECT'].includes(el.tagName)) return true; return ['personnel','admin','notes'].includes(activeSection)}
 function show(id){
   document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('activeNav',b.getAttribute('onclick')===`show('${id}')`));
   const role=phenixRole();
   if(role==='dashboard' && !['dash','consignes','events','settings'].includes(id)){id='dash'}
-  if(role==='operateur' && !['dash','notes','events','consignes','settings'].includes(id)){id='dash'}
+  if(role==='operateur' && !['dash','notes','links','events','consignes','settings'].includes(id)){id='dash'}
   if(role==='superviseur' && id==='admin'){id='dash'}
   activeSection=id;['dash','personnel','notes','links','events','history','consignes','settings','admin'].forEach(x=>$(x).classList.toggle('hidden',x!==id)); if(id==='notes') $('note').value=S.note||''; if(id==='consignes') renderConsignes(); if(id==='links') renderLinks(); if(id==='events') renderEvents(); if(id==='history') renderHistoryUsers()}
 function an(m){const a=S.agents.find(x=>x.matricule===m);return a?`${a.matricule} ${a.nom||''} ${a.prenom||''}`.trim():m}
@@ -2464,7 +2542,7 @@ function applyRoleNavigation(){
   const admin=$('adminBtn');
 
   if(personnel) personnel.classList.toggle('hidden', !(isSupervisor||isAdmin));
-  if(links) links.classList.toggle('hidden', isOperator||isDashboard);
+  if(links) links.classList.toggle('hidden', isDashboard);
   if(history) history.classList.toggle('hidden', !(isSupervisor||isAdmin));
   if(admin) admin.classList.toggle('hidden', !isAdmin);
 
@@ -2478,7 +2556,7 @@ function applyRoleNavigation(){
   if(consignesBtn) consignesBtn.classList.remove('hidden');
   if(settingsBtn) settingsBtn.classList.remove('hidden');
 
-  if(isOperator && !['dash','notes','events','consignes','settings'].includes(activeSection)){
+  if(isOperator && !['dash','notes','links','events','consignes','settings'].includes(activeSection)){
     activeSection='dash';
   }
 }
