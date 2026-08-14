@@ -1617,6 +1617,39 @@ body.adminMode .signatureAdminToggle{display:inline-flex!important}
   .signaturePreviewWrap{padding:8px}
 }
 
+
+
+/* V71 - Signature flexible : sections libres, multi-numéros et pied de mail vert */
+.signatureExtras{
+  margin-top:14px;padding:12px;border:1px solid #cbd5e1;border-radius:12px;background:#f8fafc
+}
+.signatureExtrasHead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.signatureExtrasHead h3{margin:0;color:#172033!important;font-size:15px}
+.signatureExtraRow{
+  display:grid;grid-template-columns:150px 1fr 165px 90px auto;gap:8px;align-items:end;
+  padding:9px 0;border-bottom:1px solid #e2e8f0
+}
+.signatureExtraRow:last-child{border-bottom:0}
+.signatureExtraRow .field{margin:0}
+.signatureExtraRow label{font-size:11px!important;color:#64748b!important}
+.signatureExtraRow input,.signatureExtraRow select{
+  min-height:38px!important;padding:8px 9px!important;font-size:13px!important
+}
+.signatureExtraDelete{
+  width:38px;min-width:38px;height:38px;padding:0;background:#b91c1c!important;color:#fff!important
+}
+.signatureFooterPreview{
+  margin-top:10px;padding-top:10px;border-top:2px solid #159447;
+  color:#159447;font-size:11px;line-height:1.45
+}
+.signatureFooterPreview b{color:#159447}
+.signatureSystemIcon{background:transparent!important}
+.signatureSystemIcon img{background:transparent!important;padding:0!important;border:0!important}
+@media(max-width:800px){
+  .signatureExtraRow{grid-template-columns:1fr 1fr}
+  .signatureExtraDelete{grid-column:2;justify-self:end}
+}
+
 </style></head><body>
 <div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
   <div class="phenixLoadingCard">
@@ -2393,6 +2426,7 @@ function telHref(v){return String(v||'').replace(/[^+0-9]/g,'');}
 
 function openSignatureModal(){
   $('signatureModal').style.display='grid';
+  renderSignatureExtrasEditor();
   renderMailSignature();
 }
 function closeSignatureModal(){$('signatureModal').style.display='none'}
@@ -2434,6 +2468,72 @@ async function toggleSignatureToolVisibility(){
   }catch(e){alert('Impossible de modifier la visibilité : '+e.message)}
 }
 
+
+let signatureExtras=[];
+
+function addSignatureExtra(data={}){
+  signatureExtras.push({
+    id:'sx_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+    label:data.label||'',
+    value:data.value||'',
+    position:data.position||'afterPhone',
+    type:data.type||'text'
+  });
+  renderSignatureExtrasEditor();
+  renderMailSignature();
+}
+function removeSignatureExtra(id){
+  signatureExtras=signatureExtras.filter(x=>x.id!==id);
+  renderSignatureExtrasEditor();
+  renderMailSignature();
+}
+function updateSignatureExtra(id,key,value){
+  const x=signatureExtras.find(i=>i.id===id); if(!x)return;
+  x[key]=value;
+  renderMailSignature();
+}
+function renderSignatureExtrasEditor(){
+  const host=$('signatureExtrasList'); if(!host)return;
+  if(!signatureExtras.length){
+    host.innerHTML='<div class="mut" style="font-size:12px">Aucune section supplémentaire.</div>';
+    return;
+  }
+  host.innerHTML=signatureExtras.map(x=>`
+    <div class="signatureExtraRow">
+      <div class="field"><label>Intitulé</label><input value="${escSig(x.label)}" placeholder="Ex : Portable" oninput="updateSignatureExtra('${x.id}','label',this.value)"></div>
+      <div class="field"><label>Contenu</label><input value="${escSig(x.value)}" placeholder="Ex : 06 00 00 00 00" oninput="updateSignatureExtra('${x.id}','value',this.value)"></div>
+      <div class="field"><label>Position</label><select onchange="updateSignatureExtra('${x.id}','position',this.value)">
+        <option value="afterIdentity" ${x.position==='afterIdentity'?'selected':''}>Sous le nom</option>
+        <option value="afterRole" ${x.position==='afterRole'?'selected':''}>Sous grade / fonction</option>
+        <option value="afterAddress" ${x.position==='afterAddress'?'selected':''}>Sous l'adresse</option>
+        <option value="afterPhone" ${x.position==='afterPhone'?'selected':''}>Sous le téléphone</option>
+        <option value="afterEmail" ${x.position==='afterEmail'?'selected':''}>Sous l'e-mail</option>
+        <option value="beforeLogo" ${x.position==='beforeLogo'?'selected':''}>Avant le logo Ville</option>
+      </select></div>
+      <div class="field"><label>Type</label><select onchange="updateSignatureExtra('${x.id}','type',this.value)">
+        <option value="text" ${x.type==='text'?'selected':''}>Texte</option>
+        <option value="phone" ${x.type==='phone'?'selected':''}>Téléphone</option>
+        <option value="email" ${x.type==='email'?'selected':''}>E-mail</option>
+      </select></div>
+      <button type="button" class="signatureExtraDelete" title="Supprimer" onclick="removeSignatureExtra('${x.id}')">×</button>
+    </div>`).join('');
+}
+function signatureExtraHtml(position){
+  return signatureExtras.filter(x=>x.position===position && String(x.value||'').trim()).map(x=>{
+    const label=escSig(x.label||'');
+    const valueRaw=String(x.value||'').trim();
+    const value=escSig(valueRaw);
+    const prefix=label?'<span style="color:#6b7280">'+label+'</span> ':'';
+    if(x.type==='phone'){
+      return prefix+'<a href="tel:'+telHref(valueRaw)+'" style="color:#0b4fa6;text-decoration:none">'+value+'</a><br>';
+    }
+    if(x.type==='email'){
+      return prefix+'<a href="mailto:'+encodeURIComponent(valueRaw)+'" style="color:#0b4fa6;text-decoration:none">'+value+'</a><br>';
+    }
+    return prefix+value+'<br>';
+  }).join('');
+}
+
 function buildMailSignatureHtml(){
   const nom=escSig($('sigNom')?.value.trim().toUpperCase());
   const prenom=escSig($('sigPrenom')?.value.trim());
@@ -2444,14 +2544,42 @@ function buildMailSignatureHtml(){
   const adresse=escSig($('sigAdresse')?.value.trim());
   const identite=[prenom,nom].filter(Boolean).join(' ')||'Prénom NOM';
   const gradeFonction=[grade,fonction].filter(Boolean).join(' — ')||'Grade — Fonction';
-  return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;color:#172033;background:#fff;max-width:720px">
-<tr><td valign="top" style="padding:0 14px 0 0;width:92px"><img src="${PHENIX_SIG_PM_LOGO}" width="82" alt="Police Municipale" style="display:block;width:82px;height:auto;border:0"></td>
-<td valign="top" style="border-left:4px solid #0b3fa5;padding-left:14px"><div style="font-size:18px;font-weight:700;color:#0b2d5c">${identite}</div>
-<div style="font-size:13px;font-weight:700;margin-top:2px">${gradeFonction}</div><div style="font-size:13px;line-height:1.45;color:#374151;margin-top:7px"><b>Police Municipale — Chalon-sur-Saône</b><br>
-${adresse?adresse+'<br>':''}${tel?'Tél. <a href="tel:'+telHref(tel)+'" style="color:#0b4fa6;text-decoration:none">'+tel+'</a><br>':''}${email?'<a href="mailto:'+encodeURIComponent(emailRaw)+'" style="color:#0b4fa6;text-decoration:none">'+email+'</a>':''}</div>
-<div style="margin-top:10px"><img src="${PHENIX_SIG_CITY_LOGO}" width="118" alt="Chalon-sur-Saône" style="display:block;width:118px;height:auto;border:0"></div></td></tr>
-<tr><td colspan="2" style="padding-top:12px;border-top:1px solid #d1d5db"><div style="font-size:11px;color:#b91c1c;font-weight:700;padding-top:8px">En cas d’urgence, contactez le 0.800.100.071 ou le 17.</div>
-<div style="font-size:10px;color:#4b5563;padding-top:3px">Administration exemplaire : n’imprimez ce courriel que si nécessaire.</div></td></tr></table>`;
+
+  return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;color:#172033;background:transparent;max-width:720px">
+<tr>
+<td valign="top" style="padding:0 14px 0 0;width:92px;background:transparent">
+  <img src="${PHENIX_SIG_PM_LOGO}" width="82" alt="Police Municipale" style="display:block;width:82px;height:auto;border:0;background:transparent">
+</td>
+<td valign="top" style="border-left:4px solid #0b3fa5;padding-left:14px;background:transparent">
+  <div style="font-size:18px;font-weight:700;color:#0b2d5c">${identite}</div>
+  ${signatureExtraHtml('afterIdentity')}
+  <div style="font-size:13px;font-weight:700;margin-top:2px">${gradeFonction}</div>
+  ${signatureExtraHtml('afterRole')}
+  <div style="font-size:13px;line-height:1.5;color:#374151;margin-top:7px">
+    <b>Police Municipale — Chalon-sur-Saône</b><br>
+    ${adresse?adresse+'<br>':''}
+    ${signatureExtraHtml('afterAddress')}
+    ${tel?'Tél. <a href="tel:'+telHref(tel)+'" style="color:#0b4fa6;text-decoration:none">'+tel+'</a><br>':''}
+    ${signatureExtraHtml('afterPhone')}
+    ${email?'<a href="mailto:'+encodeURIComponent(emailRaw)+'" style="color:#0b4fa6;text-decoration:none">'+email+'</a><br>':''}
+    ${signatureExtraHtml('afterEmail')}
+    ${signatureExtraHtml('beforeLogo')}
+  </div>
+  <div style="margin-top:10px;background:transparent">
+    <img src="${PHENIX_SIG_CITY_LOGO}" width="118" alt="Chalon-sur-Saône" style="display:block;width:118px;height:auto;border:0;background:transparent">
+  </div>
+</td>
+</tr>
+<tr>
+<td colspan="2" style="padding-top:12px;background:transparent">
+  <div style="font-size:11px;color:#b91c1c;font-weight:700">En cas d’urgence, contactez le 0.800.100.071 ou le 17.</div>
+  <div style="margin-top:8px;padding-top:8px;border-top:2px solid #159447;color:#159447;font-size:11px;line-height:1.45">
+    Pour une administration exemplaire, préservons l'environnement.<br>
+    N'imprimons que si nécessaire.
+  </div>
+</td>
+</tr>
+</table>`;
 }
 function renderMailSignature(){if($('signaturePreview'))$('signaturePreview').innerHTML=buildMailSignatureHtml()}
 
@@ -2492,7 +2620,19 @@ function downloadSignatureHtml(){
         <div class="field"><label>Adresse e-mail</label><input id="sigEmail" type="email" oninput="renderMailSignature()" placeholder="prenom.nom@..."></div>
         <div class="field" style="grid-column:1/-1"><label>Adresse</label><input id="sigAdresse" oninput="renderMailSignature()" placeholder="Adresse du service"></div>
       </div>
-      <div class="signatureMandatory"><b>Mentions obligatoires :</b><br>En cas d’urgence, contactez le 0.800.100.071 ou le 17.<br>Administration exemplaire : n’imprimez ce courriel que si nécessaire.</div>
+      <div class="signatureExtras">
+        <div class="signatureExtrasHead">
+          <h3>Informations supplémentaires</h3>
+          <button type="button" class="small primary" onclick="addSignatureExtra()">+ Ajouter une section</button>
+        </div>
+        <div id="signatureExtrasList"></div>
+        <div class="mut" style="font-size:11px;margin-top:8px">Tu peux ajouter plusieurs numéros, services, bureaux, horaires ou toute autre information, puis choisir où elle apparaît dans la signature.</div>
+      </div>
+      <div class="signatureMandatory">
+        <b>Mentions fixes :</b><br>
+        En cas d’urgence, contactez le 0.800.100.071 ou le 17.<br>
+        <span style="color:#159447">Pour une administration exemplaire, préservons l'environnement.<br>N'imprimons que si nécessaire.</span>
+      </div>
       <div class="signaturePreviewWrap"><div id="signaturePreview" class="signaturePreview"></div></div>
       <div class="signatureActions">
         <button class="primary" type="button" onclick="copySignatureForOutlook()">Copier pour Outlook</button>
