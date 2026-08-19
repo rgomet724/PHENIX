@@ -2460,6 +2460,95 @@ body.lightMode #admin .small.danger:hover{
   background:#b92727!important;
 }
 
+
+
+/* V85 - Boutons équipage uniformes + compteur consignes propre */
+
+/* Footer création/modification équipage : même taille et même typo pour les 3 boutons */
+#crewModal .crewFooter{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:10px!important;
+}
+#crewModal .crewFooter button{
+  min-width:0!important;
+  height:40px!important;
+  min-height:40px!important;
+  padding:0 16px!important;
+  border-radius:10px!important;
+  font-family:inherit!important;
+  font-size:14px!important;
+  line-height:1!important;
+  font-weight:700!important;
+  letter-spacing:0!important;
+}
+#crewModal .crewFooter .crewSaveBtn{
+  background:#15803d!important;
+  color:#fff!important;
+  border:1px solid #166534!important;
+}
+#crewModal .crewFooter .danger{
+  background:#c81e1e!important;
+  color:#fff!important;
+  border:1px solid #991b1b!important;
+}
+#crewModal .crewFooter button:not(.crewSaveBtn):not(.danger){
+  background:#e8eef6!important;
+  color:#172033!important;
+  border:1px solid #c2cedb!important;
+}
+body:not(.lightMode) #crewModal .crewFooter button:not(.crewSaveBtn):not(.danger){
+  background:#162a3d!important;
+  color:#edf4fb!important;
+  border-color:#35536d!important;
+}
+
+/* Compteur consignes : compact, droit, aligné */
+.consigneNav{
+  display:flex!important;
+  align-items:center!important;
+}
+.consigneNav .consigneCount{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  min-width:24px!important;
+  height:22px!important;
+  padding:0 7px!important;
+  margin-left:auto!important;
+  margin-right:8px!important;
+  border-radius:999px!important;
+  font-size:12px!important;
+  line-height:1!important;
+  font-weight:800!important;
+  font-family:inherit!important;
+  vertical-align:middle!important;
+  position:static!important;
+  transform:none!important;
+}
+body.lightMode .consigneNav .consigneCount{
+  color:#0758b6!important;
+  background:#e4f0ff!important;
+  border:1px solid #b8d5f2!important;
+  box-shadow:none!important;
+}
+body.lightMode .consigneNav.activeNav .consigneCount{
+  color:#1035bd!important;
+  background:#fff!important;
+  border-color:#cbd7ff!important;
+}
+body:not(.lightMode) .consigneNav .consigneCount{
+  color:#dbeafe!important;
+  background:#143a63!important;
+  border:1px solid #2f638f!important;
+}
+body:not(.lightMode) .consigneNav.activeNav .consigneCount{
+  color:#fff!important;
+  background:#315bd0!important;
+  border-color:#7790ef!important;
+}
+
 </style></head><body>
 <div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
   <div class="phenixLoadingCard">
