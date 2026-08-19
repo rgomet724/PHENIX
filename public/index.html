@@ -2716,6 +2716,66 @@ body.lightMode .messengerUserName{color:#14243b}
 body.lightMode .messengerGeneralHint{color:#61778c}
 body.lightMode .messengerGeneralMark{background:#0b5ea7;color:#fff}
 
+
+
+/* V91 - Prévisualisation des nouveaux messages sans ouvrir la bulle */
+.messengerPreview{
+  position:absolute!important;
+  right:72px!important;
+  bottom:4px!important;
+  width:300px!important;
+  min-height:62px!important;
+  padding:10px 12px!important;
+  border-radius:13px!important;
+  text-align:left!important;
+  background:#0d2135!important;
+  color:#edf4fb!important;
+  border:1px solid #31506d!important;
+  box-shadow:0 12px 34px rgba(0,0,0,.34)!important;
+  overflow:hidden!important;
+  cursor:pointer!important;
+  animation:messengerPreviewIn .18s ease-out!important;
+}
+.messengerPreview:hover{
+  background:#12304b!important;
+  border-color:#47769c!important;
+}
+.messengerPreviewTop{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  margin-bottom:4px
+}
+.messengerPreviewSender{
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-size:12px;font-weight:850;color:#fff
+}
+.messengerPreviewTime{
+  flex:none;font-size:9px;color:#8ea4b9;font-weight:600
+}
+.messengerPreviewText{
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-size:11px;line-height:1.35;color:#b9cadd
+}
+@keyframes messengerPreviewIn{
+  from{opacity:0;transform:translateX(8px)}
+  to{opacity:1;transform:translateX(0)}
+}
+body.lightMode .messengerPreview{
+  background:#fff!important;color:#14243b!important;
+  border-color:#bfd0df!important;
+  box-shadow:0 12px 34px rgba(24,50,78,.18)!important
+}
+body.lightMode .messengerPreview:hover{background:#eef5fb!important;border-color:#98b9d4!important}
+body.lightMode .messengerPreviewSender{color:#12345b!important}
+body.lightMode .messengerPreviewText{color:#52677d!important}
+body.lightMode .messengerPreviewTime{color:#71869a!important}
+@media(max-width:600px){
+  .messengerPreview{
+    position:fixed!important;
+    left:10px!important;right:10px!important;
+    bottom:80px!important;width:auto!important
+  }
+}
+
 </style></head><body>
 <div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
   <div class="phenixLoadingCard">
@@ -3882,6 +3942,9 @@ let messengerPeerId='';
 let messengerThreadsCache=[];
 let messengerUserDirectoryCache=[];
 let messengerLastUnread=0;
+let messengerPreviewThread=null;
+let messengerPreviewTimer=null;
+let messengerLastPreviewMessageId=localStorage.getItem('phenixMessengerLastPreview')||'';
 let messengerLastNotifiedMessageId=localStorage.getItem('phenixMessengerLastNotified')||'';
 let messengerSoundEnabled=localStorage.getItem('phenixMessengerSound')!=='0';
 let messengerLoadedMessageIds=new Set();
@@ -3961,6 +4024,45 @@ function updateMessengerDesktopButton(){
   b.classList.toggle('messengerDesktopGranted',granted);
   b.textContent=granted?'🖥️✓':'🖥️';
 }
+
+function hideMessengerPreview(){
+  clearTimeout(messengerPreviewTimer);
+  messengerPreviewTimer=null;
+  messengerPreviewThread=null;
+  $('messengerPreview')?.classList.add('hidden');
+}
+function showMessengerPreview(thread){
+  if(!thread||!thread.lastMessage||thread.lastMessage.fromId===S.user.id)return;
+  const msg=thread.lastMessage;
+  if(msg.id===messengerLastPreviewMessageId)return;
+
+  messengerLastPreviewMessageId=msg.id;
+  localStorage.setItem('phenixMessengerLastPreview',msg.id);
+  messengerPreviewThread={scope:thread.scope,peerId:thread.peerId||''};
+
+  const sender=$('messengerPreviewSender');
+  const text=$('messengerPreviewText');
+  const time=$('messengerPreviewTime');
+  const box=$('messengerPreview');
+  if(!box)return;
+
+  sender.textContent=thread.scope==='general'
+    ? 'Discussion générale · '+String(msg.from&&msg.from.displayName||'Utilisateur')
+    : String(thread.title||msg.from&&msg.from.displayName||'Nouveau message');
+  text.textContent=String(msg.text||'');
+  time.textContent=new Date(msg.createdAt).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+
+  box.classList.remove('hidden');
+  clearTimeout(messengerPreviewTimer);
+  messengerPreviewTimer=setTimeout(hideMessengerPreview,9000);
+}
+async function openMessengerPreviewThread(){
+  const t=messengerPreviewThread;
+  hideMessengerPreview();
+  if(!t){await openMessenger();return}
+  await openThread(t.scope,t.peerId||'');
+}
+
 function maybeNotifyDesktop(thread){
   if(!thread||!thread.lastMessage||thread.lastMessage.fromId===S.user.id)return;
   const msg=thread.lastMessage;
@@ -3990,6 +4092,7 @@ async function loadMessengerThreads(){
         return db-da;
       });
       maybeNotifyDesktop(unread[0]);
+      if(!messengerOpen) showMessengerPreview(unread[0]);
     }
     return messengerThreadsCache;
   }catch(e){return []}
@@ -4038,6 +4141,7 @@ function showMessengerThreads(){
 }
 
 async function openThread(scope,peerId=''){
+  hideMessengerPreview();
   messengerScope=scope==='private'?'private':'general';
   messengerPeerId=messengerScope==='private'?String(peerId||''):'';
   messengerView='chat';
@@ -4060,6 +4164,7 @@ async function openThread(scope,peerId=''){
 }
 async function openMessenger(){
   if(!messengerAvailable())return;
+  hideMessengerPreview();
   messengerOpen=true;
   $('messengerPanel').classList.remove('hidden');
   updateMessengerDesktopButton();
@@ -4121,6 +4226,7 @@ async function updateMessengerUI(){
   root.classList.toggle('hidden',!messengerAvailable());
   if(!messengerAvailable())return;
   const unread=Number(S.messaging&&S.messaging.unread||0);
+  if(unread<=0) hideMessengerPreview();
   const badge=$('messengerBadge');
   if(badge){
     badge.textContent=unread>99?'99+':String(unread);
@@ -4206,6 +4312,13 @@ async function refreshOpenMessenger(){
   <button id="messengerBubble" class="messengerBubble" type="button" onclick="toggleMessenger()" title="Messagerie">
     <span class="messengerIcon">💬</span>
     <span id="messengerBadge" class="messengerBadge hidden">0</span>
+  </button>
+  <button id="messengerPreview" class="messengerPreview hidden" type="button" onclick="openMessengerPreviewThread()">
+    <div class="messengerPreviewTop">
+      <span id="messengerPreviewSender" class="messengerPreviewSender">Nouveau message</span>
+      <span id="messengerPreviewTime" class="messengerPreviewTime"></span>
+    </div>
+    <div id="messengerPreviewText" class="messengerPreviewText"></div>
   </button>
 
   <div id="messengerPanel" class="messengerPanel hidden" role="dialog" aria-label="Messagerie PHENIX">
