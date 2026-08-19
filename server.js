@@ -505,15 +505,26 @@ app.post('/api/messages/thread/delete', needLogin, (req,res)=>{
   const scope=req.body&&req.body.scope==='private'?'private':'general';
   if(scope==='general') return res.status(400).json({error:'La discussion générale ne peut pas être supprimée'});
   const peerId=String(req.body&&req.body.peerId||'');
-  if(scope==='private'){
-    const peer=d.users.find(x=>x.id===peerId);
-    if(!peer || !canUseMessaging(peer)) return res.status(400).json({error:'Discussion invalide'});
+  const peer=d.users.find(x=>x.id===peerId);
+  if(!peer) return res.status(400).json({error:'Discussion invalide'});
+
+  // Find the newest existing message in this private conversation.
+  // The deletion marker is placed AFTER it so every current message disappears.
+  const conversation=(d.messages||[]).filter(msg=>
+    msg.scope==='private' &&
+    ((msg.fromId===u.id&&msg.toId===peerId)||(msg.fromId===peerId&&msg.toId===u.id))
+  );
+  let maxTs=Date.now();
+  for(const msg of conversation){
+    const ts=new Date(msg.createdAt).getTime();
+    if(Number.isFinite(ts) && ts>=maxTs) maxTs=ts+1;
   }
+
   d.messageThreadDeletes=d.messageThreadDeletes||{};
   d.messageThreadDeletes[u.id]=d.messageThreadDeletes[u.id]||{};
-  d.messageThreadDeletes[u.id][threadKey(scope,peerId)]=new Date().toISOString();
+  d.messageThreadDeletes[u.id][threadKey('private',peerId)]=new Date(maxTs).toISOString();
   save(d);
-  res.json({ok:true});
+  res.json({ok:true,deleted:true});
 });
 
 app.post('/api/messages/read', needLogin, (req,res)=>{
