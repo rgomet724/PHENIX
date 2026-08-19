@@ -1,13 +1,38 @@
 const express = require('express');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
+const helmet = require('helmet');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
+const MemoryStore = require('memorystore')(session);
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const DB = "/var/data/data.json";
-const STREAMDECK_SECRET = String(process.env.STREAMDECK_SECRET || '').trim();
+const IS_PROD = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+const SESSION_MAX_AGE_MS = 60 * 60 * 1000;       // 1 h d'inactivité
+const SESSION_ABSOLUTE_MAX_MS = 8 * 60 * 60 * 1000; // 8 h maximum
+const BCRYPT_ROUNDS = 12;
+
+const SESSION_SECRET = String(process.env.SESSION_SECRET || '');
+if (IS_PROD && Buffer.byteLength(SESSION_SECRET, 'utf8') < 32) {
+  throw new Error('SESSION_SECRET manquant ou trop court. Configure une valeur aléatoire d’au moins 32 octets dans Render.');
+}
+const EFFECTIVE_SESSION_SECRET = SESSION_SECRET || crypto.randomBytes(48).toString('base64');
+
+function normalizeLogin(v){ return String(v||'').trim().slice(0,80); }
+function validPassword(v){
+  const s=String(v||'');
+  return s.length >= 12 && s.length <= 72 && Buffer.byteLength(s,'utf8') <= 72;
+}
+function newCsrfToken(){ return crypto.randomBytes(32).toString('hex'); }
+function safeEqual(a,b){
+  const aa=Buffer.from(String(a||'')), bb=Buffer.from(String(b||''));
+  return aa.length===bb.length && crypto.timingSafeEqual(aa,bb);
+}
+
 
 function baseData(){
   return {
@@ -48,7 +73,14 @@ function load(){ try { return migrate(JSON.parse(fs.readFileSync(DB,'utf8'))); }
 function save(d){ fs.writeFileSync(DB, JSON.stringify(d,null,2)); }
 function safe(u){ return u ? {id:u.id, login:u.login, displayName:u.displayName, role:u.role, brigades:u.brigades||{jour:true,nuit:true}} : null; }
 function current(req){ const d=load(); return d.users.find(u=>u.id===req.session.userId); }
-function needLogin(req,res,next){ if(!req.session.userId) return res.status(401).json({error:'Session expirée ou non connecté'}); next(); }
+function needLogin(req,res,next){
+  if(!req.session || !req.session.userId) return res.status(401).json({error:'Session expirée ou non connecté'});
+  const loginAt=Number(req.session.loginAt||0);
+  if(!loginAt || Date.now()-loginAt > SESSION_ABSOLUTE_MAX_MS){
+    return req.session.destroy(()=>res.status(401).json({error:'Session expirée, reconnecte-toi'}));
+  }
+  next();
+}
 function needAdmin(req,res,next){ const u=current(req); if(!u || u.role!=='admin') return res.status(403).json({error:'Réservé admin'}); next(); }
 function normalizedRole(role){
   const r=String(role||'').trim().toLowerCase()
@@ -64,33 +96,6 @@ function needOperational(req,res,next){
 }
 function needConsigneManager(req,res,next){ const u=current(req); if(!u || !['admin','superviseur'].includes(u.role)) return res.status(403).json({error:'Réservé superviseur/admin'}); next(); }
 function audit(d, req, msg){ const u=current(req); d.logs.unshift({date:new Date().toISOString(), userId:u?u.id:null, user:u?u.displayName:'Système', msg}); d.logs=d.logs.slice(0,2000); }
-
-function auditStreamDeck(d, msg){
-  d.logs.unshift({date:new Date().toISOString(), userId:null, user:'Stream Deck', msg});
-  d.logs=d.logs.slice(0,2000);
-}
-
-function streamDeckToken(req){
-  const authorization=String(req.get('authorization')||'').trim();
-  const bearer=authorization.toLowerCase().startsWith('bearer ')?authorization.slice(7).trim():'';
-  return String(req.get('x-streamdeck-secret')||bearer||req.query.secret||(req.body&&req.body.secret)||'').trim();
-}
-
-function needStreamDeck(req,res,next){
-  if(!STREAMDECK_SECRET) return res.status(503).json({error:'STREAMDECK_SECRET non configuré sur le serveur'});
-  if(streamDeckToken(req)!==STREAMDECK_SECRET) return res.status(401).json({error:'Clé Stream Deck invalide'});
-  next();
-}
-
-function publicCrew(c){
-  return {
-    id:c.id,
-    callsign:c.callsign,
-    status:c.status==='INDISPO'?'INDISPO':'DISPO',
-    intervention:String(c.intervention||''),
-    code:String(c.interventionCode||'')
-  };
-}
 
 function atFour(date=new Date()){ const d=new Date(date); d.setHours(4,0,0,0); return d; }
 
@@ -151,112 +156,191 @@ function cleanLogo(v){
 }
 
 
-app.use(express.json({limit:'4mb'}));
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
+
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      baseUri: ["'self'"],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+      formAction: ["'self'"],
+      scriptSrc: ["'self'","'unsafe-inline'"],
+      scriptSrcAttr: ["'unsafe-inline'"],
+      styleSrc: ["'self'","'unsafe-inline'"],
+      imgSrc: ["'self'","data:","blob:"],
+      fontSrc: ["'self'","data:"],
+      connectSrc: ["'self'"]
+    }
+  },
+  crossOriginEmbedderPolicy: false,
+  strictTransportSecurity: IS_PROD ? {maxAge:31536000, includeSubDomains:true} : false,
+  referrerPolicy: {policy:'no-referrer'}
+}));
+
+app.use(express.json({limit:'4mb', strict:true}));
+
+const sessionStore = new MemoryStore({ checkPeriod: 24*60*60*1000 });
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'pegase-session-secret-v22',
+  name: 'phenix.sid',
+  store: sessionStore,
+  secret: EFFECTIVE_SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  cookie: { sameSite:'lax', maxAge: 1000*60*60*12 }
+  rolling: true,
+  unset: 'destroy',
+  proxy: IS_PROD,
+  cookie: {
+    path:'/',
+    httpOnly:true,
+    secure:IS_PROD,
+    sameSite:'strict',
+    maxAge:SESSION_MAX_AGE_MS,
+    priority:'high'
+  }
 }));
-app.use(express.static(path.join(__dirname,'public')));
 
-// API dédiée aux boutons Stream Deck.
-// Authentification : en-tête x-streamdeck-secret, Authorization: Bearer ...,
-// ou paramètre ?secret=... pour un test rapide dans le navigateur.
-app.get('/api/streamdeck/ping', needStreamDeck, (req,res)=>{
-  res.json({ok:true, service:'PHENIX Stream Deck', time:new Date().toISOString()});
-});
-
-app.get('/api/streamdeck/status', needStreamDeck, (req,res)=>{
-  const d=load();
-  res.json({ok:true, crews:(d.crews||[]).map(publicCrew)});
-});
-
-app.post('/api/streamdeck/command', needStreamDeck, (req,res)=>{
-  const d=load();
-  const r=req.body||{};
-  const crewId=String(r.crewId||r.id||'').trim();
-  const callsign=String(r.callsign||'').trim().toUpperCase();
-  const c=(d.crews||[]).find(x=>
-    (crewId && String(x.id)===crewId) ||
-    (callsign && String(x.callsign||'').trim().toUpperCase()===callsign)
-  );
-
-  if(!c) return res.status(404).json({error:'Équipage introuvable'});
-
-  const code=String(r.code||'').trim().toUpperCase();
-  const requested=String(r.action||r.status||'TOGGLE').trim().toUpperCase();
-
-  // Le code 00 conserve le comportement PHENIX : suppression immédiate.
-  if(code==='00' || requested==='DELETE' || requested==='SUPPRIMER'){
-    d.crews=d.crews.filter(x=>x.id!==c.id);
-    auditStreamDeck(d,'Suppression équipage '+c.callsign+' (code 00)');
-    save(d);
-    return res.json({ok:true, deleted:true, crew:{id:c.id,callsign:c.callsign}});
+// Refuse les requêtes API mutantes venant d'une autre origine.
+app.use('/api', (req,res,next)=>{
+  if(['GET','HEAD','OPTIONS'].includes(req.method)) return next();
+  const origin=req.get('origin');
+  if(origin){
+    try{
+      if(new URL(origin).host !== req.get('host')) return res.status(403).json({error:'Origine refusée'});
+    }catch(e){ return res.status(403).json({error:'Origine refusée'}); }
   }
-
-  let status;
-  if(requested==='TOGGLE') status=c.status==='INDISPO'?'DISPO':'INDISPO';
-  else status=requested==='INDISPO'?'INDISPO':'DISPO';
-
-  c.status=status;
-  if(status==='INDISPO'){
-    c.intervention=String(r.intervention||r.nature||'Intervention').trim()||'Intervention';
-    c.interventionCode=code;
-    c.interventionSource=String(r.source||'streamdeck');
-    c.eventId=String(r.eventId||'');
-  }else{
-    c.intervention='';
-    c.interventionCode='';
-    c.interventionSource='';
-    c.eventId='';
-  }
-
-  const codeTxt=c.interventionCode?' ['+c.interventionCode+']':'';
-  auditStreamDeck(d,`${c.callsign} ${c.status}${codeTxt}${c.intervention?' - '+c.intervention:''}`);
-  save(d);
-  res.json({ok:true, crew:publicCrew(c)});
+  next();
 });
+
+const apiLimiter = rateLimit({
+  windowMs:5*60*1000,
+  limit:500,
+  standardHeaders:'draft-8',
+  legacyHeaders:false,
+  message:{error:'Trop de requêtes. Réessaie dans quelques minutes.'}
+});
+app.use('/api', apiLimiter);
+
+const authLimiter = rateLimit({
+  windowMs:15*60*1000,
+  limit:8,
+  standardHeaders:'draft-8',
+  legacyHeaders:false,
+  skipSuccessfulRequests:true,
+  keyGenerator:req => `${ipKeyGenerator(req.ip)}:${normalizeLogin(req.body && req.body.login).toLowerCase()}`,
+  message:{error:'Trop de tentatives de connexion. Réessaie dans 15 minutes.'}
+});
+
+// CSRF : obligatoire pour toutes les actions authentifiées.
+app.use('/api', (req,res,next)=>{
+  if(['GET','HEAD','OPTIONS'].includes(req.method)) return next();
+  if(['/api/login','/api/setup'].includes(req.path)) return next();
+  if(!req.session || !req.session.userId) return next();
+  if(!req.session.csrfToken || !safeEqual(req.get('x-csrf-token'), req.session.csrfToken)){
+    return res.status(403).json({error:'Jeton de sécurité invalide. Recharge la page et reconnecte-toi.'});
+  }
+  next();
+});
+
+app.use('/api', (req,res,next)=>{
+  res.set('Cache-Control','no-store, max-age=0');
+  res.set('Pragma','no-cache');
+  next();
+});
+
+app.use(express.static(path.join(__dirname,'public'), {
+  etag:true,
+  maxAge:0,
+  setHeaders(res,filePath){
+    if(filePath.endsWith('.html')) res.setHeader('Cache-Control','no-store');
+  }
+}));
 
 app.get('/api/status', (req,res)=>{
   const d=load();
   res.json({
     setupRequired:d.users.length===0,
     user:safe(current(req)),
+    csrfToken:req.session&&req.session.userId?req.session.csrfToken:null,
     flash:d.flash||{enabled:false,title:'INFO',text:''}
   });
 });
 
-app.post('/api/setup', (req,res)=>{
+app.post('/api/setup', authLimiter, (req,res)=>{
   const d=load();
   if(d.users.length>0) return res.status(403).json({error:'Le premier compte admin existe déjà'});
   const {displayName,login,password}=req.body||{};
   if(!displayName || !login || !password) return res.status(400).json({error:'Nom, identifiant et mot de passe obligatoires'});
-  if(String(password).length < 4) return res.status(400).json({error:'Mot de passe trop court : minimum 4 caractères'});
-  const u={id:Date.now().toString(), displayName:String(displayName).trim(), login:String(login).trim(), role:'admin', brigades:{jour:true,nuit:true}, passwordHash:bcrypt.hashSync(String(password),10)};
-  d.users.push(u); audit(d,req,'Création du premier admin'); save(d); req.session.userId=u.id; audit(d,req,'Connexion'); save(d); res.json({ok:true,user:safe(u)});
+  if(!validPassword(password)) return res.status(400).json({error:'Mot de passe requis : 12 à 72 caractères'});
+  const cleanLogin=normalizeLogin(login);
+  const u={id:Date.now().toString(), displayName:String(displayName).trim().slice(0,120), login:cleanLogin, role:'admin', brigades:{jour:true,nuit:true}, passwordHash:bcrypt.hashSync(String(password),BCRYPT_ROUNDS)};
+  d.users.push(u); audit(d,req,'Création du premier admin'); save(d);
+  req.session.regenerate(err=>{
+    if(err) return res.status(500).json({error:'Impossible de créer la session'});
+    req.session.userId=u.id;
+    req.session.loginAt=Date.now();
+    req.session.csrfToken=newCsrfToken();
+    req.session.save(()=>{
+      const d2=load(); audit(d2,req,'Connexion'); save(d2);
+      res.json({ok:true,user:safe(u),csrfToken:req.session.csrfToken});
+    });
+  });
 });
 
-app.post('/api/login', (req,res)=>{
-  const d=load(); const {login,password}=req.body||{};
-  const u=d.users.find(x=>x.login===String(login||'').trim());
-  if(!u || !bcrypt.compareSync(String(password||''), u.passwordHash)) return res.status(401).json({error:'Identifiant ou mot de passe incorrect'});
-  req.session.userId=u.id; audit(d,req,'Connexion'); save(d); res.json({ok:true,user:safe(u)});
+app.post('/api/login', authLimiter, (req,res)=>{
+  const d=load();
+  const login=normalizeLogin(req.body&&req.body.login);
+  const password=String(req.body&&req.body.password||'');
+  if(!login || !password || login.length>80 || password.length>100){
+    return res.status(401).json({error:'Identifiant ou mot de passe incorrect'});
+  }
+  const u=d.users.find(x=>String(x.login||'')===login);
+  if(!u || !bcrypt.compareSync(password, u.passwordHash)){
+    // Petit délai uniforme pour rendre le brute-force moins rentable.
+    return setTimeout(()=>res.status(401).json({error:'Identifiant ou mot de passe incorrect'}), 300);
+  }
+  req.session.regenerate(err=>{
+    if(err) return res.status(500).json({error:'Impossible de créer la session'});
+    req.session.userId=u.id;
+    req.session.loginAt=Date.now();
+    req.session.csrfToken=newCsrfToken();
+    req.session.save(err2=>{
+      if(err2) return res.status(500).json({error:'Impossible d’enregistrer la session'});
+      const d2=load(); audit(d2,req,'Connexion'); save(d2);
+      res.json({ok:true,user:safe(u),csrfToken:req.session.csrfToken});
+    });
+  });
 });
 
-app.post('/api/logout', (req,res)=>{ const d=load(); audit(d,req,'Déconnexion'); save(d); req.session.destroy(()=>res.json({ok:true})); });
+app.post('/api/logout', (req,res)=>{
+  const d=load(); audit(d,req,'Déconnexion'); save(d);
+  req.session.destroy(()=>{
+    res.clearCookie('phenix.sid',{path:'/',httpOnly:true,secure:IS_PROD,sameSite:'strict'});
+    res.json({ok:true});
+  });
+});
 
 app.post('/api/password', needLogin, (req,res)=>{
   const d=load(); const u=d.users.find(x=>x.id===req.session.userId);
   if(!bcrypt.compareSync(String(req.body.oldPassword||''), u.passwordHash)) return res.status(400).json({error:'Ancien mot de passe incorrect'});
-  if(!req.body.newPassword || String(req.body.newPassword).length<4) return res.status(400).json({error:'Nouveau mot de passe trop court'});
-  u.passwordHash=bcrypt.hashSync(String(req.body.newPassword),10); audit(d,req,'Changement de mot de passe'); save(d); res.json({ok:true});
+  if(!validPassword(req.body.newPassword)) return res.status(400).json({error:'Nouveau mot de passe requis : 12 à 72 caractères'});
+  if(String(req.body.oldPassword||'')===String(req.body.newPassword||'')) return res.status(400).json({error:'Le nouveau mot de passe doit être différent'});
+  u.passwordHash=bcrypt.hashSync(String(req.body.newPassword),BCRYPT_ROUNDS);
+  audit(d,req,'Changement de mot de passe'); save(d);
+  req.session.regenerate(err=>{
+    if(err) return res.status(500).json({error:'Mot de passe modifié, mais reconnexion nécessaire'});
+    req.session.userId=u.id; req.session.loginAt=Date.now(); req.session.csrfToken=newCsrfToken();
+    req.session.save(()=>res.json({ok:true,csrfToken:req.session.csrfToken}));
+  });
 });
 
 app.get('/api/data', needLogin, (req,res)=>{
   const d=load(); const u=current(req);
   res.json({
     user:safe(u),
+    csrfToken:req.session.csrfToken,
     agents:d.agents,
     callsigns:d.callsigns,
     interventions:d.interventions,
@@ -489,6 +573,8 @@ app.delete('/api/events/:id', needLogin, needConsigneManager, (req,res)=>{
 app.post('/api/admin/users', needLogin, needAdmin, (req,res)=>{
   const d=load(); const r=req.body||{};
   if(!r.displayName||!r.login||!r.role) return res.status(400).json({error:'Nom, identifiant et rôle obligatoires'});
+  r.login=normalizeLogin(r.login);
+  r.displayName=String(r.displayName).trim().slice(0,120);
   if(!['admin','superviseur','operateur','dashboard'].includes(r.role)) return res.status(400).json({error:'Rôle invalide'});
 
   const brigades={jour:!!(r.brigades&&r.brigades.jour), nuit:!!(r.brigades&&r.brigades.nuit)};
@@ -497,15 +583,17 @@ app.post('/api/admin/users', needLogin, needAdmin, (req,res)=>{
   if(r.id){
     const u=d.users.find(x=>x.id===r.id);
     if(!u) return res.status(404).json({error:'Utilisateur introuvable'});
+    if(d.users.some(x=>x.id!==u.id && String(x.login||'').toLowerCase()===r.login.toLowerCase())) return res.status(400).json({error:'Identifiant déjà utilisé'});
     u.displayName=r.displayName;
     u.login=r.login;
     u.role=r.role;
     u.brigades=brigades;
-    if(r.password) u.passwordHash=bcrypt.hashSync(String(r.password),10);
+    if(r.password){ if(!validPassword(r.password)) return res.status(400).json({error:'Mot de passe requis : 12 à 72 caractères'}); u.passwordHash=bcrypt.hashSync(String(r.password),BCRYPT_ROUNDS); }
   } else {
     if(!r.password) return res.status(400).json({error:'Mot de passe obligatoire pour créer'});
-    if(d.users.some(u=>u.login===r.login)) return res.status(400).json({error:'Identifiant déjà utilisé'});
-    d.users.push({id:Date.now().toString(), displayName:r.displayName, login:r.login, role:r.role, brigades, passwordHash:bcrypt.hashSync(String(r.password),10)});
+    if(!validPassword(r.password)) return res.status(400).json({error:'Mot de passe requis : 12 à 72 caractères'});
+    if(d.users.some(u=>u.id!==r.id && String(u.login||'').toLowerCase()===r.login.toLowerCase())) return res.status(400).json({error:'Identifiant déjà utilisé'});
+    d.users.push({id:Date.now().toString(), displayName:r.displayName, login:r.login, role:r.role, brigades, passwordHash:bcrypt.hashSync(String(r.password),BCRYPT_ROUNDS)});
   }
 
   audit(d,req,'Gestion utilisateur');
@@ -531,4 +619,10 @@ app.post('/api/admin/lists', needLogin, needAdmin, (req,res)=>{
   res.json({ok:true});
 });
 
-app.listen(PORT,()=>console.log('PHENIX V51 prêt sur le port '+PORT));
+app.use((err,req,res,next)=>{
+  console.error('[PHENIX]',err && err.stack ? err.stack : err);
+  if(res.headersSent) return next(err);
+  res.status(500).json({error:'Erreur interne du serveur'});
+});
+
+app.listen(PORT,()=>console.log('PHENIX sécurisé prêt sur le port '+PORT));
