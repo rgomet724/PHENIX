@@ -101,7 +101,7 @@ function needOperational(req,res,next){
 function needConsigneManager(req,res,next){ const u=current(req); if(!u || !['admin','superviseur'].includes(u.role)) return res.status(403).json({error:'Réservé superviseur/admin'}); next(); }
 function audit(d, req, msg){ const u=current(req); d.logs.unshift({date:new Date().toISOString(), userId:u?u.id:null, user:u?u.displayName:'Système', msg}); d.logs=d.logs.slice(0,2000); }
 
-function canUseMessaging(u){ return !!u && normalizedRole(u.role)!=='dashboard'; }
+function canUseMessaging(u){ return !!u; }
 function messageUser(u){ return u ? {id:u.id, displayName:u.displayName} : null; }
 function messageVisibleTo(m,userId){
   return m.scope==='general' || m.fromId===userId || m.toId===userId;
@@ -132,7 +132,8 @@ function threadDeletedAt(d,userId,key){
   return v?new Date(v).getTime():0;
 }
 function messageAfterThreadDelete(d,u,m){
-  const peerId=m.scope==='private'?(m.fromId===u.id?m.toId:m.fromId):'';
+  if(m.scope==='general') return true;
+  const peerId=m.fromId===u.id?m.toId:m.fromId;
   const cut=threadDeletedAt(d,u.id,threadKey(m.scope,peerId));
   return !cut || new Date(m.createdAt).getTime()>cut;
 }
@@ -405,7 +406,7 @@ app.get('/api/messages/users', needLogin, (req,res)=>{
   const d=load(); const u=current(req);
   if(!canUseMessaging(u)) return res.status(403).json({error:'Messagerie indisponible pour ce compte'});
   const users=d.users
-    .filter(x=>x.id!==u.id && canUseMessaging(x))
+    .filter(x=>x.id!==u.id)
     .map(messageUser)
     .sort((a,b)=>String(a.displayName||'').localeCompare(String(b.displayName||''),'fr',{sensitivity:'base'}));
   res.json({users});
@@ -444,6 +445,8 @@ app.get('/api/messages/threads', needLogin, (req,res)=>{
     });
   }
   threads.sort((a,b)=>{
+    if(a.scope==='general'&&b.scope!=='general') return -1;
+    if(b.scope==='general'&&a.scope!=='general') return 1;
     const da=a.lastMessage?new Date(a.lastMessage.createdAt).getTime():0;
     const db=b.lastMessage?new Date(b.lastMessage.createdAt).getTime():0;
     return db-da;
@@ -500,7 +503,8 @@ app.post('/api/messages/thread/delete', needLogin, (req,res)=>{
   const d=load(); const u=current(req);
   if(!canUseMessaging(u)) return res.status(403).json({error:'Messagerie indisponible pour ce compte'});
   const scope=req.body&&req.body.scope==='private'?'private':'general';
-  const peerId=scope==='private'?String(req.body&&req.body.peerId||''):'';
+  if(scope==='general') return res.status(400).json({error:'La discussion générale ne peut pas être supprimée'});
+  const peerId=String(req.body&&req.body.peerId||'');
   if(scope==='private'){
     const peer=d.users.find(x=>x.id===peerId);
     if(!peer || !canUseMessaging(peer)) return res.status(400).json({error:'Discussion invalide'});
