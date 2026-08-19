@@ -2776,6 +2776,93 @@ body.lightMode .messengerPreviewTime{color:#71869a!important}
   }
 }
 
+
+
+/* V92 - Flash information : encadré vert type bandeau institutionnel */
+.flashBox,
+.flash,
+#flashBox,
+#flashMessage,
+.flashMessage{
+  background:#d9f1df!important;
+  border:1px solid #b7dfc1!important;
+  border-left:5px solid #168443!important;
+  border-radius:8px!important;
+  padding:16px 20px!important;
+  color:#153f2a!important;
+  box-shadow:0 2px 8px rgba(18,84,45,.08)!important;
+}
+.flashBox::before,
+.flash::before,
+#flashBox::before,
+#flashMessage::before,
+.flashMessage::before{
+  content:"Information :"!important;
+  display:block!important;
+  margin:0 0 8px!important;
+  color:#174d31!important;
+  font-size:20px!important;
+  line-height:1.2!important;
+  font-weight:700!important;
+}
+.flashBox .flashText,
+.flash .flashText,
+#flashBox .flashText,
+#flashMessage .flashText,
+.flashMessage .flashText,
+.flashBox p,
+.flash p,
+#flashBox p,
+#flashMessage p,
+.flashMessage p{
+  margin:0!important;
+  color:#c40018!important;
+  font-weight:800!important;
+  font-size:16px!important;
+  line-height:1.45!important;
+}
+.flashBox .flashText::before,
+.flash .flashText::before,
+#flashBox .flashText::before,
+#flashMessage .flashText::before,
+.flashMessage .flashText::before,
+.flashBox p::before,
+.flash p::before,
+#flashBox p::before,
+#flashMessage p::before,
+.flashMessage p::before{
+  content:"•"!important;
+  display:inline-block!important;
+  margin-right:12px!important;
+  color:#c40018!important;
+  font-size:20px!important;
+  font-weight:900!important;
+}
+
+/* Le bandeau reste volontairement clair et lisible même en mode nuit. */
+body:not(.lightMode) .flashBox,
+body:not(.lightMode) .flash,
+body:not(.lightMode) #flashBox,
+body:not(.lightMode) #flashMessage,
+body:not(.lightMode) .flashMessage{
+  background:#d9f1df!important;
+  border-color:#b7dfc1!important;
+  border-left-color:#168443!important;
+  color:#153f2a!important;
+}
+@media(max-width:700px){
+  .flashBox,.flash,#flashBox,#flashMessage,.flashMessage{
+    padding:13px 14px!important
+  }
+  .flashBox::before,.flash::before,#flashBox::before,#flashMessage::before,.flashMessage::before{
+    font-size:17px!important
+  }
+  .flashBox .flashText,.flash .flashText,#flashBox .flashText,#flashMessage .flashText,.flashMessage .flashText,
+  .flashBox p,.flash p,#flashBox p,#flashMessage p,.flashMessage p{
+    font-size:14px!important
+  }
+}
+
 </style></head><body>
 <div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
   <div class="phenixLoadingCard">
