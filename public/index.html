@@ -3940,6 +3940,7 @@ let messengerView='threads';
 let messengerScope='general';
 let messengerPeerId='';
 let messengerThreadsCache=[];
+let messengerDeletedThreadKeys=new Set();
 let messengerUserDirectoryCache=[];
 let messengerLastUnread=0;
 let messengerPreviewThread=null;
@@ -4082,7 +4083,9 @@ async function loadMessengerThreads(){
   if(!messengerAvailable())return [];
   try{
     const data=await api('/api/messages/threads');
-    messengerThreadsCache=data.threads||[];
+    messengerThreadsCache=(data.threads||[]).filter(t=>
+      !messengerDeletedThreadKeys.has(t.scope+':'+String(t.peerId||''))
+    );
     renderMessengerThreads();
     const unread=messengerThreadsCache.filter(t=>Number(t.unread||0)>0);
     if(unread.length){
@@ -4121,29 +4124,44 @@ function renderMessengerThreads(){
 
 async function deleteMessengerThread(scope,peerId,title){
   if(scope!=='private')return;
+  const key='private:'+String(peerId||'');
   const label='la discussion avec '+String(title||'cet utilisateur');
   if(!confirm('Supprimer '+label+' de votre liste ?\n\nLes autres participants conserveront leurs messages.'))return;
+
+  // Masquage immédiat pour éviter tout effet de "saut".
+  messengerDeletedThreadKeys.add(key);
+  messengerThreadsCache=(messengerThreadsCache||[]).filter(t=>
+    !(t.scope==='private' && String(t.peerId||'')===String(peerId||''))
+  );
+  renderMessengerThreads();
+
   try{
     await api('/api/messages/thread/delete',{
       method:'POST',
       body:JSON.stringify({scope:'private',peerId:String(peerId||'')})
     });
 
-    // Retrait immédiat de la liste locale.
-    messengerThreadsCache=(messengerThreadsCache||[]).filter(t=>
-      !(t.scope==='private' && String(t.peerId||'')===String(peerId||''))
-    );
-    renderMessengerThreads();
-
     if(messengerView==='chat' && messengerScope==='private' &&
        String(messengerPeerId||'')===String(peerId||'')){
       showMessengerThreads();
     }
 
-    // Relecture serveur pour confirmer l'état.
-    await loadMessengerThreads();
+    // Confirme l'état serveur. Le thread ne sera plus renvoyé tant
+    // qu'aucun nouveau message n'est arrivé après la suppression.
+    const data=await api('/api/messages/threads');
+    const returned=(data.threads||[]).some(t=>
+      t.scope==='private' && String(t.peerId||'')===String(peerId||'')
+    );
+    if(!returned) messengerDeletedThreadKeys.delete(key);
+
+    messengerThreadsCache=(data.threads||[]).filter(t=>
+      !messengerDeletedThreadKeys.has(t.scope+':'+String(t.peerId||''))
+    );
+    renderMessengerThreads();
     await refreshSafe(true);
   }catch(e){
+    messengerDeletedThreadKeys.delete(key);
+    await loadMessengerThreads();
     alert('Impossible de supprimer la discussion : '+e.message);
   }
 }
