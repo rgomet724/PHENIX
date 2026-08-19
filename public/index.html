@@ -2345,6 +2345,121 @@ body.lightMode .consigneNav.activeNav .consigneCount{
   border-color:rgba(255,255,255,.38)!important;
 }
 
+
+
+/* V84 - J.T. compact + historique/admin lisibles en thème clair */
+
+/* Bouton J.T. : compact, cohérent avec PHENIX */
+.crewJTBar{
+  gap:9px!important;
+  align-items:center!important;
+}
+.crewJTBtn{
+  min-width:0!important;
+  width:auto!important;
+  height:38px!important;
+  min-height:38px!important;
+  padding:0 14px!important;
+  border-radius:9px!important;
+  font-size:13px!important;
+  line-height:1!important;
+  font-weight:800!important;
+  letter-spacing:.3px!important;
+  background:#123b63!important;
+  color:#fff!important;
+  border:1px solid #315d83!important;
+  box-shadow:none!important;
+}
+.crewJTBtn:hover{
+  background:#18517f!important;
+  border-color:#477ca5!important;
+}
+.crewJTBar .crewHint{
+  font-size:12px!important;
+  color:#8fa4b9!important;
+}
+body.lightMode .crewJTBtn{
+  background:#e7f0fa!important;
+  color:#0b4f91!important;
+  border:1px solid #a9c6e3!important;
+}
+body.lightMode .crewJTBtn:hover{
+  background:#d8eaff!important;
+  color:#063d75!important;
+  border-color:#80add7!important;
+}
+body.lightMode .crewJTBar .crewHint{
+  color:#52677d!important;
+}
+
+/* Historique : contraste complet en mode clair */
+body.lightMode #history,
+body.lightMode #history .section{
+  color:#14243b!important;
+}
+body.lightMode #history h2,
+body.lightMode #history h3,
+body.lightMode #history b{
+  color:#10243e!important;
+}
+body.lightMode #history .mut,
+body.lightMode #history .historyItem .mut,
+body.lightMode #historyUsers .mut{
+  color:#52677d!important;
+}
+body.lightMode .historyBox{
+  background:#fff!important;
+  border:1px solid #c7d4e1!important;
+  color:#14243b!important;
+}
+body.lightMode .historyItem{
+  color:#14243b!important;
+  border-bottom:1px solid #d7e0e9!important;
+}
+body.lightMode #historyUsers .row{
+  color:#14243b!important;
+  background:#fff!important;
+  border:1px solid #d2dde8!important;
+  border-radius:10px!important;
+  padding:8px 10px!important;
+  margin-bottom:7px!important;
+}
+body.lightMode #historyUsers .row b{
+  color:#10243e!important;
+}
+body.lightMode #historyUsers .row button{
+  color:#fff!important;
+}
+
+/* Administration : les boutons Modifier/Supprimer restent parfaitement lisibles */
+body.lightMode #admin .row,
+body.lightMode #admin .adminUserRow{
+  color:#14243b!important;
+}
+body.lightMode #admin button.small:not(.danger):not(.ok),
+body.lightMode #admin .small.primary{
+  background:#164d7e!important;
+  color:#fff!important;
+  border:1px solid #2f6b9f!important;
+  opacity:1!important;
+}
+body.lightMode #admin button.small:not(.danger):not(.ok):hover,
+body.lightMode #admin .small.primary:hover{
+  background:#0f609e!important;
+  color:#fff!important;
+}
+body.lightMode #admin button.danger,
+body.lightMode #admin .small.danger{
+  background:#9f2020!important;
+  color:#fff!important;
+  border:1px solid #7d1717!important;
+  opacity:1!important;
+}
+body.lightMode #admin button.danger:hover,
+body.lightMode #admin .small.danger:hover{
+  background:#b92727!important;
+}
+
 </style></head><body>
 <div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
   <div class="phenixLoadingCard">
