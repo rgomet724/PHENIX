@@ -47,6 +47,7 @@ function baseData(){
     links: [],
     events: [],
     messages: [],
+    messageThreadDeletes: {},
     flash: { enabled:false, title:'INFO', text:'' }
   };
 }
@@ -63,6 +64,7 @@ function migrate(d){
   d.links=d.links||[];
   d.events=d.events||[];
   d.messages=Array.isArray(d.messages)?d.messages:[];
+  d.messageThreadDeletes=d.messageThreadDeletes&&typeof d.messageThreadDeletes==='object'?d.messageThreadDeletes:{};
   d.flash=d.flash||{enabled:false,title:'INFO',text:''};
   if(typeof d.flash.enabled!=='boolean') d.flash.enabled=false;
   d.flash.title=String(d.flash.title||'INFO').trim()||'INFO';
@@ -109,7 +111,7 @@ function messageUnreadFor(m,userId){
 }
 function messageSummary(d,u){
   if(!canUseMessaging(u)) return {enabled:false,unread:0,lastMessageId:null};
-  const visible=(d.messages||[]).filter(m=>messageVisibleTo(m,u.id));
+  const visible=(d.messages||[]).filter(m=>messageVisibleTo(m,u.id)&&messageAfterThreadDelete(d,u,m));
   const unread=visible.filter(m=>messageUnreadFor(m,u.id)).length;
   return {
     enabled:true,
@@ -119,6 +121,20 @@ function messageSummary(d,u){
 }
 function trimMessages(d){
   d.messages=(d.messages||[]).slice(-3000);
+}
+
+function threadKey(scope,peerId){
+  return scope==='general'?'general':'private:'+String(peerId||'');
+}
+function threadDeletedAt(d,userId,key){
+  const userMap=d.messageThreadDeletes&&d.messageThreadDeletes[userId];
+  const v=userMap&&userMap[key];
+  return v?new Date(v).getTime():0;
+}
+function messageAfterThreadDelete(d,u,m){
+  const peerId=m.scope==='private'?(m.fromId===u.id?m.toId:m.fromId):'';
+  const cut=threadDeletedAt(d,u.id,threadKey(m.scope,peerId));
+  return !cut || new Date(m.createdAt).getTime()>cut;
 }
 
 
@@ -384,6 +400,17 @@ app.get('/api/data', needLogin, (req,res)=>{
 
 
 
+
+app.get('/api/messages/users', needLogin, (req,res)=>{
+  const d=load(); const u=current(req);
+  if(!canUseMessaging(u)) return res.status(403).json({error:'Messagerie indisponible pour ce compte'});
+  const users=d.users
+    .filter(x=>x.id!==u.id && canUseMessaging(x))
+    .map(messageUser)
+    .sort((a,b)=>String(a.displayName||'').localeCompare(String(b.displayName||''),'fr',{sensitivity:'base'}));
+  res.json({users});
+});
+
 app.get('/api/messages/threads', needLogin, (req,res)=>{
   const d=load(); const u=current(req);
   if(!canUseMessaging(u)) return res.status(403).json({error:'Messagerie indisponible pour ce compte'});
@@ -430,8 +457,10 @@ app.get('/api/messages', needLogin, (req,res)=>{
   const scope=req.query.scope==='private'?'private':'general';
   const peerId=String(req.query.peerId||'');
   let arr=(d.messages||[]).filter(m=>{
-    if(scope==='general') return m.scope==='general';
-    return m.scope==='private' && ((m.fromId===u.id&&m.toId===peerId)||(m.fromId===peerId&&m.toId===u.id));
+    const relevant=scope==='general'
+      ? m.scope==='general'
+      : m.scope==='private' && ((m.fromId===u.id&&m.toId===peerId)||(m.fromId===peerId&&m.toId===u.id));
+    return relevant && messageAfterThreadDelete(d,u,m);
   });
   arr=arr.slice(-250);
   const usersById=Object.fromEntries(d.users.map(x=>[x.id,messageUser(x)]));
@@ -464,6 +493,23 @@ app.post('/api/messages', needLogin, (req,res)=>{
   };
   d.messages.push(m); trimMessages(d); save(d);
   res.json({ok:true,id:m.id,createdAt:m.createdAt});
+});
+
+
+app.post('/api/messages/thread/delete', needLogin, (req,res)=>{
+  const d=load(); const u=current(req);
+  if(!canUseMessaging(u)) return res.status(403).json({error:'Messagerie indisponible pour ce compte'});
+  const scope=req.body&&req.body.scope==='private'?'private':'general';
+  const peerId=scope==='private'?String(req.body&&req.body.peerId||''):'';
+  if(scope==='private'){
+    const peer=d.users.find(x=>x.id===peerId);
+    if(!peer || !canUseMessaging(peer)) return res.status(400).json({error:'Discussion invalide'});
+  }
+  d.messageThreadDeletes=d.messageThreadDeletes||{};
+  d.messageThreadDeletes[u.id]=d.messageThreadDeletes[u.id]||{};
+  d.messageThreadDeletes[u.id][threadKey(scope,peerId)]=new Date().toISOString();
+  save(d);
+  res.json({ok:true});
 });
 
 app.post('/api/messages/read', needLogin, (req,res)=>{
