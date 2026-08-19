@@ -2621,6 +2621,38 @@ body.lightMode .messengerComposer textarea{background:#fff!important;color:#1424
   .messengerPanel{position:fixed;left:8px;right:8px;bottom:78px;width:auto;height:min(72vh,620px)}
 }
 
+
+
+/* V88 - Liste de discussions, badges et notifications bureau */
+.messengerHeadLeft{display:flex;align-items:center;gap:8px}
+.messengerThreadsView{flex:1;display:flex;flex-direction:column;min-height:0;background:#081522}
+.messengerNewPrivate{display:flex;gap:7px;padding:10px;background:#0c1d30;border-bottom:1px solid #263f57}
+.messengerNewPrivate select{flex:1;min-width:0;background:#10263b!important;color:#edf4fb!important;border-color:#31506d!important}
+.messengerNewPrivate button{height:38px!important;padding:0 11px!important;font-size:12px!important}
+.messengerThreads{flex:1;overflow:auto;padding:7px}
+.messengerThread{
+  width:100%;display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:9px;align-items:center;
+  padding:9px 10px;margin:4px 0;border-radius:12px;cursor:pointer;
+  background:#10263a;border:1px solid #29465e;color:#edf4fb
+}
+.messengerThread:hover{background:#15314b;border-color:#3d6484}
+.messengerThreadAvatar{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:#0b5ea7;color:#fff;font-size:16px;font-weight:900}
+.messengerThreadBody{min-width:0}
+.messengerThreadTop{display:flex;gap:8px;align-items:center;justify-content:space-between}
+.messengerThreadTitle{font-size:13px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.messengerThreadTime{font-size:9px;color:#8299af;white-space:nowrap}
+.messengerThreadPreview{font-size:11px;color:#9eb1c4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:3px}
+.messengerThreadUnread{min-width:22px;height:22px;padding:0 6px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:#d51f2b;color:#fff;font-size:11px;font-weight:900}
+.messengerChatView{flex:1;display:flex;flex-direction:column;min-height:0}
+.messengerDesktopGranted{color:#86efac!important}
+body.lightMode .messengerThreadsView{background:#f6f9fc}
+body.lightMode .messengerNewPrivate{background:#edf3f9;border-color:#cbd8e4}
+body.lightMode .messengerNewPrivate select{background:#fff!important;color:#14243b!important;border-color:#b8c8d8!important}
+body.lightMode .messengerThread{background:#fff;color:#14243b;border-color:#c8d5e2}
+body.lightMode .messengerThread:hover{background:#eef5fb;border-color:#98b9d4}
+body.lightMode .messengerThreadPreview{color:#60768b}
+body.lightMode .messengerThreadTime{color:#71869a}
+
 </style></head><body>
 <div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
   <div class="phenixLoadingCard">
@@ -2960,7 +2992,7 @@ async function logout(){await api('/api/logout',{method:'POST'});location.reload
 async function refresh(){return refreshSafe(true)}
 async function refreshSafe(force=false){if(!force && shouldPauseRefresh()) return; S=await api('/api/data');$('agentName').textContent=S.user.displayName;const dash=S.user.role==='dashboard';
 document.body.classList.toggle('dashboardMode',dash);
-if($('dashZoomTools'))$('dashZoomTools').classList.toggle('hidden',!dash);applyRoleNavigation();$('createCrewBtn').classList.toggle('hidden',dash);if((dash||phenixRole()==='operateur')&&!['dash','notes','links','consignes','events','settings'].includes(activeSection))activeSection='dash';checkCrewChanges(S.crews);renderAll(force);updateNotifButton();updateMessengerUI();if(messengerOpen)refreshOpenMessenger().catch(()=>{})}
+if($('dashZoomTools'))$('dashZoomTools').classList.toggle('hidden',!dash);applyRoleNavigation();$('createCrewBtn').classList.toggle('hidden',dash);if((dash||phenixRole()==='operateur')&&!['dash','notes','links','consignes','events','settings'].includes(activeSection))activeSection='dash';checkCrewChanges(S.crews);renderAll(force);updateNotifButton();updateMessengerUI().catch(()=>{})}
 function shouldPauseRefresh(){const el=document.activeElement; if(el && ['INPUT','TEXTAREA','SELECT'].includes(el.tagName)) return true; return ['personnel','admin','notes'].includes(activeSection)}
 function show(id){
   document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('activeNav',b.getAttribute('onclick')===`show('${id}')`));
@@ -3779,42 +3811,26 @@ function downloadSignatureHtml(){
 
 
 
+
 let messengerOpen=false;
+let messengerView='threads';
 let messengerScope='general';
 let messengerPeerId='';
+let messengerThreadsCache=[];
 let messengerLastUnread=0;
+let messengerLastNotifiedMessageId=localStorage.getItem('phenixMessengerLastNotified')||'';
 let messengerSoundEnabled=localStorage.getItem('phenixMessengerSound')!=='0';
 let messengerLoadedMessageIds=new Set();
 
 function messengerAvailable(){
   return !!(S&&S.user&&phenixRole()!=='dashboard'&&S.messaging&&S.messaging.enabled);
 }
-function updateMessengerUI(){
-  const root=$('messengerRoot'); if(!root)return;
-  root.classList.toggle('hidden',!messengerAvailable());
-  if(!messengerAvailable())return;
-  const unread=Number(S.messaging&&S.messaging.unread||0);
-  const badge=$('messengerBadge');
-  if(badge){
-    badge.textContent=unread>99?'99+':String(unread);
-    badge.classList.toggle('hidden',unread<=0);
-  }
-  const sound=$('messengerSoundBtn');
-  if(sound){sound.classList.toggle('off',!messengerSoundEnabled);sound.textContent=messengerSoundEnabled?'🔔':'🔕'}
-  renderMessengerUsers();
-
-  if(unread>messengerLastUnread && messengerLastUnread>=0 && messengerSoundEnabled){
-    playMessengerSound();
-  }
-  messengerLastUnread=unread;
-}
 function renderMessengerUsers(){
   const sel=$('chatUserSelect'); if(!sel)return;
   const current=sel.value;
   const users=Array.isArray(S.messageUsers)?S.messageUsers:[];
-  sel.innerHTML='<option value="">Message privé…</option>'+users.map(u=>`<option value="${esc(u.id)}">${esc(u.displayName)} — ${esc(u.role||'')}</option>`).join('');
+  sel.innerHTML='<option value="">Nouvelle discussion privée…</option>'+users.map(u=>`<option value="${esc(u.id)}">${esc(u.displayName)}</option>`).join('');
   if(users.some(u=>u.id===current))sel.value=current;
-  else if(messengerScope==='private'&&users.some(u=>u.id===messengerPeerId))sel.value=messengerPeerId;
 }
 function playMessengerSound(){
   try{
@@ -3829,46 +3845,139 @@ function playMessengerSound(){
 function toggleMessengerSound(){
   messengerSoundEnabled=!messengerSoundEnabled;
   localStorage.setItem('phenixMessengerSound',messengerSoundEnabled?'1':'0');
-  updateMessengerUI();
+  updateMessengerUI().catch(()=>{});
   if(messengerSoundEnabled)playMessengerSound();
 }
-function toggleMessenger(){messengerOpen?closeMessenger():openMessenger()}
+async function enableDesktopMessengerNotifications(){
+  if(!('Notification' in window)){alert('Les notifications bureau ne sont pas prises en charge par ce navigateur.');return}
+  try{
+    const p=await Notification.requestPermission();
+    updateMessengerDesktopButton();
+    if(p==='granted') new Notification('PHENIX',{body:'Notifications de messagerie activées.'});
+  }catch(e){}
+}
+function updateMessengerDesktopButton(){
+  const b=$('messengerDesktopBtn');if(!b)return;
+  const granted=('Notification' in window)&&Notification.permission==='granted';
+  b.classList.toggle('messengerDesktopGranted',granted);
+  b.textContent=granted?'🖥️✓':'🖥️';
+}
+function maybeNotifyDesktop(thread){
+  if(!thread||!thread.lastMessage||thread.lastMessage.fromId===S.user.id)return;
+  const msg=thread.lastMessage;
+  if(msg.id===messengerLastNotifiedMessageId)return;
+  messengerLastNotifiedMessageId=msg.id;
+  localStorage.setItem('phenixMessengerLastNotified',msg.id);
+  if(document.visibilityState==='visible'&&document.hasFocus())return;
+  if('Notification' in window&&Notification.permission==='granted'){
+    try{
+      const title=thread.scope==='general'?'PHENIX — Discussion générale':'PHENIX — '+thread.title;
+      const n=new Notification(title,{body:String(msg.text||'Nouveau message').slice(0,160),tag:'phenix-'+thread.key});
+      n.onclick=()=>{window.focus();openThread(thread.scope,thread.peerId||'');n.close()};
+    }catch(e){}
+  }
+}
+async function loadMessengerThreads(){
+  if(!messengerAvailable())return [];
+  try{
+    const data=await api('/api/messages/threads');
+    messengerThreadsCache=data.threads||[];
+    renderMessengerThreads();
+    const unread=messengerThreadsCache.filter(t=>Number(t.unread||0)>0);
+    if(unread.length){
+      unread.sort((a,b)=>{
+        const da=a.lastMessage?new Date(a.lastMessage.createdAt).getTime():0;
+        const db=b.lastMessage?new Date(b.lastMessage.createdAt).getTime():0;
+        return db-da;
+      });
+      maybeNotifyDesktop(unread[0]);
+    }
+    return messengerThreadsCache;
+  }catch(e){return []}
+}
+function renderMessengerThreads(){
+  const box=$('messengerThreads');if(!box)return;
+  const arr=messengerThreadsCache||[];
+  if(!arr.length){box.innerHTML='<div class="messengerEmpty">Aucune discussion.</div>';return}
+  box.innerHTML=arr.map(t=>{
+    const initial=t.scope==='general'?'G':String(t.title||'?').trim().charAt(0).toUpperCase();
+    const when=t.lastMessage?new Date(t.lastMessage.createdAt).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+    const preview=t.lastMessage?(t.lastMessage.fromId===S.user.id?'Vous : ':'')+String(t.lastMessage.text||''):'Aucun message';
+    return `<div class="messengerThread" onclick='openThread(${JSON.stringify(t.scope)},${JSON.stringify(t.peerId||"")})'>
+      <div class="messengerThreadAvatar">${esc(initial)}</div>
+      <div class="messengerThreadBody">
+        <div class="messengerThreadTop"><span class="messengerThreadTitle">${esc(t.title)}</span><span class="messengerThreadTime">${esc(when)}</span></div>
+        <div class="messengerThreadPreview">${esc(preview)}</div>
+      </div>
+      ${Number(t.unread||0)>0?`<span class="messengerThreadUnread">${Number(t.unread)>99?'99+':Number(t.unread)}</span>`:''}
+    </div>`;
+  }).join('');
+}
+function showMessengerThreads(){
+  messengerView='threads';
+  $('messengerThreadsView')?.classList.remove('hidden');
+  $('messengerChatView')?.classList.add('hidden');
+  $('messengerBackBtn')?.classList.add('hidden');
+  $('messengerHeadTitle').textContent='Messagerie PHENIX';
+  $('messengerHeadSub').textContent='Discussions internes';
+  renderMessengerUsers();
+  loadMessengerThreads();
+}
+function startSelectedPrivateChat(){
+  const id=$('chatUserSelect')?.value||'';
+  if(!id){alert('Choisissez un utilisateur.');return}
+  openThread('private',id);
+}
+async function openThread(scope,peerId=''){
+  messengerScope=scope==='private'?'private':'general';
+  messengerPeerId=messengerScope==='private'?String(peerId||''):'';
+  messengerView='chat';
+  messengerOpen=true;
+  $('messengerPanel')?.classList.remove('hidden');
+  $('messengerThreadsView')?.classList.add('hidden');
+  $('messengerChatView')?.classList.remove('hidden');
+  $('messengerBackBtn')?.classList.remove('hidden');
+  let title='Discussion générale';
+  if(messengerScope==='private'){
+    const u=(S.messageUsers||[]).find(x=>x.id===messengerPeerId);
+    title=u?u.displayName:'Discussion privée';
+  }
+  $('messengerHeadTitle').textContent=title;
+  $('messengerHeadSub').textContent=messengerScope==='general'?'Discussion générale':'Message privé';
+  $('messengerConversationTitle').textContent=title;
+  await loadMessengerConversation();
+  setTimeout(()=>$('messengerInput')?.focus(),30);
+}
 async function openMessenger(){
   if(!messengerAvailable())return;
   messengerOpen=true;
   $('messengerPanel').classList.remove('hidden');
   renderMessengerUsers();
-  await loadMessengerConversation();
-  setTimeout(()=>$('messengerInput')?.focus(),30);
+  updateMessengerDesktopButton();
+  const threads=await loadMessengerThreads();
+  const unread=threads.filter(t=>Number(t.unread||0)>0).sort((a,b)=>{
+    const da=a.lastMessage?new Date(a.lastMessage.createdAt).getTime():0;
+    const db=b.lastMessage?new Date(b.lastMessage.createdAt).getTime():0;
+    return db-da;
+  });
+  if(unread.length) await openThread(unread[0].scope,unread[0].peerId||'');
+  else showMessengerThreads();
 }
+function toggleMessenger(){messengerOpen?closeMessenger():openMessenger()}
 function closeMessenger(){messengerOpen=false;$('messengerPanel')?.classList.add('hidden')}
-function selectGeneralChat(){
-  messengerScope='general';messengerPeerId='';
-  $('chatGeneralBtn')?.classList.add('active');
-  if($('chatUserSelect'))$('chatUserSelect').value='';
-  $('messengerConversationTitle').textContent='Discussion générale';
-  if(messengerOpen)loadMessengerConversation();
-}
-function selectPrivateChat(id){
-  if(!id){selectGeneralChat();return}
-  messengerScope='private';messengerPeerId=id;
-  $('chatGeneralBtn')?.classList.remove('active');
-  const u=(S.messageUsers||[]).find(x=>x.id===id);
-  $('messengerConversationTitle').textContent=u?'Discussion avec '+u.displayName:'Discussion privée';
-  if(messengerOpen)loadMessengerConversation();
-}
 async function loadMessengerConversation(){
   if(!messengerAvailable())return;
+  if(messengerScope==='private'&&!messengerPeerId)return;
   const qs=new URLSearchParams({scope:messengerScope});
   if(messengerScope==='private')qs.set('peerId',messengerPeerId);
-  if(messengerScope==='private'&&!messengerPeerId)return;
   try{
     const data=await api('/api/messages?'+qs.toString());
     renderMessengerMessages(data.messages||[]);
     await api('/api/messages/read',{method:'POST',body:JSON.stringify({scope:messengerScope,peerId:messengerPeerId})});
-    if(S.messaging)S.messaging.unread=Math.max(0,Number(S.messaging.unread||0)-(data.messages||[]).filter(m=>m.fromId!==S.user.id&&!messengerLoadedMessageIds.has(m.id)).length);
-    updateMessengerUI();
-  }catch(e){$('messengerMessages').innerHTML='<div class="messengerEmpty">'+esc(e.message)+'</div>'}
+    if(S.messaging)S.messaging.unread=0;
+  }catch(e){
+    if($('messengerMessages'))$('messengerMessages').innerHTML='<div class="messengerEmpty">'+esc(e.message)+'</div>';
+  }
 }
 function renderMessengerMessages(messages){
   const box=$('messengerMessages');if(!box)return;
@@ -3898,12 +4007,39 @@ async function sendMessengerMessage(ev){
 function messengerKeyDown(e){
   if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessengerMessage(e)}
 }
-async function refreshOpenMessenger(){
-  if(!messengerOpen||!messengerAvailable())return;
-  const input=$('messengerInput');
-  if(document.activeElement===input && String(input.value||'').trim())return;
-  await loadMessengerConversation();
+async function updateMessengerUI(){
+  const root=$('messengerRoot');if(!root)return;
+  root.classList.toggle('hidden',!messengerAvailable());
+  if(!messengerAvailable())return;
+  const unread=Number(S.messaging&&S.messaging.unread||0);
+  const badge=$('messengerBadge');
+  if(badge){
+    badge.textContent=unread>99?'99+':String(unread);
+    badge.classList.toggle('hidden',unread<=0);
+  }
+  const sound=$('messengerSoundBtn');
+  if(sound){sound.classList.toggle('off',!messengerSoundEnabled);sound.textContent=messengerSoundEnabled?'🔔':'🔕'}
+  updateMessengerDesktopButton();
+  renderMessengerUsers();
+  if(unread>messengerLastUnread&&messengerSoundEnabled)playMessengerSound();
+  messengerLastUnread=unread;
+  await loadMessengerThreads();
+  if(messengerOpen&&messengerView==='chat') await refreshOpenMessenger();
 }
+async function refreshOpenMessenger(){
+  if(!messengerOpen||messengerView!=='chat'||!messengerAvailable())return;
+  const input=$('messengerInput');
+  if(document.activeElement===input&&String(input.value||'').trim())return;
+  const qs=new URLSearchParams({scope:messengerScope});
+  if(messengerScope==='private')qs.set('peerId',messengerPeerId);
+  try{
+    const data=await api('/api/messages?'+qs.toString());
+    const ids=(data.messages||[]).map(m=>m.id);
+    const changed=ids.length!==messengerLoadedMessageIds.size||ids.some(id=>!messengerLoadedMessageIds.has(id));
+    if(changed)renderMessengerMessages(data.messages||[]);
+  }catch(e){}
+}
+
 
 </script>
 
@@ -3966,33 +4102,40 @@ async function refreshOpenMessenger(){
 
   <div id="messengerPanel" class="messengerPanel hidden" role="dialog" aria-label="Messagerie PHENIX">
     <div class="messengerHead">
-      <div>
-        <b>Messagerie PHENIX</b>
-        <div class="messengerSub">Discussions internes</div>
+      <div class="messengerHeadLeft">
+        <button id="messengerBackBtn" class="messengerIconBtn hidden" type="button" onclick="showMessengerThreads()" title="Retour aux discussions">←</button>
+        <div>
+          <b id="messengerHeadTitle">Messagerie PHENIX</b>
+          <div id="messengerHeadSub" class="messengerSub">Discussions internes</div>
+        </div>
       </div>
       <div class="messengerHeadActions">
+        <button id="messengerDesktopBtn" class="messengerIconBtn" type="button" onclick="enableDesktopMessengerNotifications()" title="Notifications bureau">🖥️</button>
         <button id="messengerSoundBtn" class="messengerIconBtn" type="button" onclick="toggleMessengerSound()" title="Son des messages">🔔</button>
         <button class="messengerIconBtn" type="button" onclick="closeMessenger()" title="Fermer">×</button>
       </div>
     </div>
 
-    <div class="messengerChooser">
-      <button id="chatGeneralBtn" class="messengerModeBtn active" type="button" onclick="selectGeneralChat()">Discussion générale</button>
-      <select id="chatUserSelect" onchange="selectPrivateChat(this.value)">
-        <option value="">Message privé…</option>
-      </select>
+    <div id="messengerThreadsView" class="messengerThreadsView">
+      <div class="messengerNewPrivate">
+        <select id="chatUserSelect">
+          <option value="">Nouvelle discussion privée…</option>
+        </select>
+        <button class="primary" type="button" onclick="startSelectedPrivateChat()">Ouvrir</button>
+      </div>
+      <div id="messengerThreads" class="messengerThreads"></div>
     </div>
 
-    <div id="messengerConversationTitle" class="messengerConversationTitle">Discussion générale</div>
-    <div id="messengerMessages" class="messengerMessages">
-      <div class="messengerEmpty">Aucun message pour le moment.</div>
+    <div id="messengerChatView" class="messengerChatView hidden">
+      <div id="messengerConversationTitle" class="messengerConversationTitle">Discussion</div>
+      <div id="messengerMessages" class="messengerMessages">
+        <div class="messengerEmpty">Aucun message pour le moment.</div>
+      </div>
+      <form class="messengerComposer" onsubmit="sendMessengerMessage(event)">
+        <textarea id="messengerInput" maxlength="2000" rows="2" placeholder="Écrivez votre message…" onkeydown="messengerKeyDown(event)"></textarea>
+        <button class="primary messengerSendBtn" type="submit">Envoyer</button>
+      </form>
     </div>
-
-    <form class="messengerComposer" onsubmit="sendMessengerMessage(event)">
-      <textarea id="messengerInput" maxlength="2000" rows="2" placeholder="Écrivez votre message…" onkeydown="messengerKeyDown(event)"></textarea>
-      <button class="primary messengerSendBtn" type="submit">Envoyer</button>
-    </form>
   </div>
 </div>
-
 </body></html>
