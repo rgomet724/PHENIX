@@ -3294,7 +3294,7 @@ function selectLoginOption(mode){
   $('passwordLoginOption')?.classList.toggle('active',!card);
   $('cardLoginOption')?.classList.toggle('active',card);
   if(card){
-    $('msg').textContent='Connexion par carte à puce sélectionnée.';
+    $('msg').textContent='Connexion par carte agent.';
     if(typeof window.loginWithSmartCard==='function'){window.loginWithSmartCard();}
   }else{
     $('msg').textContent='';
