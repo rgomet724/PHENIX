@@ -2596,7 +2596,7 @@ body:not(.lightMode) .consigneNav.activeNav .consigneCount{
 <div id="app" class="app"><div id="mobileNavBackdrop" class="mobileNavBackdrop" onclick="closeMobileNav()"></div><div class="top"><button type="button" class="mobileMenuBtn" onclick="toggleMobileNav()" aria-label="Ouvrir le menu">☰</button><div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div><div class="right"><b id="agentName">Agent</b><div class="tag" id="clock"></div><div class="row topUserActions" style="justify-content:flex-end;margin-top:6px"><button id="notifBtn" class="notifSwitch desktopSoundControl" onclick="toggleNotifications()" title="Alertes sonores"><span class="notifKnob"></span><span id="notifText">ALERTES ON</span></button><button class="small danger" onclick="logout()">Déconnexion</button></div></div></div>
 <div class="layout"><aside><div class="nav"><button onclick="show('dash')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5"/><path d="M9.5 20v-6h5v6"/></svg></span>Tableau de bord</button><button id="personnelBtn" onclick="show('personnel')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/><path d="M8 11.5h8"/></svg></span>Personnel</button><button onclick="show('notes')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h6"/></svg></span>Notes privées</button><button id="linksBtn" onclick="show('links')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a4 4 0 0 0 5.7 0l2.3-2.3a4 4 0 1 0-5.7-5.7L11 6.3"/><path d="M14 11a4 4 0 0 0-5.7 0L6 13.3A4 4 0 0 0 11.7 19l1.3-1.3"/></svg></span>Liens utiles</button><button onclick="show('events')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 9h18M7 13h2M11 13h2M15 13h2M7 17h2M11 17h2"/></svg></span>Événements</button><button id="historyBtn" onclick="show('history')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>Historique</button><button class="consigneNav" onclick="show('consignes')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/><path d="m6.5 8 .5.5 1-1"/></svg></span>Consignes <span id="consigneCount" class="consigneCount">(0)</span><span id="consigneBell" class="consigneBell">🔔</span></button><button id="settingsBtn" onclick="show('settings')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg></span>Paramètres</button><button id="adminBtn" onclick="show('admin')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 12H6.5a3.5 3.5 0 1 1 3.5-3.5V18a3 3 0 1 1-3-3h10a3 3 0 1 1-3 3V8.5A3.5 3.5 0 1 1 17.5 12H9Z"/></svg></span>Administration</button></div><div id="eventTodayBox" class="eventTodayBox hidden"></div></aside><main>
 <section id="dash"><div class="cards"><div class="card"><span>Équipages</span><br><b id="cTotal">0</b></div><div class="card green"><span>Disponibles</span><br><b id="cDispo">0</b></div><div class="card red"><span>Indisponibles</span><br><b id="cIndispo">0</b></div><div class="card"><span>Effectifs</span><br><b id="cEff">0</b></div></div><div class="section"><div class="row dashTableHeader" style="justify-content:space-between"><h2>Tableau de bord opérationnel</h2><div class="row dashTools"><div id="dashZoomTools" class="row"><button class="small" onclick="setDashZoom(-1)" title="Réduire l'affichage">Zoom −</button><button class="small" onclick="resetDashZoom()" title="Réinitialiser le zoom">100 %</button><button class="small" onclick="setDashZoom(1)" title="Agrandir l'affichage">Zoom +</button><button id="compactDashBtn" class="small" onclick="toggleDashCompact()">Mode compact</button></div><button type="button" id="createCrewBtn" class="primary" onclick="openCrew()">Créer équipage</button></div></div><div id="dashTableWrap" class="dashTableWrap"><table id="crewTable"><thead><tr><th>Info</th><th>Indicatif</th><th>Matricules</th><th>Intervention</th><th>Code Blanc</th><th>Vacation</th><th>Actions</th></tr></thead><tbody id="crewRows"></tbody></table></div></div><div id="logSection" class="section"><h2>Journal des 5 dernières heures</h2><div id="logs"></div></div></section>
-<section id="settings" class="hidden"><div class="section settingsSection"><h2>Paramètres</h2><p class="mut">Personnalise l’affichage et les alertes de PHENIX sur cet appareil.</p><div class="settingsList"><div class="settingsItem mobileSoundSetting"><div><b>Alertes sonores</b><div class="mut">Active ou désactive le son lors d’un changement de statut.</div></div><button id="settingsSoundBtn" class="settingsSwitch" onclick="toggleNotifications()" aria-pressed="true"><span class="settingsSwitchKnob"></span><span id="settingsSoundText">Activées</span></button></div><div class="settingsItem settingsThemeItem"><div><b>Thème de l’application</b><div class="mut">Choisis le thème clair ou sombre.</div></div><div class="themeChoices" role="group" aria-label="Thème"><button id="settingsThemeDark" onclick="applyTheme('dark')">🌙 Sombre</button><button id="settingsThemeLight" onclick="applyTheme('light')">☀️ Clair</button></div></div><div id="settingsJTItem" class="settingsItem"><div><b>Journées type</b><div class="mut">Crée des horaires prédéfinis à appliquer rapidement lors de la création d’un équipage.</div></div><button class="primary settingsAction" onclick="openJTManager()">Gérer les journées type</button></div><div class="settingsItem"><div><b>Mot de passe</b><div class="mut">Modifie le mot de passe de ton compte.</div></div><button class="primary settingsAction" onclick="changePass()">Modifier</button></div></div></div></section><section id="personnel" class="hidden"><div class="section"><div class="row" style="justify-content:space-between"><h2>Personnel</h2><button class="primary" onclick="addAgent()">Ajouter agent</button></div><p class="mut">Réservé Admin : ajout et modification des matricules, noms et prénoms. Les opérateurs sélectionnent ensuite uniquement les matricules dans les équipages.</p><table><thead><tr><th>Matricule</th><th>Nom</th><th>Prénom</th><th>Actif</th><th></th></tr></thead><tbody id="agentRows"></tbody></table><button class="primary" onclick="saveAgents()">Enregistrer le personnel</button></div></section>
+<section id="settings" class="hidden"><div class="section settingsSection"><h2>Paramètres</h2><p class="mut">Personnalise l’affichage et les alertes de PHENIX sur cet appareil.</p><div class="settingsList"><div class="settingsItem mobileSoundSetting"><div><b>Alertes sonores</b><div class="mut">Active ou désactive le son lors d’un changement de statut.</div></div><button id="settingsSoundBtn" class="settingsSwitch" onclick="toggleNotifications()" aria-pressed="true"><span class="settingsSwitchKnob"></span><span id="settingsSoundText">Activées</span></button></div><div class="settingsItem settingsThemeItem"><div><b>Thème de l’application</b><div class="mut">Choisis le thème clair ou sombre.</div></div><div class="themeChoices" role="group" aria-label="Thème"><button id="settingsThemeDark" onclick="applyTheme('dark')">🌙 Sombre</button><button id="settingsThemeLight" onclick="applyTheme('light')">☀️ Clair</button></div></div><div id="settingsJTItem" class="settingsItem"><div><b>Journées type</b><div class="mut">Créez des horaires prédéfinis à appliquer rapidement lors de la création d’un équipage.</div></div><button class="primary settingsAction" onclick="openJTManager()">Gérer les journées type</button></div><div class="settingsItem"><div><b>Mot de passe</b><div class="mut">Modifiez le mot de passe de votre compte.</div></div><button class="primary settingsAction" onclick="changePass()">Modifier</button></div></div></div></section><section id="personnel" class="hidden"><div class="section"><div class="row" style="justify-content:space-between"><h2>Personnel</h2><button class="primary" onclick="addAgent()">Ajouter agent</button></div><p class="mut">Réservé Admin : ajout et modification des matricules, noms et prénoms. Les opérateurs sélectionnent ensuite uniquement les matricules dans les équipages.</p><table><thead><tr><th>Matricule</th><th>Nom</th><th>Prénom</th><th>Actif</th><th></th></tr></thead><tbody id="agentRows"></tbody></table><button class="primary" onclick="saveAgents()">Enregistrer le personnel</button></div></section>
 <section id="notes" class="hidden"><div class="section"><h2>Notes privées</h2><p class="mut">Chaque agent voit uniquement ses propres notes.</p><textarea id="note" oninput="noteDirty=true"></textarea><br><br><button class="primary" onclick="saveNote()">Enregistrer mes notes</button></div></section><section id="consignes" class="hidden">
   <div class="section">
     <div class="row" style="justify-content:space-between">
@@ -2742,7 +2742,7 @@ body:not(.lightMode) .consigneNav.activeNav .consigneCount{
           <div class="crewJTBar">
             <button type="button" id="crewJTBtn" class="crewJTBtn" onclick="toggleCrewJTMenu()">J.T.</button>
             <div id="crewJTMenu" class="crewJTMenu hidden"></div>
-            <span id="crewJTLabel" class="crewHint">Choisir une journée type pour renseigner automatiquement les horaires.</span>
+            <span id="crewJTLabel" class="crewHint">Choisissez une journée type pour renseigner automatiquement les horaires.</span>
           </div>
         </div>
 
@@ -2785,7 +2785,7 @@ body:not(.lightMode) .consigneNav.activeNav .consigneCount{
     <div class="jtManagerHead">
       <div>
         <h2>Gérer les journées type</h2>
-        <div class="mut">Crée des modèles d’horaires disponibles via le bouton J.T. dans les équipages.</div>
+        <div class="mut">Créez des modèles d’horaires disponibles via le bouton J.T. dans les équipages.</div>
       </div>
       <button type="button" onclick="closeJTManager()">×</button>
     </div>
@@ -3056,8 +3056,8 @@ function saveJTTemplate(){
   const name=String($('jtName').value||'').trim();
   const start=normalizeTimeValue($('jtStart').value);
   const end=normalizeTimeValue($('jtEnd').value);
-  if(!name){alert('Donne un intitulé à la journée type.');return}
-  if(!start||!end){alert('Renseigne les heures de début et de fin.');return}
+  if(!name){alert('Donnez un intitulé à la journée type.');return}
+  if(!start||!end){alert('Renseignez les heures de début et de fin.');return}
   const arr=getJTTemplates();
   const id=$('jtId').value||('jt_'+Date.now());
   const item={id,name,start,end};
@@ -3090,7 +3090,7 @@ function renderJTManager(){
 function renderCrewJTMenu(){
   const menu=$('crewJTMenu');if(!menu)return;
   const arr=getJTTemplates();
-  menu.innerHTML=arr.length?arr.map(x=>`<button type="button" onclick='applyJTTemplate(${JSON.stringify(x.id)})'><b>${esc(x.name)}</b><br><span class="mut">${esc(x.start)} → ${esc(x.end)}</span></button>`).join(''):'<div class="jtEmpty">Aucune journée type. Tu peux en créer dans Paramètres.</div>';
+  menu.innerHTML=arr.length?arr.map(x=>`<button type="button" onclick='applyJTTemplate(${JSON.stringify(x.id)})'><b>${esc(x.name)}</b><br><span class="mut">${esc(x.start)} → ${esc(x.end)}</span></button>`).join(''):'<div class="jtEmpty">Aucune journée type. Vous pouvez en créer dans Paramètres.</div>';
 }
 function toggleCrewJTMenu(){
   renderCrewJTMenu();
@@ -3154,7 +3154,7 @@ function openCrew(id){
   $('crewObs').value=c.observations||'';
   $('crewShiftStart').value=c.shiftStart||defaultShiftDate(8);
   $('crewShiftEnd').value=c.shiftEnd||defaultShiftDate(16);
-  if($('crewJTLabel'))$('crewJTLabel').textContent='Choisir une journée type pour renseigner automatiquement les horaires.';
+  if($('crewJTLabel'))$('crewJTLabel').textContent='Choisissez une journée type pour renseigner automatiquement les horaires.';
   $('crewJTMenu')?.classList.add('hidden');
   $('crewModalTitle').textContent=crewId?'Modification d’un équipage':'Création d’un équipage';
   $('delCrew').classList.toggle('hidden',!crewId);
@@ -3357,7 +3357,7 @@ function renderHistoryUsers(){
   if(!['admin','superviseur'].includes(S.user.role)){show('dash');return}
   const box=$('historyUsers'); if(!box)return;
   const users=S.users||[];
-  if(!users.length){box.innerHTML='<span class="mut">Aucun utilisateur chargé. Vérifie que ton server.js renvoie bien users pour les rôles admin/superviseur.</span>';return}
+  if(!users.length){box.innerHTML='<span class="mut">Aucun utilisateur chargé. Vérifiez que votre server.js renvoie bien users pour les rôles admin/superviseur.</span>';return}
   box.innerHTML=users.map(u=>`<div class="row"><b>${esc(u.displayName)}</b><span class="mut">${esc(u.login)} / ${esc(u.role)}</span><button class="small primary" onclick='loadUserHistory(${JSON.stringify(u.id)},${JSON.stringify(u.displayName)})'>Historique</button></div>`).join('');
 }
 async function loadUserHistory(id,name){
@@ -3739,7 +3739,7 @@ function downloadSignatureHtml(){
           <button type="button" class="small primary" onclick="addSignatureExtra()">+ Ajouter une section</button>
         </div>
         <div id="signatureExtrasList"></div>
-        <div class="mut" style="font-size:11px;margin-top:8px">Tu peux ajouter plusieurs numéros, services, bureaux, horaires ou toute autre information, puis choisir où elle apparaît dans la signature.</div>
+        <div class="mut" style="font-size:11px;margin-top:8px">Vous pouvez ajouter plusieurs numéros, services, bureaux, horaires ou toute autre information, puis choisir où elle apparaît dans la signature.</div>
       </div>
       
       <div class="signatureExtras">
@@ -3748,7 +3748,7 @@ function downloadSignatureHtml(){
           <button type="button" class="small primary" onclick="addSignatureLink()">+ Ajouter un lien</button>
         </div>
         <div id="signatureLinksList"></div>
-        <div class="mut" style="font-size:11px;margin-top:8px">Ajoute plusieurs liens et renomme-les comme tu veux. Le destinataire pourra cliquer directement dessus dans l’e-mail.</div>
+        <div class="mut" style="font-size:11px;margin-top:8px">Ajoutez plusieurs liens et renommez-les comme vous le souhaitez. Le destinataire pourra cliquer directement dessus dans l’e-mail.</div>
       </div>
 <div class="signatureMandatory">
         <b>Mentions fixes :</b><br>
