@@ -2865,16 +2865,16 @@ body:not(.lightMode) .flashMessage{
 
 
 /* V79 - Options de connexion : mot de passe / carte à puce */
-.loginActionRow{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-top:12px}
-.loginOptions{display:flex;flex-direction:column;gap:7px}
+.loginActionRow{display:flex;flex-direction:column;align-items:stretch;gap:10px;margin-top:12px}
+.loginOptions{display:flex;flex-direction:column;gap:7px;align-items:flex-start}
 .loginOptionsTitle{font-size:12px;color:#9fb3c8;font-weight:700}
 .loginOptionButtons{display:flex;gap:8px}
 .loginOptionBtn{width:46px;height:46px;min-width:46px;padding:0;border-radius:8px;background:#343a43!important;border:1px solid #59616c!important;color:#fff!important;display:grid;place-items:center;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04);transition:.15s}
 .loginOptionBtn:hover{background:#414954!important;filter:none!important}
 .loginOptionBtn.active{border:2px solid #d7dde5!important;box-shadow:0 0 0 2px rgba(255,255,255,.08)!important}
 .loginOptionBtn svg{width:30px;height:30px;display:block}
-.loginMainButton{min-width:128px;min-height:46px}
-@media(max-width:520px){.loginActionRow{align-items:stretch}.loginMainButton{flex:1}.loginOptionBtn{width:44px;height:44px;min-width:44px}}
+.loginMainButton{width:100%;min-height:46px;order:1}.loginOptions{order:2}
+@media(max-width:520px){.loginActionRow{align-items:stretch}.loginMainButton{width:100%}.loginOptionBtn{width:44px;height:44px;min-width:44px}}
 </style></head><body>
 <div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
   <div class="phenixLoadingCard">
