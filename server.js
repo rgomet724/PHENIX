@@ -100,7 +100,7 @@ function needConsigneManager(req,res,next){ const u=current(req); if(!u || !['ad
 function audit(d, req, msg){ const u=current(req); d.logs.unshift({date:new Date().toISOString(), userId:u?u.id:null, user:u?u.displayName:'Système', msg}); d.logs=d.logs.slice(0,2000); }
 
 function canUseMessaging(u){ return !!u && normalizedRole(u.role)!=='dashboard'; }
-function messageUser(u){ return u ? {id:u.id, displayName:u.displayName, role:u.role} : null; }
+function messageUser(u){ return u ? {id:u.id, displayName:u.displayName} : null; }
 function messageVisibleTo(m,userId){
   return m.scope==='general' || m.fromId===userId || m.toId===userId;
 }
@@ -382,6 +382,47 @@ app.get('/api/data', needLogin, (req,res)=>{
   });
 });
 
+
+
+app.get('/api/messages/threads', needLogin, (req,res)=>{
+  const d=load(); const u=current(req);
+  if(!canUseMessaging(u)) return res.status(403).json({error:'Messagerie indisponible pour ce compte'});
+  const visible=(d.messages||[]).filter(m=>messageVisibleTo(m,u.id));
+  const usersById=Object.fromEntries(d.users.map(x=>[x.id,messageUser(x)]));
+  const threads=[];
+
+  const general=visible.filter(m=>m.scope==='general');
+  const glast=general.length?general[general.length-1]:null;
+  threads.push({
+    key:'general',scope:'general',peerId:null,title:'Discussion générale',
+    unread:general.filter(m=>messageUnreadFor(m,u.id)).length,
+    lastMessage:glast?{id:glast.id,text:glast.text,createdAt:glast.createdAt,fromId:glast.fromId,from:usersById[glast.fromId]||{id:glast.fromId,displayName:'Utilisateur'}}:null
+  });
+
+  const privateMap=new Map();
+  for(const m of visible){
+    if(m.scope!=='private') continue;
+    const peerId=m.fromId===u.id?m.toId:m.fromId;
+    if(!peerId) continue;
+    if(!privateMap.has(peerId)) privateMap.set(peerId,[]);
+    privateMap.get(peerId).push(m);
+  }
+  for(const [peerId,arr] of privateMap){
+    const last=arr[arr.length-1];
+    const peer=usersById[peerId]||{id:peerId,displayName:'Utilisateur'};
+    threads.push({
+      key:'private:'+peerId,scope:'private',peerId,title:peer.displayName,
+      unread:arr.filter(m=>messageUnreadFor(m,u.id)).length,
+      lastMessage:{id:last.id,text:last.text,createdAt:last.createdAt,fromId:last.fromId,from:usersById[last.fromId]||{id:last.fromId,displayName:'Utilisateur'}}
+    });
+  }
+  threads.sort((a,b)=>{
+    const da=a.lastMessage?new Date(a.lastMessage.createdAt).getTime():0;
+    const db=b.lastMessage?new Date(b.lastMessage.createdAt).getTime():0;
+    return db-da;
+  });
+  res.json({threads});
+});
 
 app.get('/api/messages', needLogin, (req,res)=>{
   const d=load(); const u=current(req);
