@@ -2549,6 +2549,15 @@ body:not(.lightMode) .consigneNav.activeNav .consigneCount{
   border-color:#7790ef!important;
 }
 
+
+
+/* V86 - Indicateur portail sécurisé */
+.loginSecurityNote{
+  margin-top:12px;display:flex;align-items:center;justify-content:center;gap:7px;
+  color:#8fa6bd;font-size:11px;font-weight:600;letter-spacing:.1px
+}
+.loginSecurityLock{font-size:12px;filter:saturate(.7)}
+
 </style></head><body>
 <div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
   <div class="phenixLoadingCard">
@@ -2577,6 +2586,10 @@ body:not(.lightMode) .consigneNav.activeNav .consigneCount{
     </div>
   </div>
   <button class="primary" onclick="login()">Se connecter</button>
+  <div class="loginSecurityNote" aria-label="Sécurité de connexion">
+    <span class="loginSecurityLock">🔒</span>
+    <span>Portail sécurisé · session protégée · accès HTTPS</span>
+  </div>
 </div>
   <div id="msg" class="err"></div>
 </div></div>
@@ -2797,7 +2810,18 @@ body:not(.lightMode) .consigneNav.activeNav .consigneCount{
 <div id="infoModal" class="modal"><div class="box"><h2 id="infoTitle">Infos équipage</h2><div id="infoBody"></div><br><button onclick="closeModal('infoModal')">Fermer</button></div></div>
 <script>
 let S={user:null,agents:[],callsigns:[],interventions:[],crews:[],logs:[],users:[],note:'',consignes:[],links:[],events:[],flash:{enabled:false,title:'INFO',text:''}}; let activeSection='dash'; let calendarView='month'; let calendarDate=new Date(); let noteDirty=false; let notificationsEnabled=localStorage.getItem('notificationsEnabled')!=='false'; let previousCrews=[]; const alertSound=new Audio('/alerte.wav');
-const $=id=>document.getElementById(id); async function api(url,opt={}){const r=await fetch(url,{headers:{'Content-Type':'application/json'},credentials:'same-origin',...opt});const j=await r.json().catch(()=>({}));if(!r.ok)throw Error(j.error||('Erreur '+r.status));return j}
+let PHENIX_CSRF_TOKEN='';
+const $=id=>document.getElementById(id);
+async function api(url,opt={}){
+  const method=String(opt.method||'GET').toUpperCase();
+  const headers={'Content-Type':'application/json',...(opt.headers||{})};
+  if(!['GET','HEAD','OPTIONS'].includes(method) && PHENIX_CSRF_TOKEN) headers['X-CSRF-Token']=PHENIX_CSRF_TOKEN;
+  const r=await fetch(url,{...opt,headers,credentials:'same-origin'});
+  const j=await r.json().catch(()=>({}));
+  if(j.csrfToken) PHENIX_CSRF_TOKEN=j.csrfToken;
+  if(!r.ok)throw Error(j.error||('Erreur '+r.status));
+  return j;
+}
 
 function applyTheme(theme){
   const light=theme==='light';
