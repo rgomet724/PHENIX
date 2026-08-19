@@ -2908,6 +2908,41 @@ body:not(.lightMode) .flashMessage{
 }
 
 </style>
+
+<style>
+/* Correction : Options de connexion réellement centrées SOUS le bouton Se connecter */
+.loginActionRow{
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:stretch !important;
+}
+.loginMainButton{
+  order:1 !important;
+  width:100% !important;
+}
+.loginOptions{
+  order:2 !important;
+  width:100% !important;
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:center !important;
+  justify-content:center !important;
+  text-align:center !important;
+  margin:4px auto 0 !important;
+}
+.loginOptionsTitle{
+  width:100% !important;
+  text-align:center !important;
+}
+.loginOptionButtons{
+  width:100% !important;
+  display:flex !important;
+  justify-content:center !important;
+  align-items:center !important;
+  gap:10px !important;
+}
+</style>
+
 </head><body>
 <div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
   <div class="phenixLoadingCard">
