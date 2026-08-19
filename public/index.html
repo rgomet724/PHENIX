@@ -2701,6 +2701,21 @@ body.lightMode .messengerUserEntry{background:#fff;border-color:#c8d5e2}
 body.lightMode .messengerUserEntry:hover{background:#eef5fb;border-color:#98b9d4}
 body.lightMode .messengerUserName{color:#14243b}
 
+
+
+/* V90 - Discussion générale pour tous, Dashboard inclus */
+.messengerGeneralHint{
+  width:100%;margin-top:7px;color:#8fa6bb;font-size:10px;line-height:1.35;text-align:center
+}
+.messengerNewPrivate{flex-wrap:wrap!important}
+.messengerGeneralMark{
+  min-width:36px;height:24px;padding:0 7px;border-radius:999px;
+  display:flex;align-items:center;justify-content:center;
+  background:#0b5ea7;color:#fff;font-size:9px;font-weight:900
+}
+body.lightMode .messengerGeneralHint{color:#61778c}
+body.lightMode .messengerGeneralMark{background:#0b5ea7;color:#fff}
+
 </style></head><body>
 <div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
   <div class="phenixLoadingCard">
@@ -3872,7 +3887,7 @@ let messengerSoundEnabled=localStorage.getItem('phenixMessengerSound')!=='0';
 let messengerLoadedMessageIds=new Set();
 
 function messengerAvailable(){
-  return !!(S&&S.user&&phenixRole()!=='dashboard'&&S.messaging&&S.messaging.enabled);
+  return !!(S&&S.user&&S.messaging&&S.messaging.enabled);
 }
 async function loadMessengerUserDirectory(){
   try{
@@ -3994,7 +4009,9 @@ function renderMessengerThreads(){
         <div class="messengerThreadPreview">${esc(preview)}</div>
       </div>
       ${Number(t.unread||0)>0?`<span class="messengerThreadUnread">${Number(t.unread)>99?'99+':Number(t.unread)}</span>`:'<span></span>'}
-      <button type="button" class="messengerThreadTrash" title="Supprimer cette discussion" onclick='event.stopPropagation();deleteMessengerThread(${JSON.stringify(t.scope)},${JSON.stringify(t.peerId||"")},${JSON.stringify(t.title)})'>🗑</button>
+      ${t.scope==='private'
+        ? `<button type="button" class="messengerThreadTrash" title="Supprimer cette discussion" onclick='event.stopPropagation();deleteMessengerThread(${JSON.stringify(t.scope)},${JSON.stringify(t.peerId||"")},${JSON.stringify(t.title)})'>🗑</button>`
+        : '<span class="messengerGeneralMark" title="Visible par tous">Tous</span>'}
     </div>`;
   }).join('');
 }
@@ -4210,6 +4227,7 @@ async function refreshOpenMessenger(){
     <div id="messengerThreadsView" class="messengerThreadsView">
       <div class="messengerNewPrivate">
         <button class="primary messengerNewDiscussionBtn" type="button" onclick="openNewSecureDiscussion()">＋ Nouvelle discussion sécurisée</button>
+        <div class="messengerGeneralHint">La discussion générale est visible par tous les utilisateurs, y compris les comptes Dashboard.</div>
       </div>
       <div id="messengerThreads" class="messengerThreads"></div>
     </div>
