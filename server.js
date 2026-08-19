@@ -46,6 +46,7 @@ function baseData(){
     consignes: [],
     links: [],
     events: [],
+    messages: [],
     flash: { enabled:false, title:'INFO', text:'' }
   };
 }
@@ -61,6 +62,7 @@ function migrate(d){
   d.consignes=d.consignes||[];
   d.links=d.links||[];
   d.events=d.events||[];
+  d.messages=Array.isArray(d.messages)?d.messages:[];
   d.flash=d.flash||{enabled:false,title:'INFO',text:''};
   if(typeof d.flash.enabled!=='boolean') d.flash.enabled=false;
   d.flash.title=String(d.flash.title||'INFO').trim()||'INFO';
@@ -96,6 +98,29 @@ function needOperational(req,res,next){
 }
 function needConsigneManager(req,res,next){ const u=current(req); if(!u || !['admin','superviseur'].includes(u.role)) return res.status(403).json({error:'Réservé superviseur/admin'}); next(); }
 function audit(d, req, msg){ const u=current(req); d.logs.unshift({date:new Date().toISOString(), userId:u?u.id:null, user:u?u.displayName:'Système', msg}); d.logs=d.logs.slice(0,2000); }
+
+function canUseMessaging(u){ return !!u && normalizedRole(u.role)!=='dashboard'; }
+function messageUser(u){ return u ? {id:u.id, displayName:u.displayName, role:u.role} : null; }
+function messageVisibleTo(m,userId){
+  return m.scope==='general' || m.fromId===userId || m.toId===userId;
+}
+function messageUnreadFor(m,userId){
+  return m.fromId!==userId && messageVisibleTo(m,userId) && !(Array.isArray(m.readBy)&&m.readBy.includes(userId));
+}
+function messageSummary(d,u){
+  if(!canUseMessaging(u)) return {enabled:false,unread:0,lastMessageId:null};
+  const visible=(d.messages||[]).filter(m=>messageVisibleTo(m,u.id));
+  const unread=visible.filter(m=>messageUnreadFor(m,u.id)).length;
+  return {
+    enabled:true,
+    unread,
+    lastMessageId:visible.length?visible[visible.length-1].id:null
+  };
+}
+function trimMessages(d){
+  d.messages=(d.messages||[]).slice(-3000);
+}
+
 
 function atFour(date=new Date()){ const d=new Date(date); d.setHours(4,0,0,0); return d; }
 
@@ -351,8 +376,72 @@ app.get('/api/data', needLogin, (req,res)=>{
     links:linksForUser(d,u),
     events:d.events||[],
     flash:d.flash||{enabled:false,title:'INFO',text:''},
+    messaging:messageSummary(d,u),
+    messageUsers:canUseMessaging(u)?d.users.filter(x=>normalizedRole(x.role)!=='dashboard'&&x.id!==u.id).map(messageUser):[],
     users:['admin','superviseur'].includes(u.role)?d.users.map(safe):undefined
   });
+});
+
+
+app.get('/api/messages', needLogin, (req,res)=>{
+  const d=load(); const u=current(req);
+  if(!canUseMessaging(u)) return res.status(403).json({error:'Messagerie indisponible pour ce compte'});
+  const scope=req.query.scope==='private'?'private':'general';
+  const peerId=String(req.query.peerId||'');
+  let arr=(d.messages||[]).filter(m=>{
+    if(scope==='general') return m.scope==='general';
+    return m.scope==='private' && ((m.fromId===u.id&&m.toId===peerId)||(m.fromId===peerId&&m.toId===u.id));
+  });
+  arr=arr.slice(-250);
+  const usersById=Object.fromEntries(d.users.map(x=>[x.id,messageUser(x)]));
+  res.json({
+    messages:arr.map(m=>({
+      id:m.id,scope:m.scope,fromId:m.fromId,toId:m.toId||null,text:m.text,createdAt:m.createdAt,
+      from:usersById[m.fromId]||{id:m.fromId,displayName:'Utilisateur'}
+    }))
+  });
+});
+
+app.post('/api/messages', needLogin, (req,res)=>{
+  const d=load(); const u=current(req);
+  if(!canUseMessaging(u)) return res.status(403).json({error:'Messagerie indisponible pour ce compte'});
+  const scope=req.body&&req.body.scope==='private'?'private':'general';
+  const text=String(req.body&&req.body.text||'').trim();
+  if(!text) return res.status(400).json({error:'Message vide'});
+  if(text.length>2000) return res.status(400).json({error:'Message trop long (2000 caractères maximum)'});
+  let toId=null;
+  if(scope==='private'){
+    toId=String(req.body&&req.body.toId||'');
+    const peer=d.users.find(x=>x.id===toId);
+    if(!peer || !canUseMessaging(peer) || peer.id===u.id) return res.status(400).json({error:'Destinataire invalide'});
+  }
+  const m={
+    id:crypto.randomUUID?crypto.randomUUID():crypto.randomBytes(16).toString('hex'),
+    scope,fromId:u.id,toId,text,
+    createdAt:new Date().toISOString(),
+    readBy:[u.id]
+  };
+  d.messages.push(m); trimMessages(d); save(d);
+  res.json({ok:true,id:m.id,createdAt:m.createdAt});
+});
+
+app.post('/api/messages/read', needLogin, (req,res)=>{
+  const d=load(); const u=current(req);
+  if(!canUseMessaging(u)) return res.status(403).json({error:'Messagerie indisponible pour ce compte'});
+  const scope=req.body&&req.body.scope==='private'?'private':'general';
+  const peerId=String(req.body&&req.body.peerId||'');
+  let changed=false;
+  for(const m of d.messages||[]){
+    const relevant=scope==='general'
+      ? m.scope==='general'
+      : m.scope==='private'&&((m.fromId===u.id&&m.toId===peerId)||(m.fromId===peerId&&m.toId===u.id));
+    if(relevant && m.fromId!==u.id){
+      m.readBy=Array.isArray(m.readBy)?m.readBy:[];
+      if(!m.readBy.includes(u.id)){m.readBy.push(u.id);changed=true;}
+    }
+  }
+  if(changed) save(d);
+  res.json({ok:true});
 });
 
 app.post('/api/note', needLogin, needOperational, (req,res)=>{
