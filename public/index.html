@@ -2558,6 +2558,69 @@ body:not(.lightMode) .consigneNav.activeNav .consigneCount{
 }
 .loginSecurityLock{font-size:12px;filter:saturate(.7)}
 
+
+
+/* V87 - Messagerie interne PHENIX */
+.messengerRoot{position:fixed;right:22px;bottom:22px;z-index:140}
+.messengerBubble{
+  position:relative;width:58px;height:58px;border-radius:50%!important;
+  display:grid!important;place-items:center!important;padding:0!important;
+  background:#0b5ea7!important;border:2px solid #3d82bd!important;color:#fff!important;
+  box-shadow:0 10px 28px rgba(0,0,0,.32)!important
+}
+.messengerBubble:hover{background:#0870c5!important;transform:translateY(-1px)}
+.messengerIcon{font-size:25px;line-height:1}
+.messengerBadge{
+  position:absolute;right:-5px;top:-5px;min-width:22px;height:22px;padding:0 6px;
+  border-radius:999px;background:#d51f2b;color:#fff;border:2px solid #fff;
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900
+}
+.messengerPanel{
+  position:absolute;right:0;bottom:72px;width:min(410px,calc(100vw - 28px));height:min(610px,calc(100vh - 110px));
+  display:flex;flex-direction:column;overflow:hidden;border-radius:17px;
+  background:#0a1828;border:1px solid #31506d;box-shadow:0 22px 60px rgba(0,0,0,.42);
+  color:#edf4fb
+}
+.messengerHead{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:13px 14px;background:#082b63;border-bottom:1px solid #31506d;color:#fff
+}
+.messengerHead b{font-size:15px}.messengerSub{font-size:10px;color:#b9cbe0;margin-top:2px}
+.messengerHeadActions{display:flex;gap:5px}
+.messengerIconBtn{width:34px!important;height:34px!important;min-width:34px!important;padding:0!important;border-radius:9px!important;background:rgba(255,255,255,.10)!important;color:#fff!important}
+.messengerIconBtn.off{opacity:.48}
+.messengerChooser{display:flex;gap:7px;padding:10px;background:#0c1d30;border-bottom:1px solid #263f57}
+.messengerChooser select{min-width:0;flex:1;background:#10263b!important;color:#edf4fb!important;border-color:#31506d!important}
+.messengerModeBtn{height:38px!important;padding:0 10px!important;font-size:12px!important;background:#122a40!important;color:#d9e7f4!important;border-color:#31506d!important}
+.messengerModeBtn.active{background:#0b5ea7!important;color:#fff!important}
+.messengerConversationTitle{padding:9px 13px;font-size:12px;font-weight:800;color:#b9cee1;border-bottom:1px solid #20394f}
+.messengerMessages{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px;background:#081522}
+.messengerEmpty{margin:auto;color:#8299af;font-size:12px;text-align:center}
+.messengerMsg{display:flex;flex-direction:column;max-width:82%}
+.messengerMsg.mine{align-self:flex-end;align-items:flex-end}.messengerMsg.other{align-self:flex-start}
+.messengerMeta{font-size:9px;color:#7f97ad;margin:0 4px 3px}
+.messengerText{padding:8px 10px;border-radius:12px;white-space:pre-wrap;word-break:break-word;font-size:13px;line-height:1.35}
+.messengerMsg.mine .messengerText{background:#0b5ea7;color:#fff;border-bottom-right-radius:4px}
+.messengerMsg.other .messengerText{background:#152b40;color:#edf4fb;border:1px solid #29465f;border-bottom-left-radius:4px}
+.messengerComposer{display:flex;gap:8px;padding:10px;background:#0c1d30;border-top:1px solid #263f57}
+.messengerComposer textarea{flex:1;resize:none;min-height:42px!important;max-height:100px;background:#10263b!important;color:#edf4fb!important;border-color:#31506d!important}
+.messengerSendBtn{align-self:flex-end;height:42px!important;padding:0 13px!important}
+body.lightMode .messengerPanel{background:#fff;color:#14243b;border-color:#b9c9d9}
+body.lightMode .messengerHead{background:#082b63;color:#fff}
+body.lightMode .messengerChooser{background:#edf3f9;border-color:#cbd8e4}
+body.lightMode .messengerChooser select{background:#fff!important;color:#14243b!important;border-color:#b8c8d8!important}
+body.lightMode .messengerModeBtn{background:#e5eef7!important;color:#174367!important;border-color:#bfd0df!important}
+body.lightMode .messengerModeBtn.active{background:#0b5ea7!important;color:#fff!important}
+body.lightMode .messengerConversationTitle{color:#405970;border-color:#d2dde8}
+body.lightMode .messengerMessages{background:#f6f9fc}
+body.lightMode .messengerMsg.other .messengerText{background:#fff;color:#14243b;border-color:#c8d5e2}
+body.lightMode .messengerComposer{background:#edf3f9;border-color:#cbd8e4}
+body.lightMode .messengerComposer textarea{background:#fff!important;color:#14243b!important;border-color:#b8c8d8!important}
+@media(max-width:600px){
+  .messengerRoot{right:12px;bottom:12px}
+  .messengerPanel{position:fixed;left:8px;right:8px;bottom:78px;width:auto;height:min(72vh,620px)}
+}
+
 </style></head><body>
 <div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
   <div class="phenixLoadingCard">
@@ -2897,7 +2960,7 @@ async function logout(){await api('/api/logout',{method:'POST'});location.reload
 async function refresh(){return refreshSafe(true)}
 async function refreshSafe(force=false){if(!force && shouldPauseRefresh()) return; S=await api('/api/data');$('agentName').textContent=S.user.displayName;const dash=S.user.role==='dashboard';
 document.body.classList.toggle('dashboardMode',dash);
-if($('dashZoomTools'))$('dashZoomTools').classList.toggle('hidden',!dash);applyRoleNavigation();$('createCrewBtn').classList.toggle('hidden',dash);if((dash||phenixRole()==='operateur')&&!['dash','notes','links','consignes','events','settings'].includes(activeSection))activeSection='dash';checkCrewChanges(S.crews);renderAll(force);updateNotifButton()}
+if($('dashZoomTools'))$('dashZoomTools').classList.toggle('hidden',!dash);applyRoleNavigation();$('createCrewBtn').classList.toggle('hidden',dash);if((dash||phenixRole()==='operateur')&&!['dash','notes','links','consignes','events','settings'].includes(activeSection))activeSection='dash';checkCrewChanges(S.crews);renderAll(force);updateNotifButton();updateMessengerUI();if(messengerOpen)refreshOpenMessenger().catch(()=>{})}
 function shouldPauseRefresh(){const el=document.activeElement; if(el && ['INPUT','TEXTAREA','SELECT'].includes(el.tagName)) return true; return ['personnel','admin','notes'].includes(activeSection)}
 function show(id){
   document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('activeNav',b.getAttribute('onclick')===`show('${id}')`));
@@ -3714,6 +3777,134 @@ function downloadSignatureHtml(){
   a.href=URL.createObjectURL(blob);a.download='signature-phenix-outlook.html';document.body.appendChild(a);a.click();a.remove();
 }
 
+
+
+let messengerOpen=false;
+let messengerScope='general';
+let messengerPeerId='';
+let messengerLastUnread=0;
+let messengerSoundEnabled=localStorage.getItem('phenixMessengerSound')!=='0';
+let messengerLoadedMessageIds=new Set();
+
+function messengerAvailable(){
+  return !!(S&&S.user&&phenixRole()!=='dashboard'&&S.messaging&&S.messaging.enabled);
+}
+function updateMessengerUI(){
+  const root=$('messengerRoot'); if(!root)return;
+  root.classList.toggle('hidden',!messengerAvailable());
+  if(!messengerAvailable())return;
+  const unread=Number(S.messaging&&S.messaging.unread||0);
+  const badge=$('messengerBadge');
+  if(badge){
+    badge.textContent=unread>99?'99+':String(unread);
+    badge.classList.toggle('hidden',unread<=0);
+  }
+  const sound=$('messengerSoundBtn');
+  if(sound){sound.classList.toggle('off',!messengerSoundEnabled);sound.textContent=messengerSoundEnabled?'🔔':'🔕'}
+  renderMessengerUsers();
+
+  if(unread>messengerLastUnread && messengerLastUnread>=0 && messengerSoundEnabled){
+    playMessengerSound();
+  }
+  messengerLastUnread=unread;
+}
+function renderMessengerUsers(){
+  const sel=$('chatUserSelect'); if(!sel)return;
+  const current=sel.value;
+  const users=Array.isArray(S.messageUsers)?S.messageUsers:[];
+  sel.innerHTML='<option value="">Message privé…</option>'+users.map(u=>`<option value="${esc(u.id)}">${esc(u.displayName)} — ${esc(u.role||'')}</option>`).join('');
+  if(users.some(u=>u.id===current))sel.value=current;
+  else if(messengerScope==='private'&&users.some(u=>u.id===messengerPeerId))sel.value=messengerPeerId;
+}
+function playMessengerSound(){
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC)return;
+    const ctx=new AC(),o=ctx.createOscillator(),g=ctx.createGain();
+    o.type='sine';o.frequency.setValueAtTime(740,ctx.currentTime);o.frequency.setValueAtTime(920,ctx.currentTime+.09);
+    g.gain.setValueAtTime(.0001,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.11,ctx.currentTime+.01);g.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+.22);
+    o.connect(g);g.connect(ctx.destination);o.start();o.stop(ctx.currentTime+.23);o.onended=()=>ctx.close();
+  }catch(e){}
+}
+function toggleMessengerSound(){
+  messengerSoundEnabled=!messengerSoundEnabled;
+  localStorage.setItem('phenixMessengerSound',messengerSoundEnabled?'1':'0');
+  updateMessengerUI();
+  if(messengerSoundEnabled)playMessengerSound();
+}
+function toggleMessenger(){messengerOpen?closeMessenger():openMessenger()}
+async function openMessenger(){
+  if(!messengerAvailable())return;
+  messengerOpen=true;
+  $('messengerPanel').classList.remove('hidden');
+  renderMessengerUsers();
+  await loadMessengerConversation();
+  setTimeout(()=>$('messengerInput')?.focus(),30);
+}
+function closeMessenger(){messengerOpen=false;$('messengerPanel')?.classList.add('hidden')}
+function selectGeneralChat(){
+  messengerScope='general';messengerPeerId='';
+  $('chatGeneralBtn')?.classList.add('active');
+  if($('chatUserSelect'))$('chatUserSelect').value='';
+  $('messengerConversationTitle').textContent='Discussion générale';
+  if(messengerOpen)loadMessengerConversation();
+}
+function selectPrivateChat(id){
+  if(!id){selectGeneralChat();return}
+  messengerScope='private';messengerPeerId=id;
+  $('chatGeneralBtn')?.classList.remove('active');
+  const u=(S.messageUsers||[]).find(x=>x.id===id);
+  $('messengerConversationTitle').textContent=u?'Discussion avec '+u.displayName:'Discussion privée';
+  if(messengerOpen)loadMessengerConversation();
+}
+async function loadMessengerConversation(){
+  if(!messengerAvailable())return;
+  const qs=new URLSearchParams({scope:messengerScope});
+  if(messengerScope==='private')qs.set('peerId',messengerPeerId);
+  if(messengerScope==='private'&&!messengerPeerId)return;
+  try{
+    const data=await api('/api/messages?'+qs.toString());
+    renderMessengerMessages(data.messages||[]);
+    await api('/api/messages/read',{method:'POST',body:JSON.stringify({scope:messengerScope,peerId:messengerPeerId})});
+    if(S.messaging)S.messaging.unread=Math.max(0,Number(S.messaging.unread||0)-(data.messages||[]).filter(m=>m.fromId!==S.user.id&&!messengerLoadedMessageIds.has(m.id)).length);
+    updateMessengerUI();
+  }catch(e){$('messengerMessages').innerHTML='<div class="messengerEmpty">'+esc(e.message)+'</div>'}
+}
+function renderMessengerMessages(messages){
+  const box=$('messengerMessages');if(!box)return;
+  if(!messages.length){box.innerHTML='<div class="messengerEmpty">Aucun message pour le moment.</div>';messengerLoadedMessageIds=new Set();return}
+  messengerLoadedMessageIds=new Set(messages.map(m=>m.id));
+  box.innerHTML=messages.map(m=>{
+    const mine=m.fromId===S.user.id;
+    const dt=new Date(m.createdAt);
+    return `<div class="messengerMsg ${mine?'mine':'other'}">
+      <div class="messengerMeta">${mine?'Vous':esc(m.from&&m.from.displayName||'Utilisateur')} · ${dt.toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
+      <div class="messengerText">${esc(m.text)}</div>
+    </div>`;
+  }).join('');
+  box.scrollTop=box.scrollHeight;
+}
+async function sendMessengerMessage(ev){
+  ev&&ev.preventDefault();
+  const input=$('messengerInput');const text=String(input&&input.value||'').trim();
+  if(!text)return;
+  if(messengerScope==='private'&&!messengerPeerId){alert('Choisissez un utilisateur.');return}
+  try{
+    await api('/api/messages',{method:'POST',body:JSON.stringify({scope:messengerScope,toId:messengerPeerId,text})});
+    input.value='';
+    await loadMessengerConversation();
+  }catch(e){alert(e.message)}
+}
+function messengerKeyDown(e){
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessengerMessage(e)}
+}
+async function refreshOpenMessenger(){
+  if(!messengerOpen||!messengerAvailable())return;
+  const input=$('messengerInput');
+  if(document.activeElement===input && String(input.value||'').trim())return;
+  await loadMessengerConversation();
+}
+
 </script>
 
 
@@ -3763,6 +3954,44 @@ function downloadSignatureHtml(){
       </div>
       <div id="signatureStatus" class="mut" style="margin-top:8px"></div>
     </div>
+  </div>
+</div>
+
+
+<div id="messengerRoot" class="messengerRoot hidden">
+  <button id="messengerBubble" class="messengerBubble" type="button" onclick="toggleMessenger()" title="Messagerie">
+    <span class="messengerIcon">💬</span>
+    <span id="messengerBadge" class="messengerBadge hidden">0</span>
+  </button>
+
+  <div id="messengerPanel" class="messengerPanel hidden" role="dialog" aria-label="Messagerie PHENIX">
+    <div class="messengerHead">
+      <div>
+        <b>Messagerie PHENIX</b>
+        <div class="messengerSub">Discussions internes</div>
+      </div>
+      <div class="messengerHeadActions">
+        <button id="messengerSoundBtn" class="messengerIconBtn" type="button" onclick="toggleMessengerSound()" title="Son des messages">🔔</button>
+        <button class="messengerIconBtn" type="button" onclick="closeMessenger()" title="Fermer">×</button>
+      </div>
+    </div>
+
+    <div class="messengerChooser">
+      <button id="chatGeneralBtn" class="messengerModeBtn active" type="button" onclick="selectGeneralChat()">Discussion générale</button>
+      <select id="chatUserSelect" onchange="selectPrivateChat(this.value)">
+        <option value="">Message privé…</option>
+      </select>
+    </div>
+
+    <div id="messengerConversationTitle" class="messengerConversationTitle">Discussion générale</div>
+    <div id="messengerMessages" class="messengerMessages">
+      <div class="messengerEmpty">Aucun message pour le moment.</div>
+    </div>
+
+    <form class="messengerComposer" onsubmit="sendMessengerMessage(event)">
+      <textarea id="messengerInput" maxlength="2000" rows="2" placeholder="Écrivez votre message…" onkeydown="messengerKeyDown(event)"></textarea>
+      <button class="primary messengerSendBtn" type="submit">Envoyer</button>
+    </form>
   </div>
 </div>
 
