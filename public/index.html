@@ -2875,7 +2875,40 @@ body:not(.lightMode) .flashMessage{
 .loginOptionBtn svg{width:30px;height:30px;display:block}
 .loginMainButton{width:100%;min-height:46px;order:1}.loginOptions{order:2}
 @media(max-width:520px){.loginActionRow{align-items:stretch}.loginMainButton{width:100%}.loginOptionBtn{width:44px;height:44px;min-width:44px}}
-</style></head><body>
+</style>
+<style>
+
+/* Options de connexion centrées sous le bouton Se connecter */
+.login-options,
+.signin-options,
+#loginOptions,
+#signinOptions,
+.auth-options,
+.connection-options {
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+.login-options-icons,
+.signin-options-icons,
+.auth-options-icons,
+.connection-options-icons {
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 14px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+</style>
+</head><body>
 <div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
   <div class="phenixLoadingCard">
     <img class="phenixLoadingLogo" src="/logo.png" alt="Logo PHENIX">
