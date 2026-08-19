@@ -415,7 +415,9 @@ app.get('/api/messages/users', needLogin, (req,res)=>{
 app.get('/api/messages/threads', needLogin, (req,res)=>{
   const d=load(); const u=current(req);
   if(!canUseMessaging(u)) return res.status(403).json({error:'Messagerie indisponible pour ce compte'});
-  const visible=(d.messages||[]).filter(m=>messageVisibleTo(m,u.id));
+  const visible=(d.messages||[]).filter(m=>
+    messageVisibleTo(m,u.id) && messageAfterThreadDelete(d,u,m)
+  );
   const usersById=Object.fromEntries(d.users.map(x=>[x.id,messageUser(x)]));
   const threads=[];
 
