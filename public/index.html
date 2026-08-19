@@ -4120,14 +4120,32 @@ function renderMessengerThreads(){
 }
 
 async function deleteMessengerThread(scope,peerId,title){
-  const label=scope==='general'?'la discussion générale':'la discussion avec '+String(title||'cet utilisateur');
+  if(scope!=='private')return;
+  const label='la discussion avec '+String(title||'cet utilisateur');
   if(!confirm('Supprimer '+label+' de votre liste ?\n\nLes autres participants conserveront leurs messages.'))return;
   try{
-    await api('/api/messages/thread/delete',{method:'POST',body:JSON.stringify({scope,peerId})});
-    if(messengerView==='chat' && messengerScope===scope && String(messengerPeerId||'')===String(peerId||'')) showMessengerThreads();
-    await refreshSafe(true);
+    await api('/api/messages/thread/delete',{
+      method:'POST',
+      body:JSON.stringify({scope:'private',peerId:String(peerId||'')})
+    });
+
+    // Retrait immédiat de la liste locale.
+    messengerThreadsCache=(messengerThreadsCache||[]).filter(t=>
+      !(t.scope==='private' && String(t.peerId||'')===String(peerId||''))
+    );
+    renderMessengerThreads();
+
+    if(messengerView==='chat' && messengerScope==='private' &&
+       String(messengerPeerId||'')===String(peerId||'')){
+      showMessengerThreads();
+    }
+
+    // Relecture serveur pour confirmer l'état.
     await loadMessengerThreads();
-  }catch(e){alert(e.message)}
+    await refreshSafe(true);
+  }catch(e){
+    alert('Impossible de supprimer la discussion : '+e.message);
+  }
 }
 
 function showMessengerThreads(){
