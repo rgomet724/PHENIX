@@ -2653,6 +2653,54 @@ body.lightMode .messengerThread:hover{background:#eef5fb;border-color:#98b9d4}
 body.lightMode .messengerThreadPreview{color:#60768b}
 body.lightMode .messengerThreadTime{color:#71869a}
 
+
+
+/* V89 - Nouvelle discussion sécurisée + suppression des discussions */
+.messengerNewPrivate{padding:10px!important}
+.messengerNewDiscussionBtn{
+  width:100%!important;height:42px!important;font-size:13px!important;font-weight:800!important;
+  border-radius:10px!important
+}
+.messengerThread{
+  grid-template-columns:42px minmax(0,1fr) auto auto!important;
+}
+.messengerThreadTrash{
+  width:32px!important;height:32px!important;min-width:32px!important;padding:0!important;
+  border-radius:8px!important;background:transparent!important;color:#9db0c3!important;
+  border:1px solid transparent!important;font-size:16px!important;opacity:.72
+}
+.messengerThreadTrash:hover{
+  background:#3a1820!important;color:#ffb3b8!important;border-color:#6f2632!important;opacity:1
+}
+body.lightMode .messengerThreadTrash{color:#60758a!important}
+body.lightMode .messengerThreadTrash:hover{
+  background:#fee2e2!important;color:#b91c1c!important;border-color:#fecaca!important
+}
+.messengerNewBox{width:min(540px,94vw)!important}
+.messengerNewHead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.messengerNewHead h2{margin:0 0 4px}
+.messengerUserSearch{margin:14px 0 10px}
+.messengerUserDirectory{
+  max-height:380px;overflow:auto;display:grid;gap:7px;
+  border:1px solid #29465e;border-radius:12px;padding:7px;background:#081522
+}
+.messengerUserEntry{
+  display:grid;grid-template-columns:38px minmax(0,1fr) auto;gap:10px;align-items:center;
+  padding:9px 10px;border-radius:10px;background:#10263a;border:1px solid #29465e
+}
+.messengerUserEntry:hover{background:#15314b;border-color:#3d6484}
+.messengerUserAvatar{
+  width:36px;height:36px;border-radius:50%;display:grid;place-items:center;
+  background:#0b5ea7;color:#fff;font-weight:900
+}
+.messengerUserName{font-size:13px;font-weight:800;color:#edf4fb}
+.messengerUserEntry button{height:34px!important;padding:0 10px!important;font-size:12px!important}
+body.lightMode .messengerNewBox{background:#f8fafc!important;color:#14243b!important}
+body.lightMode .messengerUserDirectory{background:#f6f9fc;border-color:#cbd8e4}
+body.lightMode .messengerUserEntry{background:#fff;border-color:#c8d5e2}
+body.lightMode .messengerUserEntry:hover{background:#eef5fb;border-color:#98b9d4}
+body.lightMode .messengerUserName{color:#14243b}
+
 </style></head><body>
 <div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
   <div class="phenixLoadingCard">
@@ -3817,6 +3865,7 @@ let messengerView='threads';
 let messengerScope='general';
 let messengerPeerId='';
 let messengerThreadsCache=[];
+let messengerUserDirectoryCache=[];
 let messengerLastUnread=0;
 let messengerLastNotifiedMessageId=localStorage.getItem('phenixMessengerLastNotified')||'';
 let messengerSoundEnabled=localStorage.getItem('phenixMessengerSound')!=='0';
@@ -3825,12 +3874,47 @@ let messengerLoadedMessageIds=new Set();
 function messengerAvailable(){
   return !!(S&&S.user&&phenixRole()!=='dashboard'&&S.messaging&&S.messaging.enabled);
 }
+async function loadMessengerUserDirectory(){
+  try{
+    const data=await api('/api/messages/users');
+    messengerUserDirectoryCache=Array.isArray(data.users)?data.users:[];
+  }catch(e){
+    messengerUserDirectoryCache=Array.isArray(S.messageUsers)?S.messageUsers:[];
+  }
+  renderMessengerUserDirectory();
+}
 function renderMessengerUsers(){
-  const sel=$('chatUserSelect'); if(!sel)return;
-  const current=sel.value;
-  const users=Array.isArray(S.messageUsers)?S.messageUsers:[];
-  sel.innerHTML='<option value="">Nouvelle discussion privée…</option>'+users.map(u=>`<option value="${esc(u.id)}">${esc(u.displayName)}</option>`).join('');
-  if(users.some(u=>u.id===current))sel.value=current;
+  // Compatibilité interne : la liste est maintenant chargée depuis /api/messages/users.
+  if(!messengerUserDirectoryCache.length && Array.isArray(S.messageUsers)) messengerUserDirectoryCache=S.messageUsers;
+}
+function renderMessengerUserDirectory(){
+  const host=$('messengerUserDirectory');if(!host)return;
+  const q=String($('messengerUserSearchInput')?.value||'').trim().toLowerCase();
+  const arr=(messengerUserDirectoryCache||[]).filter(u=>!q||String(u.displayName||'').toLowerCase().includes(q));
+  if(!arr.length){
+    host.innerHTML='<div class="messengerEmpty">Aucun utilisateur trouvé.</div>';
+    return;
+  }
+  host.innerHTML=arr.map(u=>{
+    const initial=String(u.displayName||'?').trim().charAt(0).toUpperCase();
+    return `<div class="messengerUserEntry">
+      <div class="messengerUserAvatar">${esc(initial)}</div>
+      <div class="messengerUserName">${esc(u.displayName)}</div>
+      <button class="primary" type="button" onclick='startSecureDiscussion(${JSON.stringify(u.id)})'>Discuter</button>
+    </div>`;
+  }).join('');
+}
+async function openNewSecureDiscussion(){
+  if(!messengerAvailable())return;
+  if($('messengerUserSearchInput'))$('messengerUserSearchInput').value='';
+  $('messengerNewModal').style.display='grid';
+  await loadMessengerUserDirectory();
+  setTimeout(()=>$('messengerUserSearchInput')?.focus(),30);
+}
+function closeNewSecureDiscussion(){$('messengerNewModal').style.display='none'}
+async function startSecureDiscussion(userId){
+  closeNewSecureDiscussion();
+  await openThread('private',userId);
 }
 function playMessengerSound(){
   try{
@@ -3909,10 +3993,23 @@ function renderMessengerThreads(){
         <div class="messengerThreadTop"><span class="messengerThreadTitle">${esc(t.title)}</span><span class="messengerThreadTime">${esc(when)}</span></div>
         <div class="messengerThreadPreview">${esc(preview)}</div>
       </div>
-      ${Number(t.unread||0)>0?`<span class="messengerThreadUnread">${Number(t.unread)>99?'99+':Number(t.unread)}</span>`:''}
+      ${Number(t.unread||0)>0?`<span class="messengerThreadUnread">${Number(t.unread)>99?'99+':Number(t.unread)}</span>`:'<span></span>'}
+      <button type="button" class="messengerThreadTrash" title="Supprimer cette discussion" onclick='event.stopPropagation();deleteMessengerThread(${JSON.stringify(t.scope)},${JSON.stringify(t.peerId||"")},${JSON.stringify(t.title)})'>🗑</button>
     </div>`;
   }).join('');
 }
+
+async function deleteMessengerThread(scope,peerId,title){
+  const label=scope==='general'?'la discussion générale':'la discussion avec '+String(title||'cet utilisateur');
+  if(!confirm('Supprimer '+label+' de votre liste ?\n\nLes autres participants conserveront leurs messages.'))return;
+  try{
+    await api('/api/messages/thread/delete',{method:'POST',body:JSON.stringify({scope,peerId})});
+    if(messengerView==='chat' && messengerScope===scope && String(messengerPeerId||'')===String(peerId||'')) showMessengerThreads();
+    await refreshSafe(true);
+    await loadMessengerThreads();
+  }catch(e){alert(e.message)}
+}
+
 function showMessengerThreads(){
   messengerView='threads';
   $('messengerThreadsView')?.classList.remove('hidden');
@@ -3920,14 +4017,9 @@ function showMessengerThreads(){
   $('messengerBackBtn')?.classList.add('hidden');
   $('messengerHeadTitle').textContent='Messagerie PHENIX';
   $('messengerHeadSub').textContent='Discussions internes';
-  renderMessengerUsers();
   loadMessengerThreads();
 }
-function startSelectedPrivateChat(){
-  const id=$('chatUserSelect')?.value||'';
-  if(!id){alert('Choisissez un utilisateur.');return}
-  openThread('private',id);
-}
+
 async function openThread(scope,peerId=''){
   messengerScope=scope==='private'?'private':'general';
   messengerPeerId=messengerScope==='private'?String(peerId||''):'';
@@ -3939,7 +4031,8 @@ async function openThread(scope,peerId=''){
   $('messengerBackBtn')?.classList.remove('hidden');
   let title='Discussion générale';
   if(messengerScope==='private'){
-    const u=(S.messageUsers||[]).find(x=>x.id===messengerPeerId);
+    let u=(messengerUserDirectoryCache||[]).find(x=>x.id===messengerPeerId)||(S.messageUsers||[]).find(x=>x.id===messengerPeerId);
+    if(!u){await loadMessengerUserDirectory();u=(messengerUserDirectoryCache||[]).find(x=>x.id===messengerPeerId);}
     title=u?u.displayName:'Discussion privée';
   }
   $('messengerHeadTitle').textContent=title;
@@ -3952,7 +4045,6 @@ async function openMessenger(){
   if(!messengerAvailable())return;
   messengerOpen=true;
   $('messengerPanel').classList.remove('hidden');
-  renderMessengerUsers();
   updateMessengerDesktopButton();
   const threads=await loadMessengerThreads();
   const unread=threads.filter(t=>Number(t.unread||0)>0).sort((a,b)=>{
@@ -4020,7 +4112,6 @@ async function updateMessengerUI(){
   const sound=$('messengerSoundBtn');
   if(sound){sound.classList.toggle('off',!messengerSoundEnabled);sound.textContent=messengerSoundEnabled?'🔔':'🔕'}
   updateMessengerDesktopButton();
-  renderMessengerUsers();
   if(unread>messengerLastUnread&&messengerSoundEnabled)playMessengerSound();
   messengerLastUnread=unread;
   await loadMessengerThreads();
@@ -4118,10 +4209,7 @@ async function refreshOpenMessenger(){
 
     <div id="messengerThreadsView" class="messengerThreadsView">
       <div class="messengerNewPrivate">
-        <select id="chatUserSelect">
-          <option value="">Nouvelle discussion privée…</option>
-        </select>
-        <button class="primary" type="button" onclick="startSelectedPrivateChat()">Ouvrir</button>
+        <button class="primary messengerNewDiscussionBtn" type="button" onclick="openNewSecureDiscussion()">＋ Nouvelle discussion sécurisée</button>
       </div>
       <div id="messengerThreads" class="messengerThreads"></div>
     </div>
@@ -4138,4 +4226,24 @@ async function refreshOpenMessenger(){
     </div>
   </div>
 </div>
+
+<div id="messengerNewModal" class="modal">
+  <div class="box messengerNewBox">
+    <div class="messengerNewHead">
+      <div>
+        <h2>Nouvelle discussion sécurisée</h2>
+        <div class="mut">Sélectionnez un utilisateur pour démarrer une conversation privée.</div>
+      </div>
+      <button type="button" onclick="closeNewSecureDiscussion()">×</button>
+    </div>
+    <div class="messengerUserSearch">
+      <input id="messengerUserSearchInput" placeholder="Rechercher un utilisateur…" oninput="renderMessengerUserDirectory()">
+    </div>
+    <div id="messengerUserDirectory" class="messengerUserDirectory"></div>
+    <div class="row" style="justify-content:flex-end;margin-top:12px">
+      <button type="button" onclick="closeNewSecureDiscussion()">Fermer</button>
+    </div>
+  </div>
+</div>
+
 </body></html>
