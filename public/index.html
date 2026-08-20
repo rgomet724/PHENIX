@@ -2943,99 +2943,95 @@ body:not(.lightMode) .flashMessage{
 }
 
 
-/* OPTION A — Double panneau, vraie messagerie desktop */
+/* OPTION B — Centre opérationnel plein écran */
+.messengerRoot{z-index:180!important}
 .messengerPanel{
-  width:min(860px,calc(100vw - 50px))!important;
-  height:min(650px,calc(100vh - 110px))!important;
-  border-radius:16px!important;
-  overflow:hidden!important;
-  background:#071421!important;
-  border:1px solid #2d4d68!important;
-  box-shadow:0 30px 90px rgba(0,0,0,.55)!important;
+  position:fixed!important;
+  left:50%!important;top:50%!important;right:auto!important;bottom:auto!important;
+  transform:translate(-50%,-50%)!important;
+  width:min(980px,94vw)!important;
+  height:min(720px,88vh)!important;
+  border-radius:8px!important;
+  background:#06111d!important;
+  border:1px solid #36536b!important;
+  box-shadow:0 35px 100px rgba(0,0,0,.66)!important;
 }
 .messengerHead{
-  height:58px!important;
-  background:linear-gradient(90deg,#0756b3,#0876df)!important;
-  padding:0 16px!important;
+  height:62px!important;
+  background:#082746!important;
+  border-bottom:3px solid #0b72c9!important;
 }
-.messengerThreadsView{
-  position:absolute!important;
-  left:0!important;
-  top:58px!important;
-  bottom:0!important;
-  width:320px!important;
-  border-right:1px solid #29465e!important;
-  background:#0a1828!important;
+.messengerThreadsView,.messengerChatView{background:#08131f!important}
+.messengerNewPrivate{
+  padding:12px 16px!important;
+  background:#0a1a29!important;
+  border-bottom:1px solid #29465e!important;
 }
-.messengerChatView{
-  position:absolute!important;
-  left:320px!important;
-  right:0!important;
-  top:58px!important;
-  bottom:0!important;
-  background:#0b1622!important;
+.messengerNewDiscussionBtn{
+  width:auto!important;
+  min-width:230px!important;
+  border-radius:4px!important;
+  background:#0c4f87!important;
+  text-transform:uppercase!important;
+  letter-spacing:.4px!important;
 }
-.messengerNewPrivate{padding:12px!important;background:#0c1d30!important}
-.messengerNewDiscussionBtn{width:100%!important;height:42px!important;border-radius:8px!important}
-.messengerThreads{padding:8px!important}
+.messengerThreads{padding:0!important}
 .messengerThread{
-  grid-template-columns:44px minmax(0,1fr) auto auto!important;
-  padding:10px!important;
-  margin:4px 0!important;
-  border-radius:9px!important;
+  grid-template-columns:42px minmax(0,1fr) 64px 38px!important;
+  min-height:62px!important;
   border:0!important;
-  background:transparent!important;
+  border-bottom:1px solid #20384a!important;
+  border-radius:0!important;
+  margin:0!important;
+  padding:9px 14px!important;
+  background:#081724!important;
 }
-.messengerThread:hover{background:#132a40!important}
-.messengerThreadAvatar{
-  width:40px!important;height:40px!important;
-  border-radius:9px!important;
-  background:#0b5ea7!important;
+.messengerThread:hover{background:#0e2638!important}
+.messengerThreadAvatar{border-radius:4px!important;background:#123f67!important}
+.messengerThreadTitle{
+  font-size:12px!important;
+  text-transform:uppercase!important;
+  letter-spacing:.35px!important;
 }
-.messengerConversationTitle{
-  height:46px!important;
-  display:flex!important;align-items:center!important;
-  padding:0 16px!important;
-  background:#0d2134!important;
-  border-bottom:1px solid #28445a!important;
-  font-size:13px!important;
-}
+.messengerThreadPreview{font-size:11px!important}
+.messengerThreadUnread{border-radius:4px!important}
 .messengerMessages{
-  position:absolute!important;
-  left:0!important;right:0!important;top:46px!important;bottom:72px!important;
-  padding:16px 18px!important;
-  overflow:auto!important;
-  background:#08131e!important;
+  padding:14px 18px!important;
+  background:
+    linear-gradient(rgba(255,255,255,.012) 1px,transparent 1px),
+    #06111d!important;
+  background-size:100% 34px!important;
+}
+.messengerMsg{max-width:100%!important;align-self:stretch!important}
+.messengerText{
+  border-radius:3px!important;
+  padding:9px 11px!important;
+}
+.messengerMsg.mine .messengerText{
+  background:#0b3558!important;
+  border-left:4px solid #2385dc!important;
+}
+.messengerMsg.other .messengerText{
+  background:#0d1e2c!important;
+  border:1px solid #263e51!important;
+  border-left:4px solid #607d94!important;
 }
 .messengerComposer{
-  position:absolute!important;
-  left:0!important;right:0!important;bottom:0!important;
-  height:72px!important;
-  padding:10px 12px!important;
-  background:#0c1d2c!important;
+  background:#091826!important;
   border-top:1px solid #29465e!important;
 }
-.messengerComposer textarea{
-  min-height:50px!important;max-height:50px!important;
-  border-radius:9px!important;
-}
+.messengerComposer textarea{border-radius:4px!important}
+.messengerSendBtn{border-radius:4px!important}
 .messengerBubble{
-  width:58px!important;height:58px!important;border-radius:14px!important;
+  border-radius:8px!important;
+  background:#0c4f87!important;
 }
-@media(max-width:760px){
-  .messengerPanel{
-    position:fixed!important;left:6px!important;right:6px!important;bottom:74px!important;
-    width:auto!important;height:78vh!important;
-  }
-  .messengerThreadsView{width:100%!important}
-  .messengerChatView{left:0!important}
-}
-body.lightMode .messengerPanel{background:#fff!important;border-color:#c7d6e4!important}
-body.lightMode .messengerThreadsView{background:#f8fafc!important;border-color:#d4e0eb!important}
-body.lightMode .messengerChatView{background:#fff!important}
-body.lightMode .messengerThread:hover{background:#eaf2fb!important}
-body.lightMode .messengerMessages{background:#f4f7fb!important}
-body.lightMode .messengerConversationTitle{background:#edf4fb!important;color:#173a5e!important}
+body.lightMode .messengerPanel{background:#f8fafc!important}
+body.lightMode .messengerThread{background:#fff!important;border-color:#d8e2eb!important}
+body.lightMode .messengerThread:hover{background:#edf3f8!important}
+body.lightMode .messengerMessages{background:#f5f7fa!important}
+body.lightMode .messengerMsg.mine .messengerText{background:#dcecff!important;color:#12345b!important}
+body.lightMode .messengerMsg.other .messengerText{background:#fff!important;color:#172033!important}
 
 </style>
 
