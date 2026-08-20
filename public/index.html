@@ -2943,95 +2943,49 @@ body:not(.lightMode) .flashMessage{
 }
 
 
-/* OPTION B — Centre opérationnel plein écran */
-.messengerRoot{z-index:180!important}
-.messengerPanel{
-  position:fixed!important;
-  left:50%!important;top:50%!important;right:auto!important;bottom:auto!important;
-  transform:translate(-50%,-50%)!important;
-  width:min(980px,94vw)!important;
-  height:min(720px,88vh)!important;
-  border-radius:8px!important;
-  background:#06111d!important;
-  border:1px solid #36536b!important;
-  box-shadow:0 35px 100px rgba(0,0,0,.66)!important;
+/* V33 - Statut de lecture + aperçu message légèrement agrandi */
+.messengerDeliveryStatus{
+  display:flex;
+  justify-content:flex-end;
+  align-items:center;
+  gap:4px;
+  margin-top:3px;
+  padding-right:3px;
+  font-size:10px;
+  line-height:1;
+  font-weight:800;
+  user-select:none;
 }
-.messengerHead{
-  height:62px!important;
-  background:#082746!important;
-  border-bottom:3px solid #0b72c9!important;
+.messengerDeliveryStatus .deliveryArrows{
+  letter-spacing:-3px;
+  padding-right:3px;
 }
-.messengerThreadsView,.messengerChatView{background:#08131f!important}
-.messengerNewPrivate{
-  padding:12px 16px!important;
-  background:#0a1a29!important;
-  border-bottom:1px solid #29465e!important;
+.messengerDeliveryStatus.received{color:#8b9bad}
+.messengerDeliveryStatus.read{color:#38a7ff}
+.messengerDeliveryStatus .deliveryLabel{
+  margin-left:3px;
+  font-size:9px;
+  letter-spacing:0;
+  font-weight:600;
+  opacity:.9;
 }
-.messengerNewDiscussionBtn{
-  width:auto!important;
-  min-width:230px!important;
-  border-radius:4px!important;
-  background:#0c4f87!important;
-  text-transform:uppercase!important;
-  letter-spacing:.4px!important;
+
+/* Aperçu du nouveau message : un peu plus grand sans devenir envahissant */
+.messengerPreview{
+  width:325px!important;
+  min-height:70px!important;
+  padding:12px 14px!important;
 }
-.messengerThreads{padding:0!important}
-.messengerThread{
-  grid-template-columns:42px minmax(0,1fr) 64px 38px!important;
-  min-height:62px!important;
-  border:0!important;
-  border-bottom:1px solid #20384a!important;
-  border-radius:0!important;
-  margin:0!important;
-  padding:9px 14px!important;
-  background:#081724!important;
+.messengerPreviewSender{font-size:13px!important}
+.messengerPreviewText{font-size:12px!important;line-height:1.4!important}
+.messengerPreviewTime{font-size:10px!important}
+
+@media(max-width:600px){
+  .messengerPreview{
+    width:auto!important;
+    min-height:68px!important;
+  }
 }
-.messengerThread:hover{background:#0e2638!important}
-.messengerThreadAvatar{border-radius:4px!important;background:#123f67!important}
-.messengerThreadTitle{
-  font-size:12px!important;
-  text-transform:uppercase!important;
-  letter-spacing:.35px!important;
-}
-.messengerThreadPreview{font-size:11px!important}
-.messengerThreadUnread{border-radius:4px!important}
-.messengerMessages{
-  padding:14px 18px!important;
-  background:
-    linear-gradient(rgba(255,255,255,.012) 1px,transparent 1px),
-    #06111d!important;
-  background-size:100% 34px!important;
-}
-.messengerMsg{max-width:100%!important;align-self:stretch!important}
-.messengerText{
-  border-radius:3px!important;
-  padding:9px 11px!important;
-}
-.messengerMsg.mine .messengerText{
-  background:#0b3558!important;
-  border-left:4px solid #2385dc!important;
-}
-.messengerMsg.other .messengerText{
-  background:#0d1e2c!important;
-  border:1px solid #263e51!important;
-  border-left:4px solid #607d94!important;
-}
-.messengerComposer{
-  background:#091826!important;
-  border-top:1px solid #29465e!important;
-}
-.messengerComposer textarea{border-radius:4px!important}
-.messengerSendBtn{border-radius:4px!important}
-.messengerBubble{
-  border-radius:8px!important;
-  background:#0c4f87!important;
-}
-body.lightMode .messengerPanel{background:#f8fafc!important}
-body.lightMode .messengerThread{background:#fff!important;border-color:#d8e2eb!important}
-body.lightMode .messengerThread:hover{background:#edf3f8!important}
-body.lightMode .messengerMessages{background:#f5f7fa!important}
-body.lightMode .messengerMsg.mine .messengerText{background:#dcecff!important;color:#12345b!important}
-body.lightMode .messengerMsg.other .messengerText{background:#fff!important;color:#172033!important}
 
 </style>
 
@@ -4348,6 +4302,27 @@ async function openMessengerPreviewThread(){
   await openThread(t.scope,t.peerId||'');
 }
 
+
+function messengerDeliveryHtml(message){
+  if(!message || message.fromId!==S.user.id) return '';
+  /*
+    Si le serveur expose déjà un état de lecture, on l'utilise.
+    Sinon on affiche "reçu" : aucun faux accusé de lecture n'est inventé.
+  */
+  const isRead=Boolean(
+    message.read===true ||
+    message.isRead===true ||
+    message.readAt ||
+    message.seenAt ||
+    message.status==='read' ||
+    message.status==='seen'
+  );
+  return '<div class="messengerDeliveryStatus '+(isRead?'read':'received')+'">'+
+    '<span class="deliveryArrows">➜➜</span>'+
+    '<span class="deliveryLabel">'+(isRead?'Lu':'Reçu')+'</span>'+
+  '</div>';
+}
+
 function maybeNotifyDesktop(thread){
   if(!thread||!thread.lastMessage||thread.lastMessage.fromId===S.user.id)return;
   const msg=thread.lastMessage;
@@ -4522,7 +4497,7 @@ function renderMessengerMessages(messages){
     const dt=new Date(m.createdAt);
     return `<div class="messengerMsg ${mine?'mine':'other'}">
       <div class="messengerMeta">${mine?'Vous':esc(m.from&&m.from.displayName||'Utilisateur')} · ${dt.toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
-      <div class="messengerText">${esc(m.text)}</div>
+      <div class="messengerText">${esc(m.text)}</div>${messengerDeliveryHtml(m)}
     </div>`;
   }).join('');
   box.scrollTop=box.scrollHeight;
