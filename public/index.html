@@ -2943,83 +2943,65 @@ body:not(.lightMode) .flashMessage{
 }
 
 
-/* OPTION 2 — CENTRE OPÉRATIONNEL */
+/* OPTION 1 — PHENIX SOBRE */
 .messengerPanel{
-  width:min(470px,calc(100vw - 28px))!important;
-  background:#071421!important;
-  border:1px solid #355269!important;
-  border-radius:8px!important;
-  box-shadow:0 20px 55px rgba(0,0,0,.5)!important;
+  width:min(430px,calc(100vw - 28px))!important;
+  background:#0a1828!important;
+  border:1px solid #294b6a!important;
+  border-radius:14px!important;
+  box-shadow:0 24px 64px rgba(0,0,0,.44)!important;
 }
 .messengerHead{
-  background:#0a2237!important;
-  border-bottom:3px solid #0b5ea7!important;
-  border-radius:0!important;
+  background:linear-gradient(90deg,#083b81,#0869cf)!important;
+  border-bottom:0!important;
+  padding:12px 14px!important;
 }
+.messengerThreadsView,.messengerMessages{background:#081522!important}
 .messengerThread{
-  grid-template-columns:34px minmax(0,1fr) auto auto!important;
-  background:#0a1928!important;
-  border:0!important;
-  border-bottom:1px solid #20384c!important;
-  border-radius:0!important;
-  margin:0!important;
-  padding:10px 8px!important;
+  background:#0e2134!important;
+  border:1px solid #213f59!important;
+  border-radius:10px!important;
+  box-shadow:none!important;
 }
-.messengerThread:hover{background:#10263a!important}
+.messengerThread:hover{background:#14304a!important;border-color:#35678f!important}
 .messengerThreadAvatar{
-  width:30px!important;height:30px!important;
-  border-radius:4px!important;
-  background:#123d62!important;
-  font-size:13px!important;
+  border-radius:9px!important;
+  background:#0b5ea7!important;
 }
-.messengerThreadTitle{font-size:12px!important;text-transform:uppercase;letter-spacing:.25px}
-.messengerThreadPreview{font-size:11px!important}
-.messengerThreadUnread{border-radius:5px!important;background:#b91c1c!important}
-.messengerGeneralMark{border-radius:4px!important}
+.messengerThreadUnread{background:#dc2626!important}
 .messengerNewDiscussionBtn{
-  border-radius:5px!important;
-  background:#123d62!important;
-  border:1px solid #2e668e!important;
-  text-transform:uppercase!important;
-  letter-spacing:.25px!important;
-}
-.messengerConversationTitle{
-  background:#0d2133!important;
-  border-bottom:1px solid #28445a!important;
-  text-transform:uppercase!important;
-  letter-spacing:.3px!important;
-}
-.messengerMessages{background:#07131f!important;padding:8px 12px!important}
-.messengerMsg{max-width:92%!important}
-.messengerMsg.mine,.messengerMsg.other{align-self:stretch!important;align-items:stretch!important}
-.messengerText{
-  border-radius:4px!important;
-  padding:8px 10px!important;
+  background:#0b5ea7!important;
+  border:1px solid #2675b7!important;
+  border-radius:9px!important;
 }
 .messengerMsg.mine .messengerText{
-  background:#0b3558!important;
-  border-left:3px solid #2d8cff!important;
+  background:#0b5ea7!important;
+  border-radius:10px 10px 4px 10px!important;
 }
 .messengerMsg.other .messengerText{
-  background:#0c1c2a!important;
-  border:1px solid #263d50!important;
-  border-left:3px solid #607d94!important;
+  background:#132a40!important;
+  border:1px solid #294861!important;
+  border-radius:10px 10px 10px 4px!important;
 }
-.messengerMeta{
-  margin:6px 0 3px!important;
-  font-size:9px!important;
-  text-transform:uppercase!important;
+.messengerComposer{
+  background:#0b1b2d!important;
+  border-top:1px solid #27435b!important;
 }
-.messengerComposer{background:#091826!important}
-.messengerComposer textarea{border-radius:5px!important}
-.messengerSendBtn{border-radius:5px!important}
-.messengerBubble{border-radius:8px!important;background:#123d62!important}
-body.lightMode .messengerPanel{background:#f8fafc!important}
-body.lightMode .messengerThread{background:#fff!important;border-bottom-color:#d8e2eb!important}
-body.lightMode .messengerThread:hover{background:#eef3f7!important}
-body.lightMode .messengerMessages{background:#f4f7f9!important}
-body.lightMode .messengerMsg.mine .messengerText{background:#dbeafe!important;color:#12345b!important}
-body.lightMode .messengerMsg.other .messengerText{background:#fff!important;color:#172033!important}
+.messengerComposer textarea{
+  border-radius:9px!important;
+  background:#0e2236!important;
+  border-color:#31516d!important;
+}
+.messengerBubble{
+  border-radius:14px!important;
+  background:#0b5ea7!important;
+  border:1px solid #3280bd!important;
+}
+body.lightMode .messengerPanel{background:#fff!important;border-color:#c8d7e5!important}
+body.lightMode .messengerThreadsView,
+body.lightMode .messengerMessages{background:#f4f7fb!important}
+body.lightMode .messengerThread{background:#fff!important;border-color:#d2dee9!important}
+body.lightMode .messengerThread:hover{background:#eef5fb!important}
 
 </style>
 
