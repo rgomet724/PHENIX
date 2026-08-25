@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const helmet = require('helmet');
 const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const MemoryStore = require('memorystore')(session);
+const FileStore = require('session-file-store')(session);
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
@@ -12,8 +13,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const DB = "/var/data/data.json";
 const IS_PROD = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
-const SESSION_MAX_AGE_MS = 60 * 60 * 1000;       // 1 h d'inactivité
-const SESSION_ABSOLUTE_MAX_MS = 8 * 60 * 60 * 1000; // 8 h maximum
+// Session persistante longue durée : plus de déconnexion quotidienne.
+const SESSION_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 365; // 1 an
+const SESSION_TTL_SECONDS = 60 * 60 * 24 * 365;       // 1 an
 const BCRYPT_ROUNDS = 12;
 
 const SESSION_SECRET = String(process.env.SESSION_SECRET || '');
@@ -79,10 +81,6 @@ function safe(u){ return u ? {id:u.id, login:u.login, displayName:u.displayName,
 function current(req){ const d=load(); return d.users.find(u=>u.id===req.session.userId); }
 function needLogin(req,res,next){
   if(!req.session || !req.session.userId) return res.status(401).json({error:'Session expirée ou non connecté'});
-  const loginAt=Number(req.session.loginAt||0);
-  if(!loginAt || Date.now()-loginAt > SESSION_ABSOLUTE_MAX_MS){
-    return req.session.destroy(()=>res.status(401).json({error:'Session expirée, reconnecte-toi'}));
-  }
   next();
 }
 function needAdmin(req,res,next){ const u=current(req); if(!u || u.role!=='admin') return res.status(403).json({error:'Réservé admin'}); next(); }
@@ -104,7 +102,7 @@ function audit(d, req, msg){ const u=current(req); d.logs.unshift({date:new Date
 function canUseMessaging(u){ return !!u; }
 function messageUser(u){ return u ? {id:u.id, displayName:u.displayName} : null; }
 function messageVisibleTo(m,userId){
-  return m.scope==='general' || m.fromId===userId || m.toId===userId;
+  return m.scope==='private' && (m.fromId===userId || m.toId===userId);
 }
 function messageUnreadFor(m,userId){
   return m.fromId!==userId && messageVisibleTo(m,userId) && !(Array.isArray(m.readBy)&&m.readBy.includes(userId));
@@ -119,12 +117,18 @@ function messageSummary(d,u){
     lastMessageId:visible.length?visible[visible.length-1].id:null
   };
 }
+
+function notificationSoundMeta(d){
+  const n=d.notificationSound||{};
+  return {custom:!!n.custom,filename:String(n.filename||''),updatedAt:String(n.updatedAt||'')};
+}
+
 function trimMessages(d){
   d.messages=(d.messages||[]).slice(-3000);
 }
 
 function threadKey(scope,peerId){
-  return scope==='general'?'general':'private:'+String(peerId||'');
+  return 'private:'+String(peerId||'');
 }
 function threadDeletedAt(d,userId,key){
   const userMap=d.messageThreadDeletes&&d.messageThreadDeletes[userId];
@@ -132,7 +136,6 @@ function threadDeletedAt(d,userId,key){
   return v?new Date(v).getTime():0;
 }
 function messageAfterThreadDelete(d,u,m){
-  if(m.scope==='general') return true;
   const peerId=m.fromId===u.id?m.toId:m.fromId;
   const cut=threadDeletedAt(d,u.id,threadKey(m.scope,peerId));
   return !cut || new Date(m.createdAt).getTime()>cut;
@@ -224,7 +227,14 @@ app.use(helmet({
 
 app.use(express.json({limit:'4mb', strict:true}));
 
-const sessionStore = new MemoryStore({ checkPeriod: 24*60*60*1000 });
+const sessionPath = IS_PROD ? '/var/data/sessions' : path.join(__dirname,'.sessions');
+try{ fs.mkdirSync(sessionPath,{recursive:true}); }catch(e){}
+const sessionStore = new FileStore({
+  path: sessionPath,
+  ttl: SESSION_TTL_SECONDS,
+  retries: 1,
+  reapInterval: 24*60*60
+});
 app.use(session({
   name: 'phenix.sid',
   store: sessionStore,
@@ -322,7 +332,6 @@ app.post('/api/setup', authLimiter, (req,res)=>{
   req.session.regenerate(err=>{
     if(err) return res.status(500).json({error:'Impossible de créer la session'});
     req.session.userId=u.id;
-    req.session.loginAt=Date.now();
     req.session.csrfToken=newCsrfToken();
     req.session.save(()=>{
       const d2=load(); audit(d2,req,'Connexion'); save(d2);
@@ -346,7 +355,6 @@ app.post('/api/login', authLimiter, (req,res)=>{
   req.session.regenerate(err=>{
     if(err) return res.status(500).json({error:'Impossible de créer la session'});
     req.session.userId=u.id;
-    req.session.loginAt=Date.now();
     req.session.csrfToken=newCsrfToken();
     req.session.save(err2=>{
       if(err2) return res.status(500).json({error:'Impossible d’enregistrer la session'});
@@ -373,7 +381,7 @@ app.post('/api/password', needLogin, (req,res)=>{
   audit(d,req,'Changement de mot de passe'); save(d);
   req.session.regenerate(err=>{
     if(err) return res.status(500).json({error:'Mot de passe modifié, mais reconnexion nécessaire'});
-    req.session.userId=u.id; req.session.loginAt=Date.now(); req.session.csrfToken=newCsrfToken();
+    req.session.userId=u.id; req.session.csrfToken=newCsrfToken();
     req.session.save(()=>res.json({ok:true,csrfToken:req.session.csrfToken}));
   });
 });
@@ -402,6 +410,58 @@ app.get('/api/data', needLogin, (req,res)=>{
 
 
 
+
+// Messagerie temps réel
+const messageStreams = new Map();
+
+function addMessageStream(userId,res){
+  if(!messageStreams.has(userId)) messageStreams.set(userId,new Set());
+  messageStreams.get(userId).add(res);
+}
+function removeMessageStream(userId,res){
+  const set=messageStreams.get(userId);
+  if(!set) return;
+  set.delete(res);
+  if(!set.size) messageStreams.delete(userId);
+}
+function pushMessageEvent(userIds,payload){
+  const data='data: '+JSON.stringify(payload)+'\n\n';
+  for(const uid of new Set((userIds||[]).filter(Boolean))){
+    const set=messageStreams.get(uid);
+    if(!set) continue;
+    for(const res of [...set]){
+      try{res.write(data)}catch(e){removeMessageStream(uid,res)}
+    }
+  }
+}
+
+
+app.get('/api/messages/stream', needLogin, (req,res)=>{
+  const u=current(req);
+  if(!u) return res.status(401).end();
+
+  res.status(200);
+  res.set({
+    'Content-Type':'text/event-stream',
+    'Cache-Control':'no-cache, no-transform',
+    'Connection':'keep-alive',
+    'X-Accel-Buffering':'no'
+  });
+  if(res.flushHeaders) res.flushHeaders();
+
+  addMessageStream(u.id,res);
+  res.write('event: ready\ndata: {"ok":true}\n\n');
+
+  const heartbeat=setInterval(()=>{
+    try{res.write(': ping\n\n')}catch(e){}
+  },25000);
+
+  req.on('close',()=>{
+    clearInterval(heartbeat);
+    removeMessageStream(u.id,res);
+  });
+});
+
 app.get('/api/messages/users', needLogin, (req,res)=>{
   const d=load(); const u=current(req);
   if(!canUseMessaging(u)) return res.status(403).json({error:'Messagerie indisponible pour ce compte'});
@@ -421,13 +481,6 @@ app.get('/api/messages/threads', needLogin, (req,res)=>{
   const usersById=Object.fromEntries(d.users.map(x=>[x.id,messageUser(x)]));
   const threads=[];
 
-  const general=visible.filter(m=>m.scope==='general');
-  const glast=general.length?general[general.length-1]:null;
-  threads.push({
-    key:'general',scope:'general',peerId:null,title:'Discussion générale',
-    unread:general.filter(m=>messageUnreadFor(m,u.id)).length,
-    lastMessage:glast?{id:glast.id,text:glast.text,createdAt:glast.createdAt,fromId:glast.fromId,from:usersById[glast.fromId]||{id:glast.fromId,displayName:'Utilisateur'}}:null
-  });
 
   const privateMap=new Map();
   for(const m of visible){
@@ -447,8 +500,6 @@ app.get('/api/messages/threads', needLogin, (req,res)=>{
     });
   }
   threads.sort((a,b)=>{
-    if(a.scope==='general'&&b.scope!=='general') return -1;
-    if(b.scope==='general'&&a.scope!=='general') return 1;
     const da=a.lastMessage?new Date(a.lastMessage.createdAt).getTime():0;
     const db=b.lastMessage?new Date(b.lastMessage.createdAt).getTime():0;
     return db-da;
@@ -459,12 +510,10 @@ app.get('/api/messages/threads', needLogin, (req,res)=>{
 app.get('/api/messages', needLogin, (req,res)=>{
   const d=load(); const u=current(req);
   if(!canUseMessaging(u)) return res.status(403).json({error:'Messagerie indisponible pour ce compte'});
-  const scope=req.query.scope==='private'?'private':'general';
+  const scope='private';
   const peerId=String(req.query.peerId||'');
   let arr=(d.messages||[]).filter(m=>{
-    const relevant=scope==='general'
-      ? m.scope==='general'
-      : m.scope==='private' && ((m.fromId===u.id&&m.toId===peerId)||(m.fromId===peerId&&m.toId===u.id));
+    const relevant=m.scope==='private' && ((m.fromId===u.id&&m.toId===peerId)||(m.fromId===peerId&&m.toId===u.id));
     return relevant && messageAfterThreadDelete(d,u,m);
   });
   arr=arr.slice(-250);
@@ -480,16 +529,13 @@ app.get('/api/messages', needLogin, (req,res)=>{
 app.post('/api/messages', needLogin, (req,res)=>{
   const d=load(); const u=current(req);
   if(!canUseMessaging(u)) return res.status(403).json({error:'Messagerie indisponible pour ce compte'});
-  const scope=req.body&&req.body.scope==='private'?'private':'general';
+  const scope='private';
   const text=String(req.body&&req.body.text||'').trim();
   if(!text) return res.status(400).json({error:'Message vide'});
   if(text.length>2000) return res.status(400).json({error:'Message trop long (2000 caractères maximum)'});
-  let toId=null;
-  if(scope==='private'){
-    toId=String(req.body&&req.body.toId||'');
-    const peer=d.users.find(x=>x.id===toId);
-    if(!peer || !canUseMessaging(peer) || peer.id===u.id) return res.status(400).json({error:'Destinataire invalide'});
-  }
+  let toId=String(req.body&&req.body.toId||'');
+  const peer=d.users.find(x=>x.id===toId);
+  if(!peer || !canUseMessaging(peer) || peer.id===u.id) return res.status(400).json({error:'Destinataire invalide'});
   const m={
     id:crypto.randomUUID?crypto.randomUUID():crypto.randomBytes(16).toString('hex'),
     scope,fromId:u.id,toId,text,
@@ -497,6 +543,20 @@ app.post('/api/messages', needLogin, (req,res)=>{
     readBy:[u.id]
   };
   d.messages.push(m); trimMessages(d); save(d);
+
+  const recipients=[toId];
+
+  pushMessageEvent(recipients,{
+    type:'message',
+    id:m.id,
+    scope:m.scope,
+    fromId:u.id,
+    fromName:u.displayName,
+    toId:m.toId||null,
+    text:m.text,
+    createdAt:m.createdAt
+  });
+
   res.json({ok:true,id:m.id,createdAt:m.createdAt});
 });
 
@@ -532,13 +592,11 @@ app.post('/api/messages/thread/delete', needLogin, (req,res)=>{
 app.post('/api/messages/read', needLogin, (req,res)=>{
   const d=load(); const u=current(req);
   if(!canUseMessaging(u)) return res.status(403).json({error:'Messagerie indisponible pour ce compte'});
-  const scope=req.body&&req.body.scope==='private'?'private':'general';
+  const scope='private';
   const peerId=String(req.body&&req.body.peerId||'');
   let changed=false;
   for(const m of d.messages||[]){
-    const relevant=scope==='general'
-      ? m.scope==='general'
-      : m.scope==='private'&&((m.fromId===u.id&&m.toId===peerId)||(m.fromId===peerId&&m.toId===u.id));
+    const relevant=m.scope==='private'&&((m.fromId===u.id&&m.toId===peerId)||(m.fromId===peerId&&m.toId===u.id));
     if(relevant && m.fromId!==u.id){
       m.readBy=Array.isArray(m.readBy)?m.readBy:[];
       if(!m.readBy.includes(u.id)){m.readBy.push(u.id);changed=true;}
@@ -546,6 +604,63 @@ app.post('/api/messages/read', needLogin, (req,res)=>{
   }
   if(changed) save(d);
   res.json({ok:true});
+});
+
+
+app.get('/api/notification-sound', needLogin, (req,res)=>{
+  const d=load();
+  const n=d.notificationSound||{};
+  if(n.custom && n.path && fs.existsSync(n.path)){
+    const ext=path.extname(n.path).toLowerCase();
+    res.type(ext==='.mp3'?'audio/mpeg':'audio/wav');
+    return res.sendFile(path.resolve(n.path));
+  }
+  const fallback=path.join(__dirname,'public','alerte.wav');
+  if(fs.existsSync(fallback)) return res.type('audio/wav').sendFile(fallback);
+  res.status(404).end();
+});
+
+app.get('/api/admin/notification-sound', needLogin, needAdmin, (req,res)=>{
+  const d=load();
+  res.json(notificationSoundMeta(d));
+});
+
+app.post('/api/admin/notification-sound', needLogin, needAdmin, express.json({limit:'12mb'}), (req,res)=>{
+  const d=load();
+  const filename=String(req.body&&req.body.filename||'').trim();
+  const dataUrl=String(req.body&&req.body.data||'');
+  const ext=path.extname(filename).toLowerCase();
+  if(!['.mp3','.wav','.wave'].includes(ext)) return res.status(400).json({error:'Format accepté : MP3 ou WAV'});
+  const m=dataUrl.match(/^data:audio\/[^;]+;base64,(.+)$/);
+  if(!m) return res.status(400).json({error:'Fichier audio invalide'});
+  let buf;
+  try{buf=Buffer.from(m[1],'base64')}catch(e){return res.status(400).json({error:'Fichier audio invalide'})}
+  if(!buf.length || buf.length>8*1024*1024) return res.status(400).json({error:'Le fichier doit faire moins de 8 Mo'});
+
+  const dir=IS_PROD?'/var/data':path.join(__dirname,'.data');
+  fs.mkdirSync(dir,{recursive:true});
+  const realExt=ext==='.mp3'?'.mp3':'.wav';
+  const dest=path.join(dir,'phenix-notification'+realExt);
+
+  for(const old of ['phenix-notification.mp3','phenix-notification.wav']){
+    const p=path.join(dir,old);
+    if(p!==dest && fs.existsSync(p)){try{fs.unlinkSync(p)}catch(e){}}
+  }
+  fs.writeFileSync(dest,buf);
+  d.notificationSound={custom:true,filename:filename.slice(0,180),path:dest,updatedAt:new Date().toISOString()};
+  audit(d,req,'Modification du son de notification équipage');
+  save(d);
+  res.json({ok:true,...notificationSoundMeta(d)});
+});
+
+app.delete('/api/admin/notification-sound', needLogin, needAdmin, (req,res)=>{
+  const d=load();
+  const n=d.notificationSound||{};
+  if(n.path && fs.existsSync(n.path)){try{fs.unlinkSync(n.path)}catch(e){}}
+  d.notificationSound={custom:false,filename:'',path:'',updatedAt:new Date().toISOString()};
+  audit(d,req,'Restauration du son de notification équipage');
+  save(d);
+  res.json({ok:true,...notificationSoundMeta(d)});
 });
 
 app.post('/api/note', needLogin, needOperational, (req,res)=>{
@@ -610,6 +725,14 @@ app.post('/api/crew/:id/status', needLogin, needOperational, (req,res)=>{
   const codeTxt=c.interventionCode?' ['+c.interventionCode+']':'';
   audit(d,req,`${c.callsign} ${c.status}${codeTxt}${c.intervention?' - '+c.intervention:''}`);
   save(d);
+  pushMessageEvent(d.users.map(x=>x.id),{
+    type:'crew-status',
+    crewId:c.id,
+    callsign:c.callsign,
+    status:c.status,
+    intervention:c.intervention||'',
+    changedAt:new Date().toISOString()
+  });
   res.json({ok:true});
 });
 
