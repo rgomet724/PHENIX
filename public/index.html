@@ -2987,6 +2987,13 @@ body:not(.lightMode) .flashMessage{
   }
 }
 
+
+
+.adminSoundSection{border-color:#31516d}
+.adminSoundSection input[type=file]{background:#071525;color:var(--t);border:1px solid var(--l);border-radius:10px;padding:10px}
+body.lightMode .adminSoundSection{background:#fff;border-color:#c7d6e4}
+body.lightMode .adminSoundSection input[type=file]{background:#fff;color:#172033;border-color:#b9c9d8}
+
 </style>
 
 </head><body>
@@ -3132,6 +3139,22 @@ body:not(.lightMode) .flashMessage{
 </section>
 
 <section id="admin" class="hidden"><div class="grid2"><div class="section"><h2>Utilisateurs</h2><div id="users"></div><h3>Créer / modifier</h3><input id="uId" type="hidden"><div class="field"><input id="uName" placeholder="Nom affiché"></div><div class="field"><input id="uLogin" placeholder="Identifiant"></div><div class="field"><input id="uPass" type="password" placeholder="Mot de passe / nouveau mot de passe"></div><div class="field"><select id="uRole"><option value="operateur">Opérateur</option><option value="superviseur">Superviseur</option><option value="admin">Admin</option><option value="dashboard">Dashboard</option></select></div><div class="field"><label>Brigades autorisées</label><label><input id="uBrigadeJour" type="checkbox" style="width:auto"> Brigade de jour</label><label><input id="uBrigadeNuit" type="checkbox" style="width:auto"> Brigade de nuit</label><small class="mut">Les administrateurs et superviseurs voient toutes les consignes.</small></div><button class="primary" onclick="saveUser()">Enregistrer utilisateur</button></div><div class="section"><h2>Paramètres Admin</h2><h3>Natures d'intervention</h3><p class="mut">Format : CODE | Intitulé (ex. A01 | Accident)</p><textarea id="interList"></textarea><h3>Indicatifs pré-enregistrés</h3><textarea id="callList"></textarea><br><br><button class="primary" onclick="saveLists()">Enregistrer listes</button></div>
+
+<div class="section adminSoundSection">
+  <h2>Son des alertes équipages</h2>
+  <p class="mut">Réservé aux administrateurs. Ce son est joué lors du passage d’un équipage en DISPONIBLE ou INDISPONIBLE sur tous les postes connectés.</p>
+  <div class="field">
+    <label>Fichier MP3 ou WAV</label>
+    <input id="adminNotifSoundFile" type="file" accept=".mp3,.wav,.wave,audio/mpeg,audio/wav">
+  </div>
+  <div id="adminNotifSoundName" class="mut">Son PHENIX par défaut</div>
+  <div class="row" style="margin-top:10px">
+    <button class="primary" onclick="saveAdminNotificationSound()">Enregistrer le son</button>
+    <button onclick="previewAdminNotificationSound()">Tester</button>
+    <button class="danger" onclick="resetAdminNotificationSound()">Son par défaut</button>
+  </div>
+</div>
+
 <div class="section flashAdmin">
   <h2>Texte Flash</h2>
   <p class="mut">Texte affiché en haut de la page de connexion pour tous les utilisateurs.</p>
@@ -3253,7 +3276,7 @@ body:not(.lightMode) .flashMessage{
 
 <div id="infoModal" class="modal"><div class="box"><h2 id="infoTitle">Infos équipage</h2><div id="infoBody"></div><br><button onclick="closeModal('infoModal')">Fermer</button></div></div>
 <script>
-let S={user:null,agents:[],callsigns:[],interventions:[],crews:[],logs:[],users:[],note:'',consignes:[],links:[],events:[],flash:{enabled:false,title:'INFO',text:''}}; let activeSection='dash'; let calendarView='month'; let calendarDate=new Date(); let noteDirty=false; let notificationsEnabled=localStorage.getItem('notificationsEnabled')!=='false'; let previousCrews=[]; const alertSound=new Audio('/alerte.wav');
+let S={user:null,agents:[],callsigns:[],interventions:[],crews:[],logs:[],users:[],note:'',consignes:[],links:[],events:[],flash:{enabled:false,title:'INFO',text:''}}; let activeSection='dash'; let calendarView='month'; let calendarDate=new Date(); let noteDirty=false; let notificationsEnabled=localStorage.getItem('notificationsEnabled')!=='false'; let previousCrews=[]; const alertSound=new Audio('/api/notification-sound');
 let PHENIX_CSRF_TOKEN='';
 const $=id=>document.getElementById(id);
 async function api(url,opt={}){
@@ -3349,11 +3372,11 @@ function selectLoginOption(mode){
 }
 async function setupAdmin(){try{await api('/api/setup',{method:'POST',body:JSON.stringify({displayName:$('suName').value,login:$('suLogin').value,password:$('suPass').value})});showPhenixLoading();$('login').style.display='none';$('app').style.display='block';await Promise.all([refresh(),phenixDelay(2000)]);hidePhenixLoading()}catch(e){hidePhenixLoading();err(e)}}
 function phenixDelay(ms){return new Promise(resolve=>setTimeout(resolve,ms))}function showPhenixLoading(){$('phenixLoading')?.classList.add('show')}function hidePhenixLoading(){$('phenixLoading')?.classList.remove('show')}async function login(){try{await api('/api/login',{method:'POST',body:JSON.stringify({login:$('loginId').value,password:$('loginPass').value})});showPhenixLoading();$('login').style.display='none';$('app').style.display='block';await Promise.all([refresh(),phenixDelay(2000)]);hidePhenixLoading()}catch(e){hidePhenixLoading();err(e)}}
-async function logout(){await api('/api/logout',{method:'POST'});location.reload()}async function changePass(){const oldPassword=prompt('Ancien mot de passe');if(oldPassword===null)return;const newPassword=prompt('Nouveau mot de passe');if(!newPassword)return;try{await api('/api/password',{method:'POST',body:JSON.stringify({oldPassword,newPassword})});alert('Mot de passe modifié')}catch(e){alert(e.message)}}
+async function logout(){stopMessengerRealtime();await api('/api/logout',{method:'POST'});location.reload()}async function changePass(){const oldPassword=prompt('Ancien mot de passe');if(oldPassword===null)return;const newPassword=prompt('Nouveau mot de passe');if(!newPassword)return;try{await api('/api/password',{method:'POST',body:JSON.stringify({oldPassword,newPassword})});alert('Mot de passe modifié')}catch(e){alert(e.message)}}
 async function refresh(){return refreshSafe(true)}
 async function refreshSafe(force=false){if(!force && shouldPauseRefresh()) return; S=await api('/api/data');$('agentName').textContent=S.user.displayName;const dash=S.user.role==='dashboard';
 document.body.classList.toggle('dashboardMode',dash);
-if($('dashZoomTools'))$('dashZoomTools').classList.toggle('hidden',!dash);applyRoleNavigation();$('createCrewBtn').classList.toggle('hidden',dash);if((dash||phenixRole()==='operateur')&&!['dash','notes','links','consignes','events','settings'].includes(activeSection))activeSection='dash';checkCrewChanges(S.crews);renderAll(force);updateNotifButton();updateMessengerUI().catch(()=>{})}
+if($('dashZoomTools'))$('dashZoomTools').classList.toggle('hidden',!dash);applyRoleNavigation();$('createCrewBtn').classList.toggle('hidden',dash);if((dash||phenixRole()==='operateur')&&!['dash','notes','links','consignes','events','settings'].includes(activeSection))activeSection='dash';checkCrewChanges(S.crews);renderAll(force);updateNotifButton();startMessengerRealtime();updateMessengerUI().catch(()=>{})}
 function shouldPauseRefresh(){const el=document.activeElement; if(el && ['INPUT','TEXTAREA','SELECT'].includes(el.tagName)) return true; return ['personnel','admin','notes'].includes(activeSection)}
 function show(id){
   document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('activeNav',b.getAttribute('onclick')===`show('${id}')`));
@@ -3716,7 +3739,45 @@ async function setIndispo(){
   }
 }
 function renderAgents(){$('agentRows').innerHTML=S.agents.map((a,i)=>`<tr><td><input value="${a.matricule}" onchange="S.agents[${i}].matricule=this.value"></td><td><input value="${a.nom||''}" onchange="S.agents[${i}].nom=this.value"></td><td><input value="${a.prenom||''}" onchange="S.agents[${i}].prenom=this.value"></td><td><input type="checkbox" ${a.actif?'checked':''} onchange="S.agents[${i}].actif=this.checked"></td><td><button class="small danger" onclick="S.agents.splice(${i},1);renderAgents()">Retirer</button></td></tr>`).join('')}function addAgent(){if(S.user.role!=='admin'){alert('Réservé admin');return}S.agents.push({matricule:'',nom:'',prenom:'',actif:true});renderAgents()}async function saveAgents(){if(S.user.role!=='admin'){alert('Réservé admin');return}await api('/api/agents',{method:'POST',body:JSON.stringify({agents:S.agents})});alert('Personnel enregistré');refresh()}async function saveNote(){await api('/api/note',{method:'POST',body:JSON.stringify({note:$('note').value})});noteDirty=false;S.note=$('note').value;alert('Notes enregistrées')}
-function renderAdmin(force=false){if(S.user.role!=='admin')return;if(activeSection!=='admin'||force||document.activeElement.id!=='interList')$('interList').value=S.interventions.join('\n');if(activeSection!=='admin'||force||document.activeElement.id!=='callList')$('callList').value=S.callsigns.join('\n');$('users').innerHTML=(S.users||[]).map(u=>`<div class="row"><b>${u.displayName}</b><span class="mut">${u.login} / ${u.role}</span><button class="small" onclick='editUser(${JSON.stringify(u)})'>Modifier</button><button class="small danger" onclick='delUser(${JSON.stringify(u.id)})'>Supprimer</button></div>`).join('')}function editUser(u){$('uId').value=u.id;$('uName').value=u.displayName;$('uLogin').value=u.login;$('uRole').value=u.role;$('uPass').value='';$('uBrigadeJour').checked=!!(u.brigades&&u.brigades.jour);$('uBrigadeNuit').checked=!!(u.brigades&&u.brigades.nuit)}async function saveUser(){try{await api('/api/admin/users',{method:'POST',body:JSON.stringify({id:$('uId').value,displayName:$('uName').value,login:$('uLogin').value,password:$('uPass').value,role:$('uRole').value,brigades:{jour:$('uBrigadeJour').checked,nuit:$('uBrigadeNuit').checked}})});['uId','uName','uLogin','uPass'].forEach(id=>$(id).value='');$('uBrigadeJour').checked=false;$('uBrigadeNuit').checked=false;refresh()}catch(e){alert(e.message)}}async function delUser(id){if(confirm('Supprimer utilisateur ?')){await api('/api/admin/users/'+id,{method:'DELETE'});refresh()}}async function saveLists(){await api('/api/admin/lists',{method:'POST',body:JSON.stringify({interventions:$('interList').value.split('\n').map(x=>x.trim()).filter(Boolean),callsigns:$('callList').value.split('\n').map(x=>x.trim()).filter(Boolean)})});refresh()}
+
+async function loadAdminNotificationSound(){
+  if(phenixRole()!=='admin')return;
+  try{
+    const r=await api('/api/admin/notification-sound');
+    const el=$('adminNotifSoundName');
+    if(el)el.textContent=r.custom?'Son actuel : '+(r.filename||'fichier personnalisé'):'Son PHENIX par défaut';
+  }catch(e){}
+}
+async function saveAdminNotificationSound(){
+  if(phenixRole()!=='admin')return;
+  const f=$('adminNotifSoundFile')?.files?.[0];
+  if(!f){alert('Choisissez un fichier MP3 ou WAV.');return}
+  if(f.size>8*1024*1024){alert('Le fichier doit faire moins de 8 Mo.');return}
+  const ext=(f.name.split('.').pop()||'').toLowerCase();
+  if(!['mp3','wav','wave'].includes(ext)){alert('Format accepté : MP3 ou WAV.');return}
+  const data=await new Promise((resolve,reject)=>{
+    const r=new FileReader(); r.onload=()=>resolve(r.result); r.onerror=reject; r.readAsDataURL(f);
+  });
+  await api('/api/admin/notification-sound',{method:'POST',body:JSON.stringify({filename:f.name,data})});
+  alertSound.src='/api/notification-sound?v='+Date.now();
+  alertSound.load();
+  await loadAdminNotificationSound();
+  alert('Son de notification enregistré.');
+}
+function previewAdminNotificationSound(){
+  alertSound.currentTime=0;
+  alertSound.play().catch(()=>alert('Le navigateur a bloqué la lecture. Cliquez une fois dans la page puis réessayez.'));
+}
+async function resetAdminNotificationSound(){
+  if(phenixRole()!=='admin'||!confirm('Restaurer le son PHENIX par défaut ?'))return;
+  await api('/api/admin/notification-sound',{method:'DELETE'});
+  alertSound.src='/api/notification-sound?v='+Date.now();
+  alertSound.load();
+  if($('adminNotifSoundFile'))$('adminNotifSoundFile').value='';
+  await loadAdminNotificationSound();
+}
+
+function renderAdmin(force=false){if(S.user.role!=='admin')return;loadAdminNotificationSound();if(activeSection!=='admin'||force||document.activeElement.id!=='interList')$('interList').value=S.interventions.join('\n');if(activeSection!=='admin'||force||document.activeElement.id!=='callList')$('callList').value=S.callsigns.join('\n');$('users').innerHTML=(S.users||[]).map(u=>`<div class="row"><b>${u.displayName}</b><span class="mut">${u.login} / ${u.role}</span><button class="small" onclick='editUser(${JSON.stringify(u)})'>Modifier</button><button class="small danger" onclick='delUser(${JSON.stringify(u.id)})'>Supprimer</button></div>`).join('')}function editUser(u){$('uId').value=u.id;$('uName').value=u.displayName;$('uLogin').value=u.login;$('uRole').value=u.role;$('uPass').value='';$('uBrigadeJour').checked=!!(u.brigades&&u.brigades.jour);$('uBrigadeNuit').checked=!!(u.brigades&&u.brigades.nuit)}async function saveUser(){try{await api('/api/admin/users',{method:'POST',body:JSON.stringify({id:$('uId').value,displayName:$('uName').value,login:$('uLogin').value,password:$('uPass').value,role:$('uRole').value,brigades:{jour:$('uBrigadeJour').checked,nuit:$('uBrigadeNuit').checked}})});['uId','uName','uLogin','uPass'].forEach(id=>$(id).value='');$('uBrigadeJour').checked=false;$('uBrigadeNuit').checked=false;refresh()}catch(e){alert(e.message)}}async function delUser(id){if(confirm('Supprimer utilisateur ?')){await api('/api/admin/users/'+id,{method:'DELETE'});refresh()}}async function saveLists(){await api('/api/admin/lists',{method:'POST',body:JSON.stringify({interventions:$('interList').value.split('\n').map(x=>x.trim()).filter(Boolean),callsigns:$('callList').value.split('\n').map(x=>x.trim()).filter(Boolean)})});refresh()}
 
 
 
@@ -3904,7 +3965,7 @@ document.addEventListener('click',e=>{
 });
 window.addEventListener('resize',()=>{if(window.innerWidth>700)closeMobileNav()});
 
-setInterval(()=>{if($('app').style.display==='block')refreshSafe(false).catch(()=>{})},3000);init();
+setInterval(()=>{if($('app').style.display==='block')refreshSafe(false).catch(()=>{})},5000);init();
 </script>
 
 <script>
@@ -4173,9 +4234,98 @@ function downloadSignatureHtml(){
 
 
 
+
+let phenixMessageStream=null;
+let phenixMessageStreamRetry=null;
+
+function stopMessengerRealtime(){
+  clearTimeout(phenixMessageStreamRetry);
+  phenixMessageStreamRetry=null;
+  if(phenixMessageStream){
+    try{phenixMessageStream.close()}catch(e){}
+    phenixMessageStream=null;
+  }
+}
+
+function startMessengerRealtime(){
+  if(!S || !S.user || typeof EventSource==='undefined') return;
+  if(phenixMessageStream && phenixMessageStream.readyState!==2) return;
+
+  stopMessengerRealtime();
+  try{
+    const es=new EventSource('/api/messages/stream',{withCredentials:true});
+    phenixMessageStream=es;
+
+    es.onmessage=async ev=>{
+      let data={};
+      try{data=JSON.parse(ev.data||'{}')}catch(e){return}
+      if(data.type==='crew-status'){
+        if(notificationsEnabled){
+          alertSound.currentTime=0;
+          alertSound.play().catch(()=>{});
+        }
+        // Synchronise l'affichage immédiatement et évite le doublon sonore du polling.
+        try{
+          const local=S.crews&&S.crews.find(c=>c.id===data.crewId);
+          if(local)local.status=data.status;
+          previousCrews=JSON.parse(JSON.stringify(S.crews||[]));
+          await refreshSafe(true);
+        }catch(e){}
+        return;
+      }
+      if(data.type!=='message' || data.scope!=='private') return;
+
+      if(messengerSoundEnabled) playMessengerSound();
+
+      const thread={
+        key:'private:'+String(data.fromId||''),
+        scope:data.scope,
+        peerId:String(data.fromId||''),
+        title:String(data.fromName||'Nouveau message'),
+        unread:1,
+        lastMessage:{
+          id:data.id,
+          text:data.text,
+          createdAt:data.createdAt,
+          fromId:data.fromId,
+          from:{id:data.fromId,displayName:data.fromName||'Utilisateur'}
+        }
+      };
+
+      if(!messengerOpen) showMessengerPreview(thread);
+      maybeNotifyDesktop(thread);
+
+      if(S.messaging){
+        S.messaging.unread=Number(S.messaging.unread||0)+1;
+        const badge=$('messengerBadge');
+        if(badge){
+          const n=Number(S.messaging.unread||0);
+          badge.textContent=n>99?'99+':String(n);
+          badge.classList.toggle('hidden',n<=0);
+        }
+      }
+
+      try{
+        await loadMessengerThreads();
+        if(messengerOpen && messengerView==='chat') await refreshOpenMessenger();
+      }catch(e){}
+    };
+
+    es.onerror=()=>{
+      try{es.close()}catch(e){}
+      if(phenixMessageStream===es) phenixMessageStream=null;
+      clearTimeout(phenixMessageStreamRetry);
+      phenixMessageStreamRetry=setTimeout(startMessengerRealtime,2000);
+    };
+  }catch(e){
+    clearTimeout(phenixMessageStreamRetry);
+    phenixMessageStreamRetry=setTimeout(startMessengerRealtime,3000);
+  }
+}
+
 let messengerOpen=false;
 let messengerView='threads';
-let messengerScope='general';
+let messengerScope='private';
 let messengerPeerId='';
 let messengerThreadsCache=[];
 let messengerDeletedThreadKeys=new Set();
@@ -4342,7 +4492,7 @@ async function loadMessengerThreads(){
   if(!messengerAvailable())return [];
   try{
     const data=await api('/api/messages/threads');
-    messengerThreadsCache=(data.threads||[]).filter(t=>
+    messengerThreadsCache=(data.threads||[]).filter(t=>t.scope==='private' &&
       !messengerDeletedThreadKeys.has(t.scope+':'+String(t.peerId||''))
     );
     renderMessengerThreads();
@@ -4437,7 +4587,7 @@ function showMessengerThreads(){
 
 async function openThread(scope,peerId=''){
   hideMessengerPreview();
-  messengerScope=scope==='private'?'private':'general';
+  messengerScope='private';
   messengerPeerId=messengerScope==='private'?String(peerId||''):'';
   messengerView='chat';
   messengerOpen=true;
@@ -4445,14 +4595,14 @@ async function openThread(scope,peerId=''){
   $('messengerThreadsView')?.classList.add('hidden');
   $('messengerChatView')?.classList.remove('hidden');
   $('messengerBackBtn')?.classList.remove('hidden');
-  let title='Discussion générale';
+  let title='Conversation';
   if(messengerScope==='private'){
     let u=(messengerUserDirectoryCache||[]).find(x=>x.id===messengerPeerId)||(S.messageUsers||[]).find(x=>x.id===messengerPeerId);
     if(!u){await loadMessengerUserDirectory();u=(messengerUserDirectoryCache||[]).find(x=>x.id===messengerPeerId);}
     title=u?u.displayName:'Discussion privée';
   }
   $('messengerHeadTitle').textContent=title;
-  $('messengerHeadSub').textContent=messengerScope==='general'?'Discussion générale':'Message privé';
+  $('messengerHeadSub').textContent='Message privé';
   $('messengerConversationTitle').textContent=title;
   await loadMessengerConversation();
   setTimeout(()=>$('messengerInput')?.focus(),30);
