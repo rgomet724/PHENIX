@@ -3160,7 +3160,7 @@ body.lightMode .wallPanel,body.lightMode .wallStat{background:#fff!important}bod
 </section>
 
 
-<section id="events" class="hidden"><div class="section"><div class="eventToolbar"><div class="row"><h2>Événements</h2><button class="small" onclick="moveCalendar(-1)">◀</button><button class="small" onclick="goTodayCalendar()">Aujourd’hui</button><button class="small" onclick="moveCalendar(1)">▶</button><span id="calendarTitle" class="pill"></span></div><div class="row"><button class="small" onclick="setCalendarView('month')">Mois</button><button class="small" onclick="setCalendarView('week')">Semaine</button><button id="newEventBtn" class="primary" onclick="openEventForm()">Nouvel événement</button></div></div><div id="eventCalendar" class="eventCalendar"></div></div></section>
+<section id="events" class="hidden"><div class="section"><div class="eventToolbar"><div class="row"><h2>Événements</h2><button class="small" onclick="moveCalendar(-1)">◀</button><button class="small" onclick="goTodayCalendar()">Aujourd’hui</button><button class="small" onclick="moveCalendar(1)">▶</button><span id="calendarTitle" class="pill"></span></div><div class="row"><button class="small" onclick="setCalendarView('month')">Mois</button><button class="small" onclick="setCalendarView('week')">Semaine</button><button id="newEventBtn" class="primary" onclick="openEventForm()">Nouvel événement</button></div></div><div id="eventCalendar" class="eventCalendar"></div><div class="eventArchive"><div class="row" style="justify-content:space-between;margin-top:14px"><h3 style="margin:0">Tous les événements enregistrés</h3><span id="eventArchiveCount" class="pill">0</span></div><div id="eventArchiveList" class="listCards" style="margin-top:10px"></div></div></div></section>
 <div id="eventModal" class="modal"><div class="box"><h2 id="eventFormTitle">Nouvel événement</h2><input id="eventId" type="hidden"><div class="grid2"><div class="field"><label>Nom de l’événement</label><input id="eventTitle" placeholder="Ex : Réunion, formation, cérémonie..."></div><div class="field"><label>Code événement</label><input id="eventCode" maxlength="20" placeholder="Ex : EV12"></div></div><div class="grid2"><div class="field"><label>Début</label><input id="eventStart" type="datetime-local"></div><div class="field"><label>Fin</label><input id="eventEnd" type="datetime-local"></div></div><div class="field"><label>Description</label><textarea id="eventDesc" placeholder="Détails facultatifs"></textarea></div><div class="field"><label>Couleur</label><div class="colorPick"><label><input type="radio" name="eventColor" value="blue" checked><span class="colorDot"></span> Bleu</label><label><input type="radio" name="eventColor" value="red"><span class="colorDot red"></span> Rouge</label><label><input type="radio" name="eventColor" value="green"><span class="colorDot green"></span> Vert</label><label><input type="radio" name="eventColor" value="orange"><span class="colorDot orange"></span> Orange</label><label><input type="radio" name="eventColor" value="purple"><span class="colorDot purple"></span> Violet</label><label><input type="radio" name="eventColor" value="gray"><span class="colorDot gray"></span> Gris</label></div></div><div class="row"><button class="primary" onclick="saveEvent()">Enregistrer l’événement</button><button id="deleteEventBtn" class="danger" onclick="deleteEvent()">Supprimer</button><button onclick="closeEventForm()">Annuler</button></div></div></div><section id="history" class="hidden">
   <div class="section historySecurityHead">
     <div class="row" style="justify-content:space-between"><div><h2>Historique & journal de sécurité</h2><p class="mut">Journal en lecture seule : qui a fait quoi, quand et depuis quel poste.</p></div><span class="historyReadOnly">LECTURE SEULE</span></div>
@@ -3533,7 +3533,16 @@ function formatVacationCell(c){
   </div>`;
 }
 
-function renderCrews(){const readonly=!canOperate();$('crewRows').innerHTML=S.crews.map(c=>`<tr class="${c.status==='INDISPO'?'indispo':'dispo'}"><td><button class="infoBtn" title="Infos équipage" onclick='showCrewInfo(${JSON.stringify(c.id)})'>i</button></td><td><b>${c.callsign}</b><br><span class="pill">${c.status}</span></td><td>${(c.matricules||[]).map(m=>`<span class="pill">${m}</span>`).join('')}</td><td>${esc(c.intervention||'—')}</td><td>${c.meal||'—'}</td><td>${formatVacationCell(c)}</td><td>${readonly?'<span class="mut"> </span>':`<button class="small" onclick='openCrew(${JSON.stringify(c.id)})'>Modifier</button> <button class="small ok" onclick='statusCrew(${JSON.stringify(c.id)},"DISPO")'>DISPO</button> <button class="small danger" onclick='openIndispo(${JSON.stringify(c.id)})'>INDISPO</button>`}</td></tr>`).join('')}
+function renderCrews(){
+  const readonly=!canOperate();
+  $('crewRows').innerHTML=(S.crews||[]).map(c=>{
+    const id=esc(String(c.id||'')).replaceAll('"','&quot;');
+    const actions=readonly
+      ? '<span class="mut">Lecture seule</span>'
+      : `<button type="button" class="small" data-id="${id}" onclick="openCrew(this.dataset.id)">Modifier</button> <button type="button" class="small ok" data-id="${id}" onclick="statusCrew(this.dataset.id,'DISPO')">DISPO</button> <button type="button" class="small danger" data-id="${id}" onclick="openIndispo(this.dataset.id)">INDISPO</button>`;
+    return `<tr class="${c.status==='INDISPO'?'indispo':'dispo'}"><td><button type="button" class="infoBtn" data-id="${id}" title="Infos équipage" onclick="showCrewInfo(this.dataset.id)">i</button></td><td><b>${esc(c.callsign)}</b><br><span class="pill">${esc(c.status)}</span></td><td>${(c.matricules||[]).map(m=>`<span class="pill">${esc(m)}</span>`).join('')}</td><td>${esc(c.intervention||'—')}</td><td>${esc(c.meal||'—')}</td><td>${formatVacationCell(c)}</td><td>${actions}</td></tr>`;
+  }).join('');
+}
 function formatVacation(c){
   if(!c.shiftStart&&!c.shiftEnd)return 'Non renseignée';
   const fmt=v=>v?new Date(v).toLocaleString('fr-FR'):'—';
@@ -3695,8 +3704,8 @@ function buildCrewCallsign(value,service){
   return base+(service==='NUIT'?' NUIT':' JOUR');
 }
 
-function openCrew(id){
-  const crewId=id==null?'':String(id);
+function openCrew(id=''){
+  const crewId=(typeof id==='string'||typeof id==='number')?String(id):'';
   const c=S.crews.find(x=>String(x.id)===crewId)||{
     matricules:[],observations:'',meal:'',callsign:S.callsigns[0],shiftStart:'',shiftEnd:''
   };
@@ -3832,10 +3841,52 @@ function renderAdminLists(){
  ints.innerHTML=(S.interventions||[]).length?(S.interventions||[]).map((line,i)=>{const x=parseInterventionLine(line);return `<div class="listCard"><div class="listCardMain"><b><span class="listCode">${esc(x.code||'—')}</span>${esc(x.label||'Sans intitulé')}</b></div><div class="listCardActions"><button class="small" onclick="editListItem('intervention',${i})">Modifier</button><button class="small danger" onclick="deleteListItem('intervention',${i})">Supprimer</button></div></div>`}).join(''):'<div class="listEmpty">Aucune nature d’intervention. Utilisez le bouton +.</div>';
  calls.innerHTML=(S.callsigns||[]).length?(S.callsigns||[]).map((x,i)=>`<div class="listCard"><div class="listCardMain"><b>${esc(x)}</b></div><div class="listCardActions"><button class="small" onclick="editListItem('callsign',${i})">Modifier</button><button class="small danger" onclick="deleteListItem('callsign',${i})">Supprimer</button></div></div>`).join(''):'<div class="listEmpty">Aucun indicatif. Utilisez le bouton +.</div>';
 }
-function openListItemModal(type,index=-1){$('listItemType').value=type;$('listItemEditIndex').value=index;$('interventionFields').classList.toggle('hidden',type!=='intervention');$('callsignFields').classList.toggle('hidden',type!=='callsign');$('listItemTitle').textContent=(index>=0?'Modifier ':'Ajouter ')+(type==='intervention'?'une nature d’intervention':'un indicatif');$('listItemCode').value='';$('listItemLabel').value='';$('listItemCallsign').value='';if(index>=0){if(type==='intervention'){const x=parseInterventionLine(S.interventions[index]||'');$('listItemCode').value=x.code||'';$('listItemLabel').value=x.label||''}else $('listItemCallsign').value=S.callsigns[index]||''}$('listItemModal').classList.add('show')}
+function openListItemModal(type,index=-1){
+  $('listItemType').value=type;
+  $('listItemEditIndex').value=index;
+  $('interventionFields').classList.toggle('hidden',type!=='intervention');
+  $('callsignFields').classList.toggle('hidden',type!=='callsign');
+  $('listItemTitle').textContent=(index>=0?'Modifier ':'Ajouter ')+(type==='intervention'?'une nature d’intervention':'un indicatif');
+  $('listItemCode').value='';$('listItemLabel').value='';$('listItemCallsign').value='';
+  if(index>=0){
+    if(type==='intervention'){
+      const x=parseInterventionLine((S.interventions||[])[index]||'');
+      $('listItemCode').value=x.code||'';$('listItemLabel').value=x.label||'';
+    }else $('listItemCallsign').value=(S.callsigns||[])[index]||'';
+  }
+  // La V36 ajoutait une classe .show inexistante : la fenêtre restait cachée.
+  $('listItemModal').style.display='grid';
+  setTimeout(()=>{(type==='intervention'?$('listItemCode'):$('listItemCallsign'))?.focus()},50);
+}
 function editListItem(type,index){openListItemModal(type,index)}
-async function saveListItem(){const type=$('listItemType').value,index=Number($('listItemEditIndex').value);let interventions=[...(S.interventions||[])],callsigns=[...(S.callsigns||[])];if(type==='intervention'){const code=$('listItemCode').value.trim().toUpperCase(),label=$('listItemLabel').value.trim();if(!code||!label){alert('Renseignez le code et la nature d’intervention.');return}const value=code+' | '+label;if(index>=0)interventions[index]=value;else interventions.push(value)}else{const value=$('listItemCallsign').value.trim().toUpperCase();if(!value){alert('Renseignez un indicatif.');return}if(index>=0)callsigns[index]=value;else callsigns.push(value)}await api('/api/admin/lists',{method:'POST',body:JSON.stringify({interventions,callsigns})});closeModal('listItemModal');await refresh()}
-async function deleteListItem(type,index){if(!confirm('Supprimer cet élément ?'))return;let interventions=[...(S.interventions||[])],callsigns=[...(S.callsigns||[])];if(type==='intervention')interventions.splice(index,1);else callsigns.splice(index,1);await api('/api/admin/lists',{method:'POST',body:JSON.stringify({interventions,callsigns})});await refresh()}
+async function saveListItem(){
+  try{
+    const type=$('listItemType').value,index=Number($('listItemEditIndex').value);
+    let interventions=[...(S.interventions||[])],callsigns=[...(S.callsigns||[])];
+    if(type==='intervention'){
+      const code=$('listItemCode').value.trim().toUpperCase(),label=$('listItemLabel').value.trim();
+      if(!code||!label){alert('Renseignez le code et la nature d’intervention.');return}
+      const value=code+' | '+label;
+      if(index>=0)interventions[index]=value;else interventions.push(value);
+    }else{
+      const value=$('listItemCallsign').value.trim().toUpperCase();
+      if(!value){alert('Renseignez un indicatif.');return}
+      if(index>=0)callsigns[index]=value;else callsigns.push(value);
+    }
+    await api('/api/admin/lists',{method:'POST',body:JSON.stringify({interventions,callsigns})});
+    closeModal('listItemModal');
+    await refresh();
+  }catch(e){alert('Impossible d’enregistrer : '+(e.message||e))}
+}
+async function deleteListItem(type,index){
+  if(!confirm('Supprimer cet élément ?'))return;
+  try{
+    let interventions=[...(S.interventions||[])],callsigns=[...(S.callsigns||[])];
+    if(type==='intervention')interventions.splice(index,1);else callsigns.splice(index,1);
+    await api('/api/admin/lists',{method:'POST',body:JSON.stringify({interventions,callsigns})});
+    await refresh();
+  }catch(e){alert('Impossible de supprimer : '+(e.message||e))}
+}
 async function saveLists(){await api('/api/admin/lists',{method:'POST',body:JSON.stringify({interventions:S.interventions||[],callsigns:S.callsigns||[]})});await refresh()}
 async function loadCentralSounds(){if(phenixRole()!=='admin')return;try{const r=await api('/api/admin/sounds');for(const s of r.sounds||[]){const key=s.kind[0].toUpperCase()+s.kind.slice(1);const el=$('soundName'+key);if(el)el.textContent=s.custom?'Son actuel : '+s.filename:'Son PHENIX par défaut'}}catch(e){}}
 async function saveCentralSound(kind){const key=kind[0].toUpperCase()+kind.slice(1),f=$('soundFile'+key)?.files?.[0];if(!f){alert('Choisissez un fichier MP3 ou WAV.');return}if(f.size>8*1024*1024){alert('Le fichier doit faire moins de 8 Mo.');return}const ext=(f.name.split('.').pop()||'').toLowerCase();if(!['mp3','wav','wave'].includes(ext)){alert('Format accepté : MP3 ou WAV.');return}const data=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(f)});await api('/api/admin/sounds/'+kind,{method:'POST',body:JSON.stringify({filename:f.name,data})});phenixSounds[kind].src='/api/sounds/'+kind+'?v='+Date.now();phenixSounds[kind].load();await loadCentralSounds();alert('Son enregistré et diffusé à tous les postes PHENIX.')}
@@ -3934,7 +3985,19 @@ async function saveLink(){
 async function deleteLink(){if(!$('linkId').value)return;if(confirm('Supprimer ce lien ?')){await removeLink($('linkId').value);closeLinkForm()}}
 async function removeLink(id){await api('/api/links/'+id,{method:'DELETE'});await refresh()}
 
-function renderEvents(){if($('newEventBtn'))$('newEventBtn').classList.toggle('hidden',!canManageEvents());const cal=$('eventCalendar');if(!cal)return;if(calendarView==='week')renderWeekEvents();else renderMonthEvents();renderTodayEventsBox()}
+function renderEvents(){if($('newEventBtn'))$('newEventBtn').classList.toggle('hidden',!canManageEvents());const cal=$('eventCalendar');if(!cal)return;if(calendarView==='week')renderWeekEvents();else renderMonthEvents();renderTodayEventsBox();renderEventArchive()}
+function renderEventArchive(){
+  const list=$('eventArchiveList'),count=$('eventArchiveCount');if(!list)return;
+  const arr=(S.events||[]).slice().sort((a,b)=>new Date(b.start||b.createdAt||0)-new Date(a.start||a.createdAt||0));
+  if(count)count.textContent=String(arr.length);
+  if(!arr.length){list.innerHTML='<div class="listEmpty">Aucun événement enregistré dans les données actuelles.</div>';return}
+  list.innerHTML=arr.map(ev=>{
+    const d=new Date(ev.start||ev.date||ev.createdAt||0);
+    const when=isNaN(d.getTime())?'Date non renseignée':d.toLocaleString('fr-FR');
+    const id=esc(String(ev.id||'')).replaceAll('"','&quot;');
+    return `<div class="listCard"><div class="listCardMain"><b>${esc(ev.title||ev.name||'Événement')}</b><div class="mut">${esc(when)}${ev.code?' · '+esc(ev.code):''}${ev.location?' · '+esc(ev.location):''}</div></div><div class="listCardActions"><button type="button" class="small" data-id="${id}" onclick="editEvent(this.dataset.id)">Ouvrir</button></div></div>`;
+  }).join('');
+}
 function renderMonthEvents(){const cal=$('eventCalendar');const y=calendarDate.getFullYear(),m=calendarDate.getMonth();$('calendarTitle').textContent=calendarDate.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});const first=new Date(y,m,1),start=new Date(first);start.setDate(first.getDate()-((first.getDay()+6)%7));const days=[];for(let i=0;i<42;i++){const d=new Date(start);d.setDate(start.getDate()+i);days.push(d)}const head=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(x=>`<div>${x}</div>`).join('');cal.innerHTML=`<div class="eventCalHead">${head}</div><div class="eventGridMonth">${days.map(d=>{const evs=(S.events||[]).filter(ev=>eventOnDay(ev,d)).sort((a,b)=>new Date(a.start)-new Date(b.start));return `<div class="eventDay ${d.getMonth()!==m?'otherMonth':''} ${sameDay(d,new Date())?'today':''}"><div class="eventDayNum">${d.getDate()}</div>${evs.map(ev=>`<button class="eventPill ${eventColorClass(ev.color)}" onclick='editEvent(${JSON.stringify(ev.id)})'>${esc(ev.title)}</button>`).join('')}</div>`}).join('')}</div>`}
 function renderWeekEvents(){const cal=$('eventCalendar');const base=new Date(calendarDate),mon=new Date(base);mon.setDate(base.getDate()-((base.getDay()+6)%7));const days=[];for(let i=0;i<7;i++){const d=new Date(mon);d.setDate(mon.getDate()+i);days.push(d)}$('calendarTitle').textContent='Semaine du '+mon.toLocaleDateString('fr-FR');cal.innerHTML=`${days.map(d=>{const evs=(S.events||[]).filter(ev=>eventOnDay(ev,d)).sort((a,b)=>new Date(a.start)-new Date(b.start));return `<div class="eventWeekDay"><div class="eventWeekDate">${d.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'2-digit'})}</div><div class="eventWeekEvents">${evs.length?evs.map(ev=>`<button class="eventPill ${eventColorClass(ev.color)}" onclick='editEvent(${JSON.stringify(ev.id)})'>${fmtTimeRange(ev)} — ${esc(ev.title)}</button>`).join(''):'<span class="mut">Aucun événement</span>'}</div></div>`}).join('')}`}
 function setCalendarView(v){calendarView=v;renderEvents()}function moveCalendar(d){if(calendarView==='week')calendarDate.setDate(calendarDate.getDate()+d*7);else calendarDate.setMonth(calendarDate.getMonth()+d);renderEvents()}function goTodayCalendar(){calendarDate=new Date();renderEvents()}
