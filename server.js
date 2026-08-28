@@ -118,14 +118,28 @@ function writeDataAtomic(d,{backup=true}={}){
   fs.writeFileSync(DB_TMP,JSON.stringify(d,null,2));
   fs.renameSync(DB_TMP,DB);
 }
-function recoverEventsFromKnownFiles(current){
-  if(Array.isArray(current.events) && current.events.length) return current;
-  const candidates=[
+function eventRecoveryCandidates(){
+  const fixed=[
     DB_BACKUP, DB_BACKUP_2, DB_BACKUP_3,
     '/var/data/data.old.json','/var/data/data.previous.json','/var/data/data.json.bak','/var/data/backup.json'
   ];
+  try{
+    if(fs.existsSync('/var/data')){
+      for(const name of fs.readdirSync('/var/data')){
+        const full=path.join('/var/data',name);
+        if(full===DB || fixed.includes(full)) continue;
+        try{
+          if(fs.statSync(full).isFile() && /\.json$/i.test(name)) fixed.push(full);
+        }catch(e){}
+      }
+    }
+  }catch(e){ console.error('[PHENIX] Recherche sauvegardes événements :',e.message); }
+  return [...new Set(fixed)];
+}
+function recoverEventsFromKnownFiles(current){
+  if(Array.isArray(current.events) && current.events.length) return current;
   let best=[]; let source='';
-  for(const f of candidates){
+  for(const f of eventRecoveryCandidates()){
     const x=readDataFile(f);
     if(x && Array.isArray(x.events) && x.events.length>best.length){best=x.events;source=f}
   }
@@ -892,8 +906,8 @@ app.get('/api/logo-check/:file', needLogin, (req,res)=>{
 app.get('/api/events/recovery-status', needLogin, (req,res)=>{
   const u=current(req);
   if(!u || !['admin','superviseur'].includes(normalizedRole(u.role))) return res.status(403).json({error:'Réservé superviseur/admin'});
-  const files=[DB,DB_BACKUP,DB_BACKUP_2,DB_BACKUP_3,'/var/data/data.old.json','/var/data/data.previous.json','/var/data/data.json.bak','/var/data/backup.json'];
-  res.json({sources:files.map(file=>{const d=readDataFile(file);return {file,exists:fs.existsSync(file),events:d&&Array.isArray(d.events)?d.events.length:0}})});
+  const files=[DB,...eventRecoveryCandidates()];
+  res.json({sources:[...new Set(files)].map(file=>{const d=readDataFile(file);return {file,exists:fs.existsSync(file),events:d&&Array.isArray(d.events)?d.events.length:0}})});
 });
 
 app.post('/api/events', needLogin, needConsigneManager, (req,res)=>{
