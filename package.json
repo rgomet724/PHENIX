@@ -1,6 +1,6 @@
 {
   "name": "pegase",
-  "version": "24.0.0",
+  "version": "35.0.0",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
