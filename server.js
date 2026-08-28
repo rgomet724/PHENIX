@@ -13,6 +13,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const DB = "/var/data/data.json";
 const DB_BACKUP = "/var/data/data.backup.json";
+const DB_BACKUP_2 = "/var/data/data.backup2.json";
+const DB_BACKUP_3 = "/var/data/data.backup3.json";
 const DB_TMP = "/var/data/data.tmp.json";
 const IS_PROD = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 // Session persistante longue durée : plus de déconnexion quotidienne.
@@ -106,13 +108,35 @@ function writeDataAtomic(d,{backup=true}={}){
   if(backup && fs.existsSync(DB)){
     try{
       const current=fs.readFileSync(DB,'utf8');
-      JSON.parse(current); // Ne sauvegarde en backup qu'un JSON valide.
+      JSON.parse(current);
+      // Trois générations pour éviter qu'une mauvaise version écrase immédiatement la seule sauvegarde.
+      if(fs.existsSync(DB_BACKUP_2)){ try{fs.copyFileSync(DB_BACKUP_2,DB_BACKUP_3)}catch(e){} }
+      if(fs.existsSync(DB_BACKUP)){ try{fs.copyFileSync(DB_BACKUP,DB_BACKUP_2)}catch(e){} }
       fs.writeFileSync(DB_BACKUP,current);
     }catch(e){ console.error('[PHENIX] Backup ignoré :',e.message); }
   }
   fs.writeFileSync(DB_TMP,JSON.stringify(d,null,2));
   fs.renameSync(DB_TMP,DB);
 }
+function recoverEventsFromKnownFiles(current){
+  if(Array.isArray(current.events) && current.events.length) return current;
+  const candidates=[
+    DB_BACKUP, DB_BACKUP_2, DB_BACKUP_3,
+    '/var/data/data.old.json','/var/data/data.previous.json','/var/data/data.json.bak','/var/data/backup.json'
+  ];
+  let best=[]; let source='';
+  for(const f of candidates){
+    const x=readDataFile(f);
+    if(x && Array.isArray(x.events) && x.events.length>best.length){best=x.events;source=f}
+  }
+  if(best.length){
+    current.events=best;
+    writeDataAtomic(current,{backup:false});
+    console.log('[PHENIX] '+best.length+' anciens événements restaurés depuis '+source);
+  }
+  return current;
+}
+
 function load(){
   let d=readDataFile(DB);
   const backup=readDataFile(DB_BACKUP);
@@ -120,21 +144,14 @@ function load(){
     if(backup){
       console.error('[PHENIX] data.json illisible : restauration depuis data.backup.json');
       writeDataAtomic(backup,{backup:false});
-      return backup;
+      return recoverEventsFromKnownFiles(backup);
     }
-    // Première installation uniquement : ne jamais écraser silencieusement une base existante illisible.
     if(fs.existsSync(DB)) throw new Error('data.json existe mais est illisible. Restauration manuelle nécessaire.');
     d=baseData();writeDataAtomic(d,{backup:false});return d;
   }
-  // Si une version précédente contient encore les événements et que la base courante n'en contient plus,
-  // on les récupère automatiquement sans toucher aux autres données.
-  if((!Array.isArray(d.events)||d.events.length===0) && backup && Array.isArray(backup.events) && backup.events.length){
-    d.events=backup.events;
-    writeDataAtomic(d,{backup:false});
-    console.log('[PHENIX] Événements restaurés depuis la sauvegarde locale : '+d.events.length);
-  }
-  return d;
+  return recoverEventsFromKnownFiles(d);
 }
+
 function save(d){ writeDataAtomic(d,{backup:true}); }
 function passwordExpired(u){
   if(!u || normalizedRole(u.role)==='dashboard') return false;
@@ -871,6 +888,13 @@ app.get('/api/logo-check/:file', needLogin, (req,res)=>{
   res.json({file, exists:fs.existsSync(full), path:'/'.concat(file)});
 });
 
+
+app.get('/api/events/recovery-status', needLogin, (req,res)=>{
+  const u=current(req);
+  if(!u || !['admin','superviseur'].includes(normalizedRole(u.role))) return res.status(403).json({error:'Réservé superviseur/admin'});
+  const files=[DB,DB_BACKUP,DB_BACKUP_2,DB_BACKUP_3,'/var/data/data.old.json','/var/data/data.previous.json','/var/data/data.json.bak','/var/data/backup.json'];
+  res.json({sources:files.map(file=>{const d=readDataFile(file);return {file,exists:fs.existsSync(file),events:d&&Array.isArray(d.events)?d.events.length:0}})});
+});
 
 app.post('/api/events', needLogin, needConsigneManager, (req,res)=>{
   const d=load(); const u=current(req); const r=req.body||{};

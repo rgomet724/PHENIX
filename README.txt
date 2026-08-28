@@ -1,13 +1,9 @@
-PHENIX V36.1 - correctif urgent
+PHENIX V36.2 - Correctif Dashboard + restauration Événements
 
-Corrections :
-- bouton Modifier des équipages réparé avec identifiants data-id robustes ;
-- création/modification/suppression des indicatifs et natures réparée ;
-- fenêtre + des listes affichée correctement ;
-- archive "Tous les événements enregistrés" ajoutée sous le calendrier ;
-- sauvegarde atomique de data.json + data.backup.json ;
-- récupération automatique des événements depuis data.backup.json si la liste courante est vide ;
-- la base n'est plus réinitialisée silencieusement si data.json est illisible.
+- Dashboard : conserve le nom de l'utilisateur, le bouton Rafraîchir et le bouton Déconnexion.
+- Événements : calendrier restauré comme dans la version V35 (Mois / Semaine / Aujourd'hui / Nouvel événement).
+- Données : recherche automatique d'anciens événements dans plusieurs générations de sauvegardes /var/data.
+- Sauvegardes : rotation sur data.backup.json, data.backup2.json et data.backup3.json.
 
-Déploiement : server.js, package.json et public/index.html.
-IMPORTANT : ne supprimez pas /var/data/data.json sur Render.
+Déploiement : remplacer public/index.html, server.js et package.json.
+Ne supprimez pas /var/data/data.json ni les fichiers data.backup*.json sur Render.
