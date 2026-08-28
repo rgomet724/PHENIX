@@ -654,6 +654,22 @@ app.get('/api/sounds/:kind', needLogin, (req,res)=>{
   res.set('Cache-Control','no-store');
   return res.type(ext==='.mp3'?'audio/mpeg':'audio/wav').sendFile(path.resolve(p));
 });
+app.get('/api/sounds/meta', needLogin, (req,res)=>{
+  const d=load();
+  res.set('Cache-Control','no-store');
+  res.json({sounds:SOUND_KINDS.map(k=>soundMeta(d,k)),serverTime:Date.now()});
+});
+
+app.get('/api/realtime/snapshot', needLogin, (req,res)=>{
+  const d=load();
+  res.set('Cache-Control','no-store');
+  res.json({
+    serverTime:Date.now(),
+    crews:(d.crews||[]).map(c=>({id:c.id,status:c.status,callsign:c.callsign,intervention:c.intervention||''})),
+    sounds:SOUND_KINDS.map(k=>soundMeta(d,k))
+  });
+});
+
 app.get('/api/admin/sounds', needLogin, needAdmin, (req,res)=>{
   const d=load(); res.json({sounds:SOUND_KINDS.map(k=>soundMeta(d,k))});
 });
