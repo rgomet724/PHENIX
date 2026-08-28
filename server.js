@@ -12,6 +12,8 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const DB = "/var/data/data.json";
+const DB_BACKUP = "/var/data/data.backup.json";
+const DB_TMP = "/var/data/data.tmp.json";
 const IS_PROD = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 // Session persistante longue durée : plus de déconnexion quotidienne.
 const SESSION_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 365; // 1 an
@@ -88,8 +90,52 @@ function migrate(d){
   return d;
 }
 
-function load(){ try { return migrate(JSON.parse(fs.readFileSync(DB,'utf8'))); } catch(e){ const d=baseData(); save(d); return d; } }
-function save(d){ fs.writeFileSync(DB, JSON.stringify(d,null,2)); }
+function readDataFile(file){
+  try{
+    if(!fs.existsSync(file)) return null;
+    const raw=fs.readFileSync(file,'utf8');
+    if(!raw.trim()) return null;
+    return migrate(JSON.parse(raw));
+  }catch(e){
+    console.error('[PHENIX] Lecture impossible '+file+':',e.message);
+    return null;
+  }
+}
+function writeDataAtomic(d,{backup=true}={}){
+  fs.mkdirSync(path.dirname(DB),{recursive:true});
+  if(backup && fs.existsSync(DB)){
+    try{
+      const current=fs.readFileSync(DB,'utf8');
+      JSON.parse(current); // Ne sauvegarde en backup qu'un JSON valide.
+      fs.writeFileSync(DB_BACKUP,current);
+    }catch(e){ console.error('[PHENIX] Backup ignoré :',e.message); }
+  }
+  fs.writeFileSync(DB_TMP,JSON.stringify(d,null,2));
+  fs.renameSync(DB_TMP,DB);
+}
+function load(){
+  let d=readDataFile(DB);
+  const backup=readDataFile(DB_BACKUP);
+  if(!d){
+    if(backup){
+      console.error('[PHENIX] data.json illisible : restauration depuis data.backup.json');
+      writeDataAtomic(backup,{backup:false});
+      return backup;
+    }
+    // Première installation uniquement : ne jamais écraser silencieusement une base existante illisible.
+    if(fs.existsSync(DB)) throw new Error('data.json existe mais est illisible. Restauration manuelle nécessaire.');
+    d=baseData();writeDataAtomic(d,{backup:false});return d;
+  }
+  // Si une version précédente contient encore les événements et que la base courante n'en contient plus,
+  // on les récupère automatiquement sans toucher aux autres données.
+  if((!Array.isArray(d.events)||d.events.length===0) && backup && Array.isArray(backup.events) && backup.events.length){
+    d.events=backup.events;
+    writeDataAtomic(d,{backup:false});
+    console.log('[PHENIX] Événements restaurés depuis la sauvegarde locale : '+d.events.length);
+  }
+  return d;
+}
+function save(d){ writeDataAtomic(d,{backup:true}); }
 function passwordExpired(u){
   if(!u || normalizedRole(u.role)==='dashboard') return false;
   if(u.mustChangePassword) return true;
@@ -900,11 +946,15 @@ app.delete('/api/admin/users/:id', needLogin, needAdmin, (req,res)=>{
 
 app.post('/api/admin/lists', needLogin, needAdmin, (req,res)=>{
   const d=load();
-  d.callsigns=Array.isArray(req.body.callsigns)?req.body.callsigns:d.callsigns;
-  d.interventions=Array.isArray(req.body.interventions)?req.body.interventions.map(x=>String(x||'').trim()).filter(Boolean):d.interventions;
+  if(Array.isArray(req.body.callsigns)){
+    d.callsigns=[...new Set(req.body.callsigns.map(x=>String(x||'').trim().toUpperCase()).filter(Boolean))].slice(0,250);
+  }
+  if(Array.isArray(req.body.interventions)){
+    d.interventions=[...new Set(req.body.interventions.map(x=>String(x||'').trim()).filter(Boolean))].slice(0,500);
+  }
   audit(d,req,'Modification listes admin');
   save(d);
-  res.json({ok:true});
+  res.json({ok:true,callsigns:d.callsigns,interventions:d.interventions});
 });
 
 app.use((err,req,res,next)=>{

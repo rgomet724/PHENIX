@@ -1,11 +1,13 @@
-PHENIX V36
+PHENIX V36.1 - correctif urgent
 
-Modifications :
-- Consignes et événements conservés/restaurés dans la navigation et le serveur.
-- Thème clair par défaut pour tout nouveau navigateur/poste sans préférence enregistrée.
-- Gestion structurée des natures d’intervention : bouton +, code, intitulé, modifier, supprimer.
-- Gestion structurée des indicatifs : bouton +, modifier, supprimer.
-- Plus de saisie de listes par retours à la ligne.
-- Icône de déconnexion inspirée du pictogramme fourni (porte + flèche), intégrée au bouton Déconnexion.
+Corrections :
+- bouton Modifier des équipages réparé avec identifiants data-id robustes ;
+- création/modification/suppression des indicatifs et natures réparée ;
+- fenêtre + des listes affichée correctement ;
+- archive "Tous les événements enregistrés" ajoutée sous le calendrier ;
+- sauvegarde atomique de data.json + data.backup.json ;
+- récupération automatique des événements depuis data.backup.json si la liste courante est vide ;
+- la base n'est plus réinitialisée silencieusement si data.json est illisible.
 
-Déploiement : remplacer server.js, package.json et public/index.html.
+Déploiement : server.js, package.json et public/index.html.
+IMPORTANT : ne supprimez pas /var/data/data.json sur Render.
