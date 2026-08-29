@@ -643,16 +643,39 @@ function soundMeta(d,kind){
 function soundPath(d,kind){
   const n=(d.notificationSounds||{})[kind]||{};
   if(n.custom && n.path && fs.existsSync(n.path)) return n.path;
-  return path.join(__dirname,'public','alerte.wav');
+  return '';
+}
+function makeFallbackWav(kind='crew'){
+  const sampleRate=22050, duration=kind==='crew'?0.72:0.55;
+  const count=Math.floor(sampleRate*duration), data=Buffer.alloc(count*2);
+  const freq=kind==='crew'?880:(kind==='urgent'?1046:660);
+  for(let i=0;i<count;i++){
+    const t=i/sampleRate;
+    const gate=kind==='crew' ? ((t<0.28 || (t>0.38&&t<0.68))?1:0) : 1;
+    const env=Math.min(1,t*35)*Math.min(1,(duration-t)*18);
+    const v=Math.sin(2*Math.PI*freq*t)*0.38*gate*env;
+    data.writeInt16LE(Math.max(-32767,Math.min(32767,Math.round(v*32767))),i*2);
+  }
+  const out=Buffer.alloc(44+data.length);
+  out.write('RIFF',0); out.writeUInt32LE(36+data.length,4); out.write('WAVE',8);
+  out.write('fmt ',12); out.writeUInt32LE(16,16); out.writeUInt16LE(1,20);
+  out.writeUInt16LE(1,22); out.writeUInt32LE(sampleRate,24);
+  out.writeUInt32LE(sampleRate*2,28); out.writeUInt16LE(2,32); out.writeUInt16LE(16,34);
+  out.write('data',36); out.writeUInt32LE(data.length,40); data.copy(out,44);
+  return out;
 }
 app.get('/api/sounds/:kind', needLogin, (req,res)=>{
   const kind=String(req.params.kind||'');
   if(!SOUND_KINDS.includes(kind)) return res.status(404).end();
-  const d=load(); const p=soundPath(d,kind);
-  if(!fs.existsSync(p)) return res.status(404).end();
-  const ext=path.extname(p).toLowerCase();
-  res.set('Cache-Control','no-store');
-  return res.type(ext==='.mp3'?'audio/mpeg':'audio/wav').sendFile(path.resolve(p));
+  const d=load(), p=soundPath(d,kind);
+  res.set('Cache-Control','no-store, no-cache, must-revalidate');
+  res.set('Pragma','no-cache');
+  if(p && fs.existsSync(p)){
+    const ext=path.extname(p).toLowerCase();
+    return res.type(ext==='.mp3'?'audio/mpeg':'audio/wav').sendFile(path.resolve(p));
+  }
+  // Fallback intégré : aucun fichier alerte.wav externe n'est nécessaire.
+  return res.type('audio/wav').send(makeFallbackWav(kind));
 });
 app.get('/api/sounds/meta', needLogin, (req,res)=>{
   const d=load();
