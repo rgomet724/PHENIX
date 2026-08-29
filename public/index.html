@@ -3437,16 +3437,19 @@ async function playPhenixSound(kind){
   const a=phenixSounds[kind]||phenixSounds.system;
   if(!notificationsEnabled)return false;
   try{
-    a.pause();
-    a.currentTime=0;
+    a.pause(); a.currentTime=0;
     await a.play();
-    phenixAudioUnlocked=true;
-    updateAudioPermission(true);
-    return true;
+    phenixAudioUnlocked=true; updateAudioPermission(true); return true;
   }catch(e){
-    console.warn('[PHENIX] Son bloqué',e);
-    updateAudioPermission(false);
-    return false;
+    try{
+      setPhenixSoundVersion(kind,Date.now(),true);
+      await new Promise(resolve=>setTimeout(resolve,120));
+      a.currentTime=0; await a.play();
+      phenixAudioUnlocked=true; updateAudioPermission(true); return true;
+    }catch(e2){
+      console.warn('[PHENIX] Son bloqué ou non chargé',e2);
+      updateAudioPermission(false); return false;
+    }
   }
 }
 function updateAudioPermission(ok){const el=$('audioPermissionStatus');if(!el)return;if(ok===true){el.textContent='État audio : autorisé sur ce poste';el.className='audioPermissionStatus audioOk'}else if(ok===false){el.textContent='État audio : BLOQUÉ par le navigateur';el.className='audioPermissionStatus audioBlocked'}else{el.textContent='État audio : non testé';el.className='audioPermissionStatus'}}
