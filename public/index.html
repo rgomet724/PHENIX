@@ -3342,10 +3342,14 @@ body.lightMode .wallPanel,body.lightMode .wallStat{background:#fff!important}bod
 
 <script>
 let S={user:null,agents:[],callsigns:[],interventions:[],crews:[],logs:[],users:[],note:'',consignes:[],links:[],events:[],flash:{enabled:false,title:'INFO',text:''}}; let activeSection='dash'; let calendarView='month'; let calendarDate=new Date(); let noteDirty=false; let notificationsEnabled=localStorage.getItem('notificationsEnabled')!=='false'; let previousCrews=[];
-const phenixSounds={crew:new Audio(),urgent:new Audio(),system:new Audio()};
-const phenixSoundVersions={crew:'',urgent:'',system:''};
-const phenixSoundObjectUrls={crew:'',urgent:'',system:''};
-for(const a of Object.values(phenixSounds)){a.preload='auto';a.autoplay=false}
+const phenixSounds={
+  crew:new Audio('/api/sounds/crew?v=boot'),
+  urgent:new Audio('/api/sounds/urgent?v=boot'),
+  system:new Audio('/api/sounds/system?v=boot')
+};
+const phenixSoundVersions={crew:'boot',urgent:'boot',system:'boot'};
+for(const a of Object.values(phenixSounds)){a.preload='auto';a.autoplay=false;try{a.load()}catch(e){}}
+let phenixAudioUnlocked=false;
 let phenixRealtimeSnapshotBusy=false;
 let phenixRealtimeSnapshotTimer=null;
 let PHENIX_CSRF_TOKEN='';
@@ -3377,29 +3381,20 @@ function toggleTheme(){
 }
 
 function saveDeviceName(){const v=String($('deviceNameInput')?.value||'').trim().slice(0,100);if(v)localStorage.setItem('phenixDeviceName',v);else localStorage.removeItem('phenixDeviceName');if($('deviceNameInput'))$('deviceNameInput').value=getDeviceName();alert('Nom du poste enregistré : '+getDeviceName())}
-async function preloadPhenixSound(kind,version,force=false){
+function setPhenixSoundVersion(kind,version,force=false){
   const a=phenixSounds[kind];
   if(!a)return false;
-  const v=String(version||'default');
+  const v=String(version||Date.now());
   if(!force && phenixSoundVersions[kind]===v && a.src)return true;
+  phenixSoundVersions[kind]=v;
   try{
-    const r=await fetch('/api/sounds/'+encodeURIComponent(kind)+'?v='+encodeURIComponent(v)+'&t='+Date.now(),{
-      credentials:'same-origin',cache:'no-store'
-    });
-    if(!r.ok)throw new Error('audio '+r.status);
-    const blob=await r.blob();
-    const url=URL.createObjectURL(blob);
-    const old=phenixSoundObjectUrls[kind];
-    phenixSoundObjectUrls[kind]=url;
-    phenixSoundVersions[kind]=v;
     a.pause();
-    a.src=url;
+    a.src='/api/sounds/'+encodeURIComponent(kind)+'?v='+encodeURIComponent(v)+'&t='+Date.now();
     a.preload='auto';
     a.load();
-    if(old)try{URL.revokeObjectURL(old)}catch(e){}
     return true;
   }catch(e){
-    console.warn('[PHENIX] Préchargement son impossible',kind,e);
+    console.warn('[PHENIX] Chargement audio impossible',kind,e);
     return false;
   }
 }
@@ -3411,23 +3406,45 @@ async function syncPhenixSounds(force=false,sounds=null){
       if(!r.ok)return;
       list=(await r.json()).sounds||[];
     }
-    await Promise.all(list.map(x=>{
-      const v=String(x.updatedAt||'default');
-      return preloadPhenixSound(x.kind,v,force || phenixSoundVersions[x.kind]!==v);
-    }));
+    for(const meta of list){
+      const v=String(meta.updatedAt||'default');
+      if(phenixSounds[meta.kind] && (force || phenixSoundVersions[meta.kind]!==v)){
+        setPhenixSoundVersion(meta.kind,v,true);
+      }
+    }
   }catch(e){}
+}
+async function unlockPhenixAudio(){
+  if(phenixAudioUnlocked)return true;
+  try{
+    const a=phenixSounds.crew;
+    const oldMuted=a.muted;
+    a.muted=true;
+    a.currentTime=0;
+    await a.play();
+    a.pause();
+    a.currentTime=0;
+    a.muted=oldMuted;
+    phenixAudioUnlocked=true;
+    updateAudioPermission(true);
+    return true;
+  }catch(e){
+    updateAudioPermission(false);
+    return false;
+  }
 }
 async function playPhenixSound(kind){
   const a=phenixSounds[kind]||phenixSounds.system;
   if(!notificationsEnabled)return false;
   try{
-    if(!a.src) await preloadPhenixSound(kind,phenixSoundVersions[kind]||'default',true);
     a.pause();
     a.currentTime=0;
     await a.play();
+    phenixAudioUnlocked=true;
     updateAudioPermission(true);
     return true;
   }catch(e){
+    console.warn('[PHENIX] Son bloqué',e);
     updateAudioPermission(false);
     return false;
   }
@@ -3500,9 +3517,7 @@ async function toggleNotifications(){
   updateNotifButton();
   if(notificationsEnabled){
     await syncPhenixSounds(false);
-    const a=phenixSounds.crew;
-    try{a.muted=true;a.currentTime=0;await a.play();a.pause();a.currentTime=0;a.muted=false;updateAudioPermission(true)}
-    catch(e){a.muted=false;updateAudioPermission(false)}
+    await unlockPhenixAudio();
   }
 }
 function checkCrewChanges(newCrews){if(!Array.isArray(newCrews))return;if(previousCrews.length===0){previousCrews=JSON.parse(JSON.stringify(newCrews));return}let changed=false;for(const crew of newCrews){const old=previousCrews.find(c=>c.id===crew.id);if(old&&old.status!==crew.status){changed=true;break}}previousCrews=JSON.parse(JSON.stringify(newCrews));if(changed)playPhenixSound('crew')}
@@ -4470,7 +4485,7 @@ async function pollRealtimeSnapshot(){
       for(const meta of snap.sounds){
         const v=String(meta.updatedAt||'default');
         if(phenixSounds[meta.kind] && phenixSoundVersions[meta.kind]!==v){
-          await preloadPhenixSound(meta.kind,v,true);
+          setPhenixSoundVersion(meta.kind,v,true);
         }
       }
     }
@@ -4508,12 +4523,14 @@ function stopRealtimeSnapshot(){
 
 function startRealtime(){
   if(!S || !S.user) return;
+  if(phenixRealtimeStream && phenixRealtimeStream.readyState!==2){
+    startRealtimeSnapshot();
+    return;
+  }
+  stopRealtime();
   startRealtimeSnapshot();
   syncPhenixSounds(false);
   if(typeof EventSource==='undefined') return;
-  if(phenixRealtimeStream && phenixRealtimeStream.readyState!==2) return;
-
-  stopRealtime();
   try{
     const es=new EventSource('/api/realtime/stream',{withCredentials:true});
     phenixRealtimeStream=es;
@@ -4528,7 +4545,7 @@ function startRealtime(){
       if(data.type==='urgent-consigne'){await playPhenixSound('urgent');try{await refreshSafe(true)}catch(e){}return}
       if(data.type==='system-alert'){await playPhenixSound('system');try{await refreshSafe(true)}catch(e){}return}
       if(data.type==='sound-config'&&phenixSounds[data.kind]){
-        await preloadPhenixSound(data.kind,String(data.updatedAt||Date.now()),true);
+        setPhenixSoundVersion(data.kind,String(data.updatedAt||Date.now()),true);
         return;
       }
       if(data.type==='password-reset-request'){
@@ -4548,6 +4565,23 @@ function startRealtime(){
     phenixRealtimeStreamRetry=setTimeout(startRealtime,3000);
   }
 }
+
+
+function installPhenixAudioUnlock(){
+  const handler=async()=>{
+    if(!notificationsEnabled)return;
+    const ok=await unlockPhenixAudio();
+    if(ok){
+      document.removeEventListener('pointerdown',handler,true);
+      document.removeEventListener('keydown',handler,true);
+      document.removeEventListener('touchstart',handler,true);
+    }
+  };
+  document.addEventListener('pointerdown',handler,true);
+  document.addEventListener('keydown',handler,true);
+  document.addEventListener('touchstart',handler,true);
+}
+installPhenixAudioUnlock();
 
 </script>
 
