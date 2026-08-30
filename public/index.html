@@ -3334,7 +3334,7 @@ body.lightMode .wallPanel,body.lightMode .wallStat{background:#fff!important}bod
   </div>
 </div>
 
-<div id="listItemModal" class="modal"><div class="box listItemBox"><h2 id="listItemTitle">Ajouter</h2><input id="listItemType" type="hidden"><input id="listItemEditIndex" type="hidden" value="-1"><div id="interventionFields"><div class="field"><label>Code / motif</label><input id="listItemCode" maxlength="20" autocomplete="off" placeholder="Ex : A01"></div><div class="field"><label>Nature d’intervention</label><input id="listItemLabel" maxlength="100" autocomplete="off" placeholder="Ex : Accident de circulation"></div></div><div id="callsignFields" class="hidden"><div class="field"><label>Indicatif</label><input id="listItemCallsign" maxlength="50" autocomplete="off" placeholder="Ex : TVP 1 ALPHA"></div></div><div class="row"><button class="primary" onclick="saveListItem()">Enregistrer</button><button onclick="closeModal('listItemModal')">Annuler</button></div></div></div><div id="indispoModal" class="modal"><div class="box"><h2 class="indispoTitle">Passer l’équipage en INDISPO</h2><input id="indispoId" type="hidden"><div class="field"><label>Code</label><input id="indispoCode" autocomplete="off" placeholder=""><small class="mut">Saisissez le code puis appuyez sur Entrée. Le code 00 supprime immédiatement l’équipage.</small></div><div class="field"><label>Nature d’intervention</label><select id="indispoSelect"></select></div><div id="indispoPreview" class="section" style="margin:8px 0;padding:10px"><span class="mut">Saisissez un code ou choisissez une nature d’intervention.</span></div><div class="row"><button class="primary" onclick="setIndispo()">Valider INDISPO</button><button onclick="closeModal('indispoModal')">Annuler</button></div></div></div>
+<div id="listItemModal" class="modal"><div class="box listItemBox"><h2 id="listItemTitle">Ajouter</h2><input id="listItemType" type="hidden"><input id="listItemEditIndex" type="hidden" value="-1"><div id="interventionFields"><div class="field"><label>Numéro</label><input id="listItemCode" disabled value="Automatique" title="Le numéro est attribué automatiquement selon l’ordre alphabétique"></div><div class="field"><label>Nature d’intervention</label><input id="listItemLabel" maxlength="100" autocomplete="off" placeholder="Ex : Accident de circulation"><small class="mut">Classement automatique par ordre alphabétique. Les numéros commencent à 020 et se suivent automatiquement.</small></div></div><div id="callsignFields" class="hidden"><div class="field"><label>Indicatif</label><input id="listItemCallsign" maxlength="50" autocomplete="off" placeholder="Ex : TVP 1 ALPHA"></div></div><div class="row"><button class="primary" onclick="saveListItem()">Enregistrer</button><button onclick="closeModal('listItemModal')">Annuler</button></div></div></div><div id="indispoModal" class="modal"><div class="box"><h2 class="indispoTitle">Passer l’équipage en INDISPO</h2><input id="indispoId" type="hidden"><div class="field"><label>Code</label><input id="indispoCode" autocomplete="off" placeholder=""><small class="mut">Saisissez le code puis appuyez sur Entrée. Le code 00 supprime immédiatement l’équipage.</small></div><div class="field"><label>Nature d’intervention</label><select id="indispoSelect"></select></div><div id="indispoPreview" class="section" style="margin:8px 0;padding:10px"><span class="mut">Saisissez un code ou choisissez une nature d’intervention.</span></div><div class="row"><button class="primary" onclick="setIndispo()">Valider INDISPO</button><button onclick="closeModal('indispoModal')">Annuler</button></div></div></div>
 
 <div id="infoModal" class="modal"><div class="box"><h2 id="infoTitle">Infos équipage</h2><div id="infoBody"></div><br><button onclick="closeModal('infoModal')">Fermer</button></div></div>
 
@@ -3351,6 +3351,104 @@ const phenixSoundVersions={crew:'boot',urgent:'boot',system:'boot'};
 for(const a of Object.values(phenixSounds)){a.preload='auto';a.autoplay=false;try{a.load()}catch(e){}}
 let phenixAudioUnlocked=false;
 let phenixRealtimeSnapshotBusy=false;
+
+let phenixAudioContext=null;
+const phenixAudioBuffers={crew:null,urgent:null,system:null};
+const phenixAudioBufferVersions={crew:'',urgent:'',system:''};
+
+function getPhenixAudioContext(){
+  if(!phenixAudioContext){
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(AC) phenixAudioContext=new AC();
+  }
+  return phenixAudioContext;
+}
+async function resumePhenixAudio(){
+  const ctx=getPhenixAudioContext();
+  if(!ctx)return false;
+  try{
+    if(ctx.state==='suspended') await ctx.resume();
+    const ok=ctx.state==='running';
+    if(ok){phenixAudioUnlocked=true;updateAudioPermission(true)}
+    return ok;
+  }catch(e){
+    updateAudioPermission(false);
+    return false;
+  }
+}
+async function loadPhenixAudioBuffer(kind,version=null,force=false){
+  const ctx=getPhenixAudioContext();
+  if(!ctx)return false;
+  const v=String(version||phenixSoundVersions[kind]||'default');
+  if(!force && phenixAudioBuffers[kind] && phenixAudioBufferVersions[kind]===v)return true;
+  try{
+    const r=await fetch('/api/sounds/'+encodeURIComponent(kind)+'?v='+encodeURIComponent(v)+'&t='+Date.now(),{
+      credentials:'same-origin',cache:'no-store'
+    });
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const raw=await r.arrayBuffer();
+    const decoded=await ctx.decodeAudioData(raw.slice(0));
+    phenixAudioBuffers[kind]=decoded;
+    phenixAudioBufferVersions[kind]=v;
+    return true;
+  }catch(e){
+    console.warn('[PHENIX] Décodage du son impossible',kind,e);
+    phenixAudioBuffers[kind]=null;
+    return false;
+  }
+}
+function playPhenixFallbackBeep(kind='crew'){
+  const ctx=getPhenixAudioContext();
+  if(!ctx || ctx.state!=='running')return false;
+  try{
+    const now=ctx.currentTime;
+    const master=ctx.createGain();
+    master.gain.setValueAtTime(0.0001,now);
+    master.gain.exponentialRampToValueAtTime(0.34,now+0.015);
+    master.gain.exponentialRampToValueAtTime(0.0001,now+0.72);
+    master.connect(ctx.destination);
+
+    const schedule=(at,freq,dur)=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.type='sine';o.frequency.setValueAtTime(freq,at);
+      g.gain.setValueAtTime(0.0001,at);
+      g.gain.exponentialRampToValueAtTime(0.9,at+0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001,at+dur);
+      o.connect(g);g.connect(master);o.start(at);o.stop(at+dur+0.02);
+    };
+    if(kind==='crew'){schedule(now,880,0.20);schedule(now+0.30,1040,0.24)}
+    else if(kind==='urgent'){schedule(now,1040,0.18);schedule(now+0.21,1040,0.18);schedule(now+0.42,1040,0.20)}
+    else {schedule(now,660,0.35)}
+    return true;
+  }catch(e){return false}
+}
+async function playPhenixWebAudio(kind){
+  const ctx=getPhenixAudioContext();
+  if(!ctx)return false;
+  const resumed=await resumePhenixAudio();
+  if(!resumed)return false;
+  try{
+    if(!phenixAudioBuffers[kind]){
+      await loadPhenixAudioBuffer(kind,phenixSoundVersions[kind]||'default',true);
+    }
+    const buffer=phenixAudioBuffers[kind];
+    if(buffer){
+      const src=ctx.createBufferSource();
+      const gain=ctx.createGain();
+      gain.gain.value=1;
+      src.buffer=buffer;
+      src.connect(gain);
+      gain.connect(ctx.destination);
+      src.start(0);
+      updateAudioPermission(true);
+      return true;
+    }
+  }catch(e){
+    console.warn('[PHENIX] Lecture WebAudio impossible',kind,e);
+  }
+  return playPhenixFallbackBeep(kind);
+}
+
 let phenixRealtimeSnapshotTimer=null;
 let PHENIX_CSRF_TOKEN='';
 const $=id=>document.getElementById(id);
@@ -3392,6 +3490,9 @@ function setPhenixSoundVersion(kind,version,force=false){
     a.src='/api/sounds/'+encodeURIComponent(kind)+'?v='+encodeURIComponent(v)+'&t='+Date.now();
     a.preload='auto';
     a.load();
+    phenixAudioBuffers[kind]=null;
+    phenixAudioBufferVersions[kind]='';
+    loadPhenixAudioBuffer(kind,v,true).catch(()=>{});
     return true;
   }catch(e){
     console.warn('[PHENIX] Chargement audio impossible',kind,e);
@@ -3415,42 +3516,23 @@ async function syncPhenixSounds(force=false,sounds=null){
   }catch(e){}
 }
 async function unlockPhenixAudio(){
-  if(phenixAudioUnlocked)return true;
-  try{
-    const a=phenixSounds.crew;
-    const oldMuted=a.muted;
-    a.muted=true;
-    a.currentTime=0;
-    await a.play();
-    a.pause();
-    a.currentTime=0;
-    a.muted=oldMuted;
+  const ok=await resumePhenixAudio();
+  if(ok){
+    await Promise.all(['crew','urgent','system'].map(k=>loadPhenixAudioBuffer(k,phenixSoundVersions[k]||'default',false)));
     phenixAudioUnlocked=true;
     updateAudioPermission(true);
     return true;
-  }catch(e){
-    updateAudioPermission(false);
-    return false;
   }
+  updateAudioPermission(false);
+  return false;
 }
 async function playPhenixSound(kind){
-  const a=phenixSounds[kind]||phenixSounds.system;
   if(!notificationsEnabled)return false;
-  try{
-    a.pause(); a.currentTime=0;
-    await a.play();
-    phenixAudioUnlocked=true; updateAudioPermission(true); return true;
-  }catch(e){
-    try{
-      setPhenixSoundVersion(kind,Date.now(),true);
-      await new Promise(resolve=>setTimeout(resolve,120));
-      a.currentTime=0; await a.play();
-      phenixAudioUnlocked=true; updateAudioPermission(true); return true;
-    }catch(e2){
-      console.warn('[PHENIX] Son bloqué ou non chargé',e2);
-      updateAudioPermission(false); return false;
-    }
-  }
+  // Nouveau moteur principal : Web Audio API. Aucun délai lié à <audio>.
+  const ok=await playPhenixWebAudio(kind);
+  if(ok)return true;
+  updateAudioPermission(false);
+  return false;
 }
 function updateAudioPermission(ok){const el=$('audioPermissionStatus');if(!el)return;if(ok===true){el.textContent='État audio : autorisé sur ce poste';el.className='audioPermissionStatus audioOk'}else if(ok===false){el.textContent='État audio : BLOQUÉ par le navigateur';el.className='audioPermissionStatus audioBlocked'}else{el.textContent='État audio : non testé';el.className='audioPermissionStatus'}}
 
@@ -3950,7 +4032,8 @@ async function completePasswordReset(id,name){const pwd=prompt('Mot de passe tem
 async function dismissPasswordReset(id){if(!confirm('Classer cette demande sans réinitialisation ?'))return;await api('/api/admin/password-resets/'+id+'/dismiss',{method:'POST',body:'{}'});await refresh()}
 function renderAdminLists(){
  const ints=$('interListCards'), calls=$('callListCards'); if(!ints||!calls)return;
- ints.innerHTML=(S.interventions||[]).length?(S.interventions||[]).map((line,i)=>{const x=parseInterventionLine(line);return `<div class="listCard"><div class="listCardMain"><b><span class="listCode">${esc(x.code||'—')}</span>${esc(x.label||'Sans intitulé')}</b></div><div class="listCardActions"><button class="small" onclick="editListItem('intervention',${i})">Modifier</button><button class="small danger" onclick="deleteListItem('intervention',${i})">Supprimer</button></div></div>`}).join(''):'<div class="listEmpty">Aucune nature d’intervention. Utilisez le bouton +.</div>';
+ const sortedInts=(S.interventions||[]).map((line,i)=>({line,i,x:parseInterventionLine(line)})).sort((a,b)=>a.x.label.localeCompare(b.x.label,'fr',{sensitivity:'base',numeric:true}));
+ ints.innerHTML=sortedInts.length?sortedInts.map(({i,x})=>`<div class="listCard"><div class="listCardMain"><b><span class="listCode">${esc(x.code||'—')}</span>${esc(x.label||'Sans intitulé')}</b></div><div class="listCardActions"><button class="small" onclick="editListItem('intervention',${i})">Modifier</button><button class="small danger" onclick="deleteListItem('intervention',${i})">Supprimer</button></div></div>`).join(''):'<div class="listEmpty">Aucune nature d’intervention. Utilisez le bouton +.</div>';
  calls.innerHTML=(S.callsigns||[]).length?(S.callsigns||[]).map((x,i)=>`<div class="listCard"><div class="listCardMain"><b>${esc(x)}</b></div><div class="listCardActions"><button class="small" onclick="editListItem('callsign',${i})">Modifier</button><button class="small danger" onclick="deleteListItem('callsign',${i})">Supprimer</button></div></div>`).join(''):'<div class="listEmpty">Aucun indicatif. Utilisez le bouton +.</div>';
 }
 function openListItemModal(type,index=-1){
@@ -3963,12 +4046,12 @@ function openListItemModal(type,index=-1){
   if(index>=0){
     if(type==='intervention'){
       const x=parseInterventionLine((S.interventions||[])[index]||'');
-      $('listItemCode').value=x.code||'';$('listItemLabel').value=x.label||'';
+      $('listItemCode').value=x.code||'Automatique';$('listItemLabel').value=x.label||'';
     }else $('listItemCallsign').value=(S.callsigns||[])[index]||'';
   }
   // La V36 ajoutait une classe .show inexistante : la fenêtre restait cachée.
   $('listItemModal').style.display='grid';
-  setTimeout(()=>{(type==='intervention'?$('listItemCode'):$('listItemCallsign'))?.focus()},50);
+  setTimeout(()=>{(type==='intervention'?$('listItemLabel'):$('listItemCallsign'))?.focus()},50);
 }
 function editListItem(type,index){openListItemModal(type,index)}
 async function saveListItem(){
@@ -3976,10 +4059,10 @@ async function saveListItem(){
     const type=$('listItemType').value,index=Number($('listItemEditIndex').value);
     let interventions=[...(S.interventions||[])],callsigns=[...(S.callsigns||[])];
     if(type==='intervention'){
-      const code=$('listItemCode').value.trim().toUpperCase(),label=$('listItemLabel').value.trim();
-      if(!code||!label){alert('Renseignez le code et la nature d’intervention.');return}
-      const value=code+' | '+label;
-      if(index>=0)interventions[index]=value;else interventions.push(value);
+      const label=$('listItemLabel').value.trim();
+      if(!label){alert('Renseignez la nature d’intervention.');return}
+      // Le serveur trie alphabétiquement et attribue automatiquement 020, 021, 022...
+      if(index>=0)interventions[index]=label;else interventions.push(label);
     }else{
       const value=$('listItemCallsign').value.trim().toUpperCase();
       if(!value){alert('Renseignez un indicatif.');return}
@@ -4002,7 +4085,11 @@ async function deleteListItem(type,index){
 async function saveLists(){await api('/api/admin/lists',{method:'POST',body:JSON.stringify({interventions:S.interventions||[],callsigns:S.callsigns||[]})});await refresh()}
 async function loadCentralSounds(){if(phenixRole()!=='admin')return;try{const r=await api('/api/admin/sounds');for(const s of r.sounds||[]){const key=s.kind[0].toUpperCase()+s.kind.slice(1);const el=$('soundName'+key);if(el)el.textContent=s.custom?'Son actuel : '+s.filename:'Son PHENIX par défaut'}}catch(e){}}
 async function saveCentralSound(kind){const key=kind[0].toUpperCase()+kind.slice(1),f=$('soundFile'+key)?.files?.[0];if(!f){alert('Choisissez un fichier MP3 ou WAV.');return}if(f.size>8*1024*1024){alert('Le fichier doit faire moins de 8 Mo.');return}const ext=(f.name.split('.').pop()||'').toLowerCase();if(!['mp3','wav','wave'].includes(ext)){alert('Format accepté : MP3 ou WAV.');return}const data=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(f)});await api('/api/admin/sounds/'+kind,{method:'POST',body:JSON.stringify({filename:f.name,data})});await syncPhenixSounds(true);await loadCentralSounds();alert('Son enregistré et diffusé à tous les postes PHENIX.')}
-async function testCentralSound(kind){const ok=await playPhenixSound(kind);if(!ok)alert('Le navigateur bloque actuellement le son sur ce poste. Cliquez dans PHENIX puis réessayez.')}
+async function testCentralSound(kind){
+  await resumePhenixAudio();
+  const ok=await playPhenixSound(kind);
+  if(!ok)alert('Le son est bloqué par le navigateur sur ce poste. Cliquez sur SON DÉSACTIVÉ puis réactivez-le.');
+}
 async function resetCentralSound(kind){if(!confirm('Restaurer le son PHENIX par défaut ?'))return;await api('/api/admin/sounds/'+kind,{method:'DELETE'});await syncPhenixSounds(true);await loadCentralSounds()}
 
 
@@ -4548,7 +4635,11 @@ function startRealtime(){
       if(data.type==='urgent-consigne'){await playPhenixSound('urgent');try{await refreshSafe(true)}catch(e){}return}
       if(data.type==='system-alert'){await playPhenixSound('system');try{await refreshSafe(true)}catch(e){}return}
       if(data.type==='sound-config'&&phenixSounds[data.kind]){
-        setPhenixSoundVersion(data.kind,String(data.updatedAt||Date.now()),true);
+        const v=String(data.updatedAt||Date.now());
+        setPhenixSoundVersion(data.kind,v,true);
+        phenixAudioBuffers[data.kind]=null;
+        phenixAudioBufferVersions[data.kind]='';
+        loadPhenixAudioBuffer(data.kind,v,true).catch(()=>{});
         return;
       }
       if(data.type==='password-reset-request'){
