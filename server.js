@@ -42,6 +42,20 @@ function safeEqual(a,b){
   return aa.length===bb.length && crypto.timingSafeEqual(aa,bb);
 }
 
+function interventionLabel(v){
+  const raw=String(v||'').trim();
+  const m=raw.match(/^(?:\d{1,4}|[^|:-]{1,20})\s*[|:-]\s*(.+)$/);
+  return (m?m[1]:raw).trim();
+}
+function normalizeInterventions(list){
+  const labels=[...new Set((Array.isArray(list)?list:[])
+    .map(interventionLabel)
+    .map(x=>String(x||'').trim())
+    .filter(Boolean))];
+  labels.sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base',numeric:true}));
+  return labels.slice(0,500).map((label,i)=>String(20+i).padStart(3,'0')+' | '+label);
+}
+
 
 function baseData(){
   return {
@@ -67,7 +81,7 @@ function migrate(d){
   d.users=d.users||[];
   d.agents=d.agents||baseData().agents;
   d.callsigns=d.callsigns||baseData().callsigns;
-  d.interventions=d.interventions||baseData().interventions;
+  d.interventions=normalizeInterventions(d.interventions||baseData().interventions);
   d.crews=d.crews||[];
   d.logs=d.logs||[];
   d.notes=d.notes||{};
@@ -1027,7 +1041,7 @@ app.post('/api/admin/lists', needLogin, needAdmin, (req,res)=>{
     d.callsigns=[...new Set(req.body.callsigns.map(x=>String(x||'').trim().toUpperCase()).filter(Boolean))].slice(0,250);
   }
   if(Array.isArray(req.body.interventions)){
-    d.interventions=[...new Set(req.body.interventions.map(x=>String(x||'').trim()).filter(Boolean))].slice(0,500);
+    d.interventions=normalizeInterventions(req.body.interventions);
   }
   audit(d,req,'Modification listes admin');
   save(d);
