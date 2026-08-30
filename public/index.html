@@ -2877,6 +2877,47 @@ body:not(.lightMode) .flashMessage{
 @media(max-width:520px){.loginActionRow{align-items:stretch}.loginMainButton{width:100%}.loginOptionBtn{width:44px;height:44px;min-width:44px}}
 
 /* V36 - gestion structurée des listes + déconnexion */
+
+#topRefreshBtn{
+  display:inline-flex!important;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  min-width:122px;
+  height:36px;
+  padding:0 14px!important;
+  border-radius:10px!important;
+  background:linear-gradient(180deg,#1769aa,#0f4f87)!important;
+  color:#fff!important;
+  border:1px solid rgba(255,255,255,.22)!important;
+  box-shadow:0 3px 10px rgba(0,48,91,.22),inset 0 1px 0 rgba(255,255,255,.16);
+  font-weight:700;
+  font-size:12px;
+  letter-spacing:.1px;
+  transition:transform .12s ease,filter .12s ease,box-shadow .12s ease;
+}
+#topRefreshBtn:hover{
+  filter:brightness(1.12);
+  transform:translateY(-1px);
+  box-shadow:0 5px 14px rgba(0,48,91,.3),inset 0 1px 0 rgba(255,255,255,.18);
+}
+#topRefreshBtn:active{transform:translateY(0);filter:brightness(.96)}
+#topRefreshBtn:disabled{opacity:.72;cursor:wait;transform:none}
+#topRefreshBtn .refreshIcon{
+  width:17px;height:17px;flex:none;
+  fill:none;stroke:currentColor;stroke-width:2.2;
+  stroke-linecap:round;stroke-linejoin:round;
+}
+#topRefreshBtn.refreshing .refreshIcon{animation:phenixRefreshSpin .7s linear infinite}
+@keyframes phenixRefreshSpin{to{transform:rotate(360deg)}}
+#topRefreshBtn.refreshOk{background:linear-gradient(180deg,#15803d,#166534)!important}
+#topRefreshBtn.refreshError{background:linear-gradient(180deg,#b42318,#8f1d14)!important}
+body.lightMode #topRefreshBtn{
+  background:linear-gradient(180deg,#1769aa,#0f4f87)!important;
+  color:#fff!important;
+  border-color:#0b497e!important;
+}
+
 .logoutBtn{display:inline-flex!important;align-items:center;gap:7px}.logoutIcon{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.adminListsGrid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.listManager{border:1px solid var(--l);border-radius:14px;padding:14px;background:rgba(255,255,255,.025)}.listManagerHead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.listManagerHead h3{margin:0 0 4px}.plusBtn{width:44px;height:44px;min-width:44px;padding:0!important;border-radius:50%;font-size:27px;line-height:1}.listCards{display:flex;flex-direction:column;gap:8px;margin-top:12px}.listCard{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--l);border-radius:10px;padding:10px 12px;background:rgba(255,255,255,.035)}.listCardMain{min-width:0}.listCardMain b{display:block}.listCode{display:inline-block;min-width:48px;margin-right:8px;color:#60a5fa}.listCardActions{display:flex;gap:6px;flex:none}.listEmpty{padding:18px;text-align:center;border:1px dashed var(--l);border-radius:10px;color:var(--mut)}body.lightMode .listManager,body.lightMode .listCard{background:#fff}.listItemBox{max-width:520px}@media(max-width:850px){.adminListsGrid{grid-template-columns:1fr}}
 
 /* V36.2 — Dashboard : nom + rafraîchir + déconnexion toujours visibles */
@@ -3077,7 +3118,7 @@ body.lightMode .wallPanel,body.lightMode .wallStat{background:#fff!important}bod
 </div>
   <div id="msg" class="err"></div>
 </div></div>
-<div id="app" class="app"><div id="mobileNavBackdrop" class="mobileNavBackdrop" onclick="closeMobileNav()"></div><div class="top"><button type="button" class="mobileMenuBtn" onclick="toggleMobileNav()" aria-label="Ouvrir le menu">☰</button><div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div><div class="right"><b id="agentName">Agent</b><div class="tag" id="clock"></div><div class="row topUserActions" style="justify-content:flex-end;margin-top:6px"><button id="notifBtn" class="notifSwitch desktopSoundControl" onclick="toggleNotifications()" title="Alertes sonores"><span class="notifKnob"></span><span id="notifText">ALERTES ON</span></button><button id="topRefreshBtn" class="small" onclick="refresh()" title="Rafraîchir les données">↻ <span>Rafraîchir</span></button><button class="small danger logoutBtn" onclick="logout()" title="Déconnexion"><svg class="logoutIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5"/><path d="M14 8l4 4-4 4"/><path d="M8 12h10"/></svg><span>Déconnexion</span></button></div></div></div>
+<div id="app" class="app"><div id="mobileNavBackdrop" class="mobileNavBackdrop" onclick="closeMobileNav()"></div><div class="top"><button type="button" class="mobileMenuBtn" onclick="toggleMobileNav()" aria-label="Ouvrir le menu">☰</button><div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div><div class="right"><b id="agentName">Agent</b><div class="tag" id="clock"></div><div class="row topUserActions" style="justify-content:flex-end;margin-top:6px"><button id="notifBtn" class="notifSwitch desktopSoundControl" onclick="toggleNotifications()" title="Alertes sonores"><span class="notifKnob"></span><span id="notifText">ALERTES ON</span></button><button id="topRefreshBtn" type="button" onclick="manualRefresh()" title="Actualiser immédiatement les données PHENIX"><svg class="refreshIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.34 5.66"/><path d="M20 4v7h-7"/></svg><span>Actualiser</span></button><button class="small danger logoutBtn" onclick="logout()" title="Déconnexion"><svg class="logoutIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5"/><path d="M14 8l4 4-4 4"/><path d="M8 12h10"/></svg><span>Déconnexion</span></button></div></div></div>
 <div class="layout"><aside><div class="nav"><button onclick="show('dash')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5"/><path d="M9.5 20v-6h5v6"/></svg></span>Tableau de bord</button><button id="personnelBtn" onclick="show('personnel')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/><path d="M8 11.5h8"/></svg></span>Personnel</button><button onclick="show('notes')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h6"/></svg></span>Notes privées</button><button id="linksBtn" onclick="show('links')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a4 4 0 0 0 5.7 0l2.3-2.3a4 4 0 1 0-5.7-5.7L11 6.3"/><path d="M14 11a4 4 0 0 0-5.7 0L6 13.3A4 4 0 0 0 11.7 19l1.3-1.3"/></svg></span>Liens utiles</button><button onclick="show('events')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 9h18M7 13h2M11 13h2M15 13h2M7 17h2M11 17h2"/></svg></span>Événements</button><button id="historyBtn" onclick="show('history')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>Historique</button><button class="consigneNav" onclick="show('consignes')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/><path d="m6.5 8 .5.5 1-1"/></svg></span>Consignes <span id="consigneCount" class="consigneCount">(0)</span><span id="consigneBell" class="consigneBell">🔔</span></button><button id="settingsBtn" onclick="show('settings')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg></span>Paramètres</button><button id="adminBtn" onclick="show('admin')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 12H6.5a3.5 3.5 0 1 1 3.5-3.5V18a3 3 0 1 1-3-3h10a3 3 0 1 1-3 3V8.5A3.5 3.5 0 1 1 17.5 12H9Z"/></svg></span>Administration <span id="adminResetBadge" class="adminResetBadge hidden">0</span></button></div><div id="eventTodayBox" class="eventTodayBox hidden"></div></aside><main>
 <section id="dash">
 <div id="wallDashboard" class="wallDashboard hidden">
@@ -3629,6 +3670,44 @@ function selectLoginOption(mode){
 async function setupAdmin(){try{await api('/api/setup',{method:'POST',body:JSON.stringify({displayName:$('suName').value,login:$('suLogin').value,password:$('suPass').value})});showPhenixLoading();$('login').style.display='none';$('app').style.display='block';await Promise.all([refresh(),phenixDelay(2000)]);hidePhenixLoading()}catch(e){hidePhenixLoading();err(e)}}
 function phenixDelay(ms){return new Promise(resolve=>setTimeout(resolve,ms))}function showPhenixLoading(){$('phenixLoading')?.classList.add('show')}function hidePhenixLoading(){$('phenixLoading')?.classList.remove('show')}async function login(){try{const r=await api('/api/login',{method:'POST',body:JSON.stringify({login:$('loginId').value,password:$('loginPass').value})});if(r.user&&r.user.passwordChangeRequired){$('login').style.display='none';showForcedPasswordChange();return}showPhenixLoading();$('login').style.display='none';$('app').style.display='block';await Promise.all([refresh(),phenixDelay(1200)]);hidePhenixLoading()}catch(e){hidePhenixLoading();err(e)}}
 async function logout(){stopRealtime();await api('/api/logout',{method:'POST'});location.reload()}async function changePass(){const oldPassword=prompt('Ancien mot de passe');if(oldPassword===null)return;const newPassword=prompt('Nouveau mot de passe');if(!newPassword)return;try{await api('/api/password',{method:'POST',body:JSON.stringify({oldPassword,newPassword})});alert('Mot de passe modifié. Prochain renouvellement obligatoire dans 90 jours.')}catch(e){alert(e.message)}}
+async function manualRefresh(){
+  const btn=$('topRefreshBtn');
+  if(btn?.disabled)return;
+  const label=btn?.querySelector('span');
+  try{
+    if(btn){
+      btn.disabled=true;
+      btn.classList.remove('refreshOk','refreshError');
+      btn.classList.add('refreshing');
+    }
+    if(label)label.textContent='Actualisation...';
+
+    // Recharge immédiatement toutes les données depuis le serveur.
+    await refreshSafe(true);
+
+    if(btn){
+      btn.classList.remove('refreshing');
+      btn.classList.add('refreshOk');
+    }
+    if(label)label.textContent='Actualisé';
+    setTimeout(()=>{
+      if(btn){btn.classList.remove('refreshOk');btn.disabled=false}
+      if(label)label.textContent='Actualiser';
+    },900);
+  }catch(e){
+    console.error('[PHENIX] Actualisation manuelle impossible',e);
+    if(btn){
+      btn.classList.remove('refreshing');
+      btn.classList.add('refreshError');
+    }
+    if(label)label.textContent='Erreur';
+    setTimeout(()=>{
+      if(btn){btn.classList.remove('refreshError');btn.disabled=false}
+      if(label)label.textContent='Actualiser';
+    },1400);
+  }
+}
+
 async function refresh(){return refreshSafe(true)}
 async function refreshSafe(force=false){if(!force && shouldPauseRefresh()) return; let next;try{next=await api('/api/data')}catch(e){if(e.code==='PASSWORD_CHANGE_REQUIRED'){showForcedPasswordChange();return}throw e}S=next;$('agentName').textContent=S.user.displayName;const dash=S.user.role==='dashboard';
 document.body.classList.toggle('dashboardMode',dash);
