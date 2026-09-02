@@ -11,6 +11,9 @@ const crypto=require('crypto');
 const app=express();
 app.disable('x-powered-by');
 const PROD=process.env.NODE_ENV==='production';
+// Render termine le HTTPS devant l'application. Sans trust proxy, Express
+// considère la requête comme HTTP et refuse d'émettre le cookie de session secure.
+if(PROD) app.set('trust proxy',1);
 const PORT=process.env.PORT||3000;
 const DATA_DIR=PROD?'/var/data':path.join(__dirname,'data');
 const DB=path.join(DATA_DIR,'portal.json');
@@ -57,25 +60,51 @@ function save(d){
 }
 async function ensureAdmin(){
   const d=load();
-  if(d.users.some(u=>u.role==='admin')) return;
   const login=String(process.env.PORTAL_ADMIN_LOGIN||'admin').trim();
   const pass=String(process.env.PORTAL_ADMIN_PASSWORD||'').trim();
+
   if(!pass){
-    console.warn('Aucun admin créé : définissez PORTAL_ADMIN_PASSWORD sur Render.');
+    const hasAdmin=d.users.some(u=>u.role==='admin');
+    const msg='PORTAL_ADMIN_PASSWORD doit être défini sur Render.';
+    if(PROD && !hasAdmin) throw new Error(msg);
+    console.warn(msg);
     return;
   }
-  d.users.push({
-    id:crypto.randomUUID(),
-    login,
-    name:'Administrateur',
-    role:'admin',
-    passwordHash:await bcrypt.hash(pass,12),
-    createdAt:new Date().toISOString()
-  });
-  save(d);
-  console.log('Compte administrateur initial créé.');
+
+  // Le compte administrateur piloté par Render reste synchronisé avec les
+  // variables d'environnement. Cela permet de récupérer l'accès simplement
+  // en changeant PORTAL_ADMIN_LOGIN / PORTAL_ADMIN_PASSWORD puis en redéployant.
+  let admin=d.users.find(u=>String(u.login||'').toLowerCase()===login.toLowerCase());
+  if(!admin) admin=d.users.find(u=>u.role==='admin');
+
+  if(!admin){
+    d.users.push({
+      id:crypto.randomUUID(),
+      login,
+      name:'Administrateur',
+      role:'admin',
+      passwordHash:await bcrypt.hash(pass,12),
+      createdAt:new Date().toISOString()
+    });
+    save(d);
+    console.log('Compte administrateur initial créé.');
+    return;
+  }
+
+  let changed=false;
+  if(admin.login!==login){ admin.login=login; changed=true; }
+  if(admin.role!=='admin'){ admin.role='admin'; changed=true; }
+  if(!admin.name){ admin.name='Administrateur'; changed=true; }
+  const passwordOk=admin.passwordHash && await bcrypt.compare(pass,admin.passwordHash);
+  if(!passwordOk){ admin.passwordHash=await bcrypt.hash(pass,12); changed=true; }
+
+  if(changed){
+    save(d);
+    console.log('Compte administrateur synchronisé avec les variables Render.');
+  }else{
+    console.log('Compte administrateur Render vérifié.');
+  }
 }
-ensureAdmin();
 
 app.use(helmet({
   contentSecurityPolicy:{
@@ -216,4 +245,13 @@ app.use((err,req,res,next)=>{
   console.error(err);
   res.status(500).json({error:err.message||'Erreur serveur'});
 });
-app.listen(PORT,()=>console.log('Portail PM Chalon sur le port',PORT));
+async function start(){
+  // Garantit que le compte administrateur initial existe avant d'accepter
+  // la première tentative de connexion.
+  await ensureAdmin();
+  app.listen(PORT,()=>console.log('Portail PM Chalon sur le port',PORT));
+}
+start().catch(err=>{
+  console.error('Démarrage impossible',err);
+  process.exit(1);
+});
