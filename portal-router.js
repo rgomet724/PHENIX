@@ -102,7 +102,7 @@ function mountPortal(app) {
         { id: 'app-phenix', categoryId: 'cat-operationnel', name: 'PHENIX', description: 'Plateforme opérationnelle', url: '/', logoData: '', order: 10 }
       ],
       appearance: {
-        title: 'PORTAIL ARGOS',
+        title: 'Portail ARGOS',
         subtitle1: 'Police Municipale',
         subtitle2: 'Chalon-sur-Saône',
         eyebrow: 'ARGOS • Portail professionnel',
@@ -293,6 +293,11 @@ function mountPortal(app) {
     });
   });
 
+  router.get('/appearance', (req, res) => {
+    const data = loadData();
+    res.json({ appearance: data.appearance });
+  });
+
   router.get('/me', (req, res) => res.json({ user: currentUser(req) || null }));
 
   router.post('/login', (req, res) => {
@@ -440,7 +445,7 @@ function mountPortal(app) {
   router.post('/admin/appearance', requireAdmin, (req, res) => {
     const data = loadData();
     const incoming = req.body || {};
-    const title = String(incoming.title || '').trim() || 'PORTAIL ARGOS';
+    const title = String(incoming.title || '').trim() || 'Portail ARGOS';
     const subtitle1 = String(incoming.subtitle1 || '').trim() || 'Police Municipale';
     const subtitle2 = String(incoming.subtitle2 || '').trim() || 'Chalon-sur-Saône';
     const eyebrow = String(incoming.eyebrow || '').trim() || 'ARGOS • Portail professionnel';
