@@ -1,35 +1,30 @@
-'use strict';
-
 const state = {
   token: sessionStorage.getItem('pmPortalToken') || '',
   user: null,
   categories: [],
   apps: [],
-  users: []
+  appearance: {}
 };
 
-const el = id => document.getElementById(id);
+const $ = (id) => document.getElementById(id);
 
 async function api(url, options = {}) {
   const headers = new Headers(options.headers || {});
   const isFormData = options.body instanceof FormData;
-  if (!isFormData && options.body !== undefined && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+  if (!isFormData && options.body !== undefined && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
   if (state.token) headers.set('Authorization', `Bearer ${state.token}`);
 
   let response;
   try {
-    response = await fetch(url, {
-      ...options,
-      headers,
-      credentials: 'same-origin',
-      cache: 'no-store'
-    });
+    response = await fetch(url, { ...options, headers, credentials: 'same-origin', cache: 'no-store' });
   } catch {
     throw new Error('Le serveur est inaccessible. Réessayez dans quelques secondes.');
   }
 
   let data = {};
-  try { data = await response.json(); } catch { /* réponse vide */ }
+  try { data = await response.json(); } catch {}
 
   if (response.status === 401 && url !== '/portail/api/login') {
     state.token = '';
@@ -54,20 +49,73 @@ function setBusy(button, busy, label) {
   }
 }
 
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) return resolve('');
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('Impossible de lire le fichier.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function applyAppearance() {
+  const a = {
+    title: 'PORTAIL ARGOS',
+    subtitle1: 'Police Municipale',
+    subtitle2: 'Chalon-sur-Saône',
+    eyebrow: 'ARGOS • Portail professionnel',
+    loginIntro: 'Portail d’accès aux applications et ressources professionnelles',
+    portalWelcome: 'Sélectionnez une application pour l’ouvrir dans un nouvel onglet.',
+    loginLogoData: '',
+    portalLogoData: '',
+    loginBackgroundData: '',
+    portalBackgroundData: '',
+    ...(state.appearance || {})
+  };
+
+  document.title = `${a.title} — ${a.subtitle1} ${a.subtitle2}`.trim();
+  $('loginTitle').textContent = a.title;
+  $('portalTitle').textContent = a.title;
+  $('loginSubtitle1').textContent = a.subtitle1;
+  $('portalSubtitle1').textContent = a.subtitle1;
+  $('loginSubtitle2').textContent = a.subtitle2;
+  $('portalSubtitle2').textContent = a.subtitle2;
+  $('loginEyebrow').textContent = a.eyebrow;
+  $('portalEyebrow').textContent = a.eyebrow;
+  $('loginIntro').lastChild.textContent = ` ${a.loginIntro}`;
+  $('welcomeText').textContent = a.portalWelcome;
+
+  $('loginBrandLogo').src = a.loginLogoData || '/portail/logo-pm.png';
+  $('portalBrandLogo').src = a.portalLogoData || a.loginLogoData || '/portail/logo-pm.png';
+
+  const loginBg = $('loginView').querySelector('.backdrop');
+  const portalBg = $('portalView').querySelector('.portal-backdrop');
+  loginBg.style.backgroundImage = a.loginBackgroundData ? `url(${JSON.stringify(a.loginBackgroundData).slice(1, -1)})` : 'none';
+  portalBg.style.backgroundImage = a.portalBackgroundData ? `url(${JSON.stringify(a.portalBackgroundData).slice(1, -1)})` : 'none';
+
+  $('appearanceTitle').value = a.title;
+  $('appearanceSubtitle1').value = a.subtitle1;
+  $('appearanceSubtitle2').value = a.subtitle2;
+  $('appearanceEyebrow').value = a.eyebrow;
+  $('appearanceLoginIntro').value = a.loginIntro;
+  $('appearancePortalWelcome').value = a.portalWelcome;
+}
+
 function showLogin() {
-  el('portalView').classList.add('hidden');
-  el('loginView').classList.remove('hidden');
-  el('passwordInput').value = '';
-  setTimeout(() => el('loginInput').focus(), 0);
+  $('portalView').classList.add('hidden');
+  $('loginView').classList.remove('hidden');
+  $('passwordInput').value = '';
+  setTimeout(() => $('loginInput').focus(), 0);
 }
 
 function showPortal() {
-  el('loginView').classList.add('hidden');
-  el('portalView').classList.remove('hidden');
-  el('userDisplayName').textContent = state.user.name;
-  el('welcomeName').textContent = state.user.name;
-  el('userRoleBadge').textContent = state.user.role === 'admin' ? 'Administrateur' : 'Utilisateur';
-  el('adminOpenBtn').classList.toggle('hidden', state.user.role !== 'admin');
+  $('loginView').classList.add('hidden');
+  $('portalView').classList.remove('hidden');
+  $('userDisplayName').textContent = state.user.name;
+  $('welcomeName').textContent = state.user.name;
+  $('userRoleBadge').textContent = state.user.role === 'admin' ? 'Administrateur' : 'Utilisateur';
+  $('adminOpenBtn').classList.toggle('hidden', state.user.role !== 'admin');
 }
 
 function appCard(app) {
@@ -100,17 +148,16 @@ function appCard(app) {
   const arrow = document.createElement('span');
   arrow.className = 'app-arrow';
   arrow.textContent = '›';
-  arrow.setAttribute('aria-hidden', 'true');
-
   link.append(icon, copy, arrow);
   return link;
 }
 
 function renderPortal() {
-  const root = el('categoriesRoot');
+  const root = $('categoriesRoot');
   root.replaceChildren();
 
   for (const category of state.categories) {
+    const apps = state.apps.filter(app => app.categoryId === category.id);
     const section = document.createElement('section');
     section.className = 'portal-category';
 
@@ -119,7 +166,6 @@ function renderPortal() {
     const h2 = document.createElement('h2');
     h2.textContent = category.name;
     const count = document.createElement('span');
-    const apps = state.apps.filter(app => app.categoryId === category.id);
     count.textContent = `${apps.length} application${apps.length > 1 ? 's' : ''}`;
     header.append(h2, count);
 
@@ -143,36 +189,36 @@ async function loadPortal() {
   state.user = data.user;
   state.categories = data.categories || [];
   state.apps = data.apps || [];
+  state.appearance = data.appearance || {};
+  applyAppearance();
   renderPortal();
 }
 
 async function initialize() {
   try {
     const me = await api('/portail/api/me');
-    if (!me.user) return showLogin();
+    if (!me.user) {
+      applyAppearance();
+      return showLogin();
+    }
     state.user = me.user;
     await loadPortal();
     showPortal();
-  } catch (err) {
-    console.error(err);
+  } catch {
+    applyAppearance();
     showLogin();
   }
 }
 
 async function login(event) {
   event.preventDefault();
-  const error = el('loginError');
-  const button = el('loginSubmit');
-  error.textContent = '';
+  $('loginError').textContent = '';
+  const button = $('loginSubmit');
   setBusy(button, true, 'Connexion…');
-
   try {
     const data = await api('/portail/api/login', {
       method: 'POST',
-      body: JSON.stringify({
-        login: el('loginInput').value.trim(),
-        password: el('passwordInput').value
-      })
+      body: JSON.stringify({ login: $('loginInput').value.trim(), password: $('passwordInput').value })
     });
     state.token = data.token || '';
     if (state.token) sessionStorage.setItem('pmPortalToken', state.token);
@@ -180,15 +226,15 @@ async function login(event) {
     await loadPortal();
     showPortal();
   } catch (err) {
-    error.textContent = err.message;
-    el('passwordInput').select();
+    $('loginError').textContent = err.message;
+    $('passwordInput').select();
   } finally {
     setBusy(button, false);
   }
 }
 
 async function logout() {
-  try { await api('/portail/api/logout', { method: 'POST' }); } catch { /* local logout anyway */ }
+  try { await api('/portail/api/logout', { method: 'POST' }); } catch {}
   state.token = '';
   state.user = null;
   sessionStorage.removeItem('pmPortalToken');
@@ -196,14 +242,14 @@ async function logout() {
 }
 
 function openAdmin() {
-  el('adminModal').classList.remove('hidden');
+  $('adminModal').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
   switchAdminTab('apps');
   loadAdmin().catch(err => alert(err.message));
 }
 
 function closeAdmin() {
-  el('adminModal').classList.add('hidden');
+  $('adminModal').classList.add('hidden');
   document.body.style.overflow = '';
 }
 
@@ -214,8 +260,8 @@ function switchAdminTab(name) {
 
 async function loadAdmin() {
   await loadPortal();
-  const users = await api('/portail/api/admin/users');
-  state.users = users.users || [];
+  const usersData = await api('/portail/api/admin/users');
+  state.users = usersData.users || [];
   renderAdmin();
 }
 
@@ -253,14 +299,14 @@ function adminItem(titleText, subtitleText, buttons = [], chipText = '') {
 }
 
 function renderAdmin() {
-  el('appCategory').replaceChildren(...state.categories.map(category => {
+  $('appCategory').replaceChildren(...state.categories.map(category => {
     const option = document.createElement('option');
     option.value = category.id;
     option.textContent = category.name;
     return option;
   }));
 
-  const appList = el('appAdminList');
+  const appList = $('appAdminList');
   appList.replaceChildren();
   state.apps.forEach(app => {
     const category = state.categories.find(c => c.id === app.categoryId);
@@ -270,9 +316,9 @@ function renderAdmin() {
       [miniButton('Modifier', 'edit-app', app.id), miniButton('Supprimer', 'delete-app', app.id, true)]
     ));
   });
-  el('appCountText').textContent = `${state.apps.length} élément${state.apps.length > 1 ? 's' : ''}`;
+  $('appCountText').textContent = `${state.apps.length} élément${state.apps.length > 1 ? 's' : ''}`;
 
-  const catList = el('categoryAdminList');
+  const catList = $('categoryAdminList');
   catList.replaceChildren();
   state.categories.forEach(category => {
     const count = state.apps.filter(app => app.categoryId === category.id).length;
@@ -282,220 +328,193 @@ function renderAdmin() {
       [miniButton('Modifier', 'edit-category', category.id), miniButton('Supprimer', 'delete-category', category.id, true)]
     ));
   });
-  el('categoryCountText').textContent = `${state.categories.length} catégorie${state.categories.length > 1 ? 's' : ''}`;
+  $('categoryCountText').textContent = `${state.categories.length} catégorie${state.categories.length > 1 ? 's' : ''}`;
 
-  const userList = el('userAdminList');
+  const userList = $('userAdminList');
   userList.replaceChildren();
-  state.users.forEach(user => {
-    const isRender = user.source === 'Render';
-    const accessText = user.accessEnabled === false
-      ? 'Accès ARGOS désactivé'
-      : (user.role === 'admin' ? 'Administrateur ARGOS' : 'Utilisateur ARGOS');
-    const sourceText = isRender
-      ? 'Compte de secours Render'
-      : `PHENIX${user.phenixRole ? ` • rôle ${user.phenixRole}` : ''}`;
-    const passwordText = user.passwordChangeRequired ? ' • mot de passe PHENIX à changer' : '';
-    userList.appendChild(adminItem(
-      `${user.name} — ${user.login}`,
-      `${accessText} • ${sourceText}${passwordText}`,
-      [],
-      isRender ? 'Secours Render' : (user.accessEnabled === false ? 'Non autorisé' : 'Compte PHENIX')
-    ));
+  (state.users || []).forEach(user => {
+    const accessText = user.accessEnabled === false ? 'Accès ARGOS non autorisé' : (user.role === 'admin' ? 'Administrateur ARGOS' : 'Utilisateur ARGOS');
+    const sourceText = user.source === 'Render' ? 'Compte de secours Render' : `PHENIX${user.phenixRole ? ` • rôle ${user.phenixRole}` : ''}`;
+    const extra = user.passwordChangeRequired ? ' • mot de passe PHENIX à mettre à jour' : '';
+    const chip = user.source === 'Render' ? 'Secours' : (user.accessEnabled === false ? 'Bloqué' : 'PHENIX');
+    userList.appendChild(adminItem(`${user.name} — ${user.login}`, `${accessText} • ${sourceText}${extra}`, [], chip));
   });
-  el('userCountText').textContent = `${state.users.length} compte${state.users.length > 1 ? 's' : ''} • source PHENIX`;
+  $('userCountText').textContent = `${(state.users || []).length} compte${(state.users || []).length > 1 ? 's' : ''}`;
 }
 
 function resetAppForm() {
-  el('appForm').reset();
-  el('appId').value = '';
-  el('appOrder').value = '10';
-  el('removeLogo').checked = false;
-  el('removeLogoRow').classList.add('hidden');
-  el('appFormError').textContent = '';
-  if (state.categories[0]) el('appCategory').value = state.categories[0].id;
+  $('appForm').reset();
+  $('appId').value = '';
+  $('appOrder').value = '10';
+  $('removeLogo').checked = false;
+  $('removeLogoRow').classList.add('hidden');
+  $('appFormError').textContent = '';
+  if (state.categories[0]) $('appCategory').value = state.categories[0].id;
 }
 
 function editApp(id) {
   const app = state.apps.find(item => item.id === id);
   if (!app) return;
-  el('appId').value = app.id;
-  el('appName').value = app.name;
-  el('appDescription').value = app.description || '';
-  el('appUrl').value = app.url;
-  el('appCategory').value = app.categoryId;
-  el('appOrder').value = String(app.order ?? 10);
-  el('appLogo').value = '';
-  el('removeLogo').checked = false;
-  el('removeLogoRow').classList.toggle('hidden', !app.logoData);
-  el('appFormError').textContent = '';
-  el('appName').focus();
+  $('appId').value = app.id;
+  $('appName').value = app.name || '';
+  $('appCategory').value = app.categoryId || '';
+  $('appDescription').value = app.description || '';
+  $('appUrl').value = app.url || '';
+  $('appOrder').value = String(app.order || 10);
+  $('removeLogo').checked = false;
+  $('removeLogoRow').classList.toggle('hidden', !app.logoData);
+  $('appFormError').textContent = '';
+  switchAdminTab('apps');
 }
 
 async function saveApp(event) {
   event.preventDefault();
-  const error = el('appFormError');
-  error.textContent = '';
-  const file = el('appLogo').files[0];
-  if (file && file.size > 400 * 1024) {
-    error.textContent = 'Le logo doit faire moins de 400 Ko.';
-    return;
-  }
-
-  let logoData = '';
-  if (file) {
-    logoData = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ''));
-      reader.onerror = () => reject(new Error('Impossible de lire le fichier du logo.'));
-      reader.readAsDataURL(file);
-    });
-  }
-
-  const payload = {
-    id: el('appId').value,
-    name: el('appName').value.trim(),
-    description: el('appDescription').value.trim(),
-    url: el('appUrl').value.trim(),
-    categoryId: el('appCategory').value,
-    order: Number(el('appOrder').value || 10),
-    removeLogo: el('removeLogo').checked,
-    logoData
-  };
-
+  $('appFormError').textContent = '';
+  const button = event.submitter || $('appForm').querySelector('button[type="submit"]');
+  setBusy(button, true, 'Enregistrement…');
   try {
-    await api('/portail/api/admin/apps', { method: 'POST', body: JSON.stringify(payload) });
+    const file = $('appLogo').files[0];
+    const logoData = file ? await fileToDataUrl(file) : '';
+    await api('/portail/api/admin/apps', {
+      method: 'POST',
+      body: JSON.stringify({
+        id: $('appId').value,
+        name: $('appName').value.trim(),
+        description: $('appDescription').value.trim(),
+        url: $('appUrl').value.trim(),
+        categoryId: $('appCategory').value,
+        order: Number($('appOrder').value || 10),
+        logoData,
+        removeLogo: $('removeLogo').checked
+      })
+    });
     resetAppForm();
     await loadAdmin();
   } catch (err) {
-    error.textContent = err.message;
+    $('appFormError').textContent = err.message;
+  } finally {
+    setBusy(button, false);
   }
 }
 
 async function deleteApp(id) {
-  const app = state.apps.find(item => item.id === id);
-  if (!app || !confirm(`Supprimer l’application « ${app.name} » ?`)) return;
+  if (!confirm('Supprimer cette application ?')) return;
   await api(`/portail/api/admin/apps/${encodeURIComponent(id)}`, { method: 'DELETE' });
   await loadAdmin();
 }
 
 function resetCategoryForm() {
-  el('categoryForm').reset();
-  el('categoryId').value = '';
-  el('categoryOrder').value = '10';
-  el('categoryFormError').textContent = '';
+  $('categoryForm').reset();
+  $('categoryId').value = '';
+  $('categoryOrder').value = '10';
+  $('categoryFormError').textContent = '';
 }
 
 function editCategory(id) {
-  const category = state.categories.find(item => item.id === id);
-  if (!category) return;
-  el('categoryId').value = category.id;
-  el('categoryName').value = category.name;
-  el('categoryOrder').value = String(category.order ?? 10);
-  el('categoryFormError').textContent = '';
-  el('categoryName').focus();
+  const item = state.categories.find(category => category.id === id);
+  if (!item) return;
+  $('categoryId').value = item.id;
+  $('categoryName').value = item.name || '';
+  $('categoryOrder').value = String(item.order || 10);
+  $('categoryFormError').textContent = '';
+  switchAdminTab('categories');
 }
 
 async function saveCategory(event) {
   event.preventDefault();
-  const error = el('categoryFormError');
-  error.textContent = '';
+  $('categoryFormError').textContent = '';
+  const button = event.submitter || $('categoryForm').querySelector('button[type="submit"]');
+  setBusy(button, true, 'Enregistrement…');
   try {
     await api('/portail/api/admin/categories', {
       method: 'POST',
-      body: JSON.stringify({
-        id: el('categoryId').value,
-        name: el('categoryName').value.trim(),
-        order: Number(el('categoryOrder').value || 10)
-      })
+      body: JSON.stringify({ id: $('categoryId').value, name: $('categoryName').value.trim(), order: Number($('categoryOrder').value || 10) })
     });
     resetCategoryForm();
     await loadAdmin();
   } catch (err) {
-    error.textContent = err.message;
+    $('categoryFormError').textContent = err.message;
+  } finally {
+    setBusy(button, false);
   }
 }
 
 async function deleteCategory(id) {
-  const category = state.categories.find(item => item.id === id);
-  if (!category || !confirm(`Supprimer la catégorie « ${category.name} » et toutes ses applications ?`)) return;
+  if (!confirm('Supprimer cette catégorie et toutes ses applications ?')) return;
   await api(`/portail/api/admin/categories/${encodeURIComponent(id)}`, { method: 'DELETE' });
-  resetCategoryForm();
   await loadAdmin();
 }
 
-async function createUser(event) {
+async function saveAppearance(event) {
   event.preventDefault();
-  const error = el('userFormError');
-  error.textContent = '';
+  $('appearanceFormError').textContent = '';
+  const button = event.submitter || $('appearanceForm').querySelector('button[type="submit"]');
+  setBusy(button, true, 'Enregistrement…');
   try {
-    await api('/portail/api/admin/users', {
+    const [loginLogoData, portalLogoData, loginBackgroundData, portalBackgroundData] = await Promise.all([
+      fileToDataUrl($('loginLogoFile').files[0]),
+      fileToDataUrl($('portalLogoFile').files[0]),
+      fileToDataUrl($('loginBackgroundFile').files[0]),
+      fileToDataUrl($('portalBackgroundFile').files[0])
+    ]);
+
+    const result = await api('/portail/api/admin/appearance', {
       method: 'POST',
       body: JSON.stringify({
-        name: el('newUserName').value.trim(),
-        login: el('newUserLogin').value.trim(),
-        password: el('newUserPassword').value,
-        role: el('newUserRole').value
+        title: $('appearanceTitle').value.trim(),
+        subtitle1: $('appearanceSubtitle1').value.trim(),
+        subtitle2: $('appearanceSubtitle2').value.trim(),
+        eyebrow: $('appearanceEyebrow').value.trim(),
+        loginIntro: $('appearanceLoginIntro').value.trim(),
+        portalWelcome: $('appearancePortalWelcome').value.trim(),
+        loginLogoData,
+        portalLogoData,
+        loginBackgroundData,
+        portalBackgroundData,
+        removeLoginLogo: $('removeLoginLogo').checked,
+        removePortalLogo: $('removePortalLogo').checked,
+        removeLoginBackground: $('removeLoginBackground').checked,
+        removePortalBackground: $('removePortalBackground').checked
       })
     });
-    el('userForm').reset();
-    await loadAdmin();
+    state.appearance = result.appearance || {};
+    applyAppearance();
+    $('appearanceForm').reset();
+    applyAppearance();
   } catch (err) {
-    error.textContent = err.message;
+    $('appearanceFormError').textContent = err.message;
+  } finally {
+    setBusy(button, false);
   }
 }
 
-async function resetUserPassword(id) {
-  const user = state.users.find(item => item.id === id);
-  if (!user) return;
-  const password = prompt(`Nouveau mot de passe pour ${user.login} (12 caractères minimum) :`);
-  if (password === null) return;
-  if (password.length < 12) return alert('Le mot de passe doit contenir au moins 12 caractères.');
-  await api(`/portail/api/admin/users/${encodeURIComponent(id)}/password`, {
-    method: 'POST',
-    body: JSON.stringify({ password })
-  });
-  alert('Mot de passe mis à jour.');
-}
-
-async function deleteUser(id) {
-  const user = state.users.find(item => item.id === id);
-  if (!user || !confirm(`Supprimer le compte « ${user.login} » ?`)) return;
-  await api(`/portail/api/admin/users/${encodeURIComponent(id)}`, { method: 'DELETE' });
-  await loadAdmin();
-}
-
-function handleAdminAction(event) {
-  const button = event.target.closest('[data-action]');
+function handleAdminListClick(event) {
+  const button = event.target.closest('button[data-action]');
   if (!button) return;
   const { action, id } = button.dataset;
-  const jobs = {
-    'edit-app': () => editApp(id),
-    'delete-app': () => deleteApp(id),
-    'edit-category': () => editCategory(id),
-    'delete-category': () => deleteCategory(id),
-    'reset-password': () => resetUserPassword(id),
-    'delete-user': () => deleteUser(id)
-  };
-  Promise.resolve(jobs[action]?.()).catch(err => alert(err.message));
+  if (action === 'edit-app') editApp(id);
+  if (action === 'delete-app') deleteApp(id).catch(err => alert(err.message));
+  if (action === 'edit-category') editCategory(id);
+  if (action === 'delete-category') deleteCategory(id).catch(err => alert(err.message));
 }
 
 function bindEvents() {
-  el('loginForm').addEventListener('submit', login);
-  el('logoutBtn').addEventListener('click', logout);
-  el('adminOpenBtn').addEventListener('click', openAdmin);
-  el('adminCloseBtn').addEventListener('click', closeAdmin);
-  el('adminModal').addEventListener('click', event => { if (event.target === el('adminModal')) closeAdmin(); });
-  document.addEventListener('keydown', event => { if (event.key === 'Escape' && !el('adminModal').classList.contains('hidden')) closeAdmin(); });
-
+  $('loginForm').addEventListener('submit', login);
+  $('logoutBtn').addEventListener('click', logout);
+  $('adminOpenBtn').addEventListener('click', openAdmin);
+  $('adminCloseBtn').addEventListener('click', closeAdmin);
+  $('appForm').addEventListener('submit', saveApp);
+  $('categoryForm').addEventListener('submit', saveCategory);
+  $('appearanceForm').addEventListener('submit', saveAppearance);
+  $('appResetBtn').addEventListener('click', resetAppForm);
+  $('categoryResetBtn').addEventListener('click', resetCategoryForm);
+  $('appAdminList').addEventListener('click', handleAdminListClick);
+  $('categoryAdminList').addEventListener('click', handleAdminListClick);
   document.querySelectorAll('.admin-tab').forEach(button => button.addEventListener('click', () => switchAdminTab(button.dataset.tab)));
-  el('appForm').addEventListener('submit', saveApp);
-  el('appResetBtn').addEventListener('click', resetAppForm);
-  el('appAdminList').addEventListener('click', handleAdminAction);
-  el('categoryForm').addEventListener('submit', saveCategory);
-  el('categoryResetBtn').addEventListener('click', resetCategoryForm);
-  el('categoryAdminList').addEventListener('click', handleAdminAction);
-  el('userAdminList').addEventListener('click', handleAdminAction);
+  $('adminModal').addEventListener('click', (event) => { if (event.target === $('adminModal')) closeAdmin(); });
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !$('adminModal').classList.contains('hidden')) closeAdmin(); });
 }
 
 bindEvents();
+applyAppearance();
 initialize();

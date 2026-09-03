@@ -4,24 +4,26 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
-  <title>ARGOS — Portail Police Municipale de Chalon-sur-Saône</title>
+  <title>ARGOS — Portail</title>
   <link rel="stylesheet" href="/portail/styles.css">
 </head>
 <body>
   <section id="loginView" class="login-view">
+    <div class="backdrop"></div>
     <div class="login-frame">
       <header class="login-brand">
-        <img src="/portail/logo-pm.png" alt="Emblème de la Police Municipale de Chalon-sur-Saône">
-        <div>
-          <p class="eyebrow">Accès professionnel sécurisé</p>
-          <h1>Police Municipale</h1>
-          <p class="brand-subtitle">Chalon-sur-Saône</p>
+        <img id="loginBrandLogo" src="/portail/logo-pm.png" alt="Logo ARGOS">
+        <div class="brand-copy center">
+          <p id="loginEyebrow" class="eyebrow">ARGOS • Portail professionnel</p>
+          <h1 id="loginTitle">PORTAIL ARGOS</h1>
+          <p id="loginSubtitle1" class="brand-subtitle">Police Municipale</p>
+          <p id="loginSubtitle2" class="brand-subtitle minor">Chalon-sur-Saône</p>
         </div>
       </header>
 
-      <div class="notice-bar" role="status">
+      <div id="loginIntro" class="notice-bar" role="status">
         <span class="status-dot" aria-hidden="true"></span>
-        ARGOS — accès aux applications et ressources professionnelles
+        Portail d’accès aux applications et ressources professionnelles
       </div>
 
       <main class="login-card">
@@ -29,7 +31,7 @@
           <span class="lock-mark" aria-hidden="true">●</span>
           <div>
             <h2>Authentification</h2>
-            <p>Utilisez les mêmes identifiants que pour PHENIX.</p>
+            <p>Renseignez vos identifiants pour ouvrir votre espace.</p>
           </div>
         </div>
 
@@ -56,15 +58,17 @@
   </section>
 
   <section id="portalView" class="portal-view hidden">
+    <div class="portal-backdrop"></div>
     <header class="portal-header">
       <div class="portal-header-inner">
-        <div class="portal-identity">
-          <img src="/portail/logo-pm.png" alt="Police Municipale">
-          <div>
-            <p class="eyebrow">ARGOS • Portail professionnel</p>
-            <h1>Police Municipale</h1>
-            <p>Chalon-sur-Saône</p>
-          </div>
+        <div class="portal-left-placeholder"></div>
+
+        <div class="portal-title-block">
+          <img id="portalBrandLogo" class="portal-brand-logo" src="/portail/logo-pm.png" alt="Logo ARGOS">
+          <p id="portalEyebrow" class="eyebrow center">ARGOS • Portail professionnel</p>
+          <h1 id="portalTitle">PORTAIL ARGOS</h1>
+          <p id="portalSubtitle1" class="header-subtitle">Police Municipale</p>
+          <p id="portalSubtitle2" class="header-subtitle minor">Chalon-sur-Saône</p>
         </div>
 
         <div class="account-box">
@@ -89,14 +93,14 @@
       <div class="welcome-strip">
         <div>
           <strong>Bienvenue <span id="welcomeName"></span></strong>
-          <span>Sélectionnez une application pour l’ouvrir dans un nouvel onglet.</span>
+          <span id="welcomeText">Sélectionnez une application pour l’ouvrir dans un nouvel onglet.</span>
         </div>
         <span class="secure-chip">● Session sécurisée</span>
       </div>
       <div id="categoriesRoot"></div>
     </main>
 
-    <footer class="portal-footer">ARGOS • Portail interne • Police Municipale de Chalon-sur-Saône</footer>
+    <footer class="portal-footer">Portail interne • Police Municipale de Chalon-sur-Saône</footer>
   </section>
 
   <div id="adminModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="adminTitle">
@@ -104,7 +108,7 @@
       <header class="modal-header">
         <div>
           <p class="eyebrow light">Gestion du portail</p>
-          <h2 id="adminTitle">Administration</h2>
+          <h2 id="adminTitle">Administration ARGOS</h2>
         </div>
         <button id="adminCloseBtn" class="modal-close" type="button" aria-label="Fermer">×</button>
       </header>
@@ -112,7 +116,8 @@
       <div class="admin-tabs" role="tablist">
         <button class="admin-tab active" type="button" data-tab="apps">Applications</button>
         <button class="admin-tab" type="button" data-tab="categories">Catégories</button>
-        <button class="admin-tab" type="button" data-tab="users">Utilisateurs</button>
+        <button class="admin-tab" type="button" data-tab="appearance">Apparence</button>
+        <button class="admin-tab" type="button" data-tab="users">Comptes PHENIX</button>
       </div>
 
       <div class="modal-body">
@@ -129,7 +134,7 @@
                 <label>Catégorie<select id="appCategory" required></select></label>
               </div>
               <label>Description<input id="appDescription" maxlength="160"></label>
-              <label>Lien<input id="appUrl" type="url" placeholder="https://..." required></label>
+              <label>Lien<input id="appUrl" placeholder="https://... ou /phenix/" required></label>
               <div class="field-grid">
                 <label>Ordre<input id="appOrder" type="number" value="10"></label>
                 <label>Logo <small>PNG/JPG/WebP/GIF/SVG, 400 Ko max.</small><input id="appLogo" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"></label>
@@ -165,23 +170,47 @@
           </div>
         </section>
 
-        <section class="admin-panel hidden" data-panel="users">
-          <div class="admin-layout">
-            <div class="edit-card">
+        <section class="admin-panel hidden" data-panel="appearance">
+          <div class="admin-layout one-column">
+            <form id="appearanceForm" class="edit-card">
               <div class="section-heading">
-                <div>
-                  <h3>Comptes synchronisés avec PHENIX</h3>
-                  <p>ARGOS utilise directement les identifiants et mots de passe PHENIX.</p>
-                </div>
+                <div><h3>Personnalisation</h3><p>Modifiez les titres, logos et fonds d’écran.</p></div>
               </div>
-              <p>Pour créer, modifier ou supprimer un compte, faites l’opération dans <strong>PHENIX</strong>. Le changement est pris en compte automatiquement par ARGOS, sans recopier le mot de passe.</p>
-              <p><strong>Rôles :</strong> admin PHENIX → administrateur ARGOS ; superviseur/opérateur → utilisateur ARGOS ; dashboard → accès ARGOS désactivé.</p>
-              <div class="form-actions">
-                <a class="btn btn-primary" href="/" target="_blank" rel="noopener noreferrer">Ouvrir PHENIX</a>
+              <div class="field-grid">
+                <label>Titre principal<input id="appearanceTitle" value="PORTAIL ARGOS"></label>
+                <label>Bandeau / accroche<input id="appearanceEyebrow" value="ARGOS • Portail professionnel"></label>
               </div>
-            </div>
+              <div class="field-grid">
+                <label>Ligne 1<input id="appearanceSubtitle1" value="Police Municipale"></label>
+                <label>Ligne 2<input id="appearanceSubtitle2" value="Chalon-sur-Saône"></label>
+              </div>
+              <label>Texte d’introduction connexion<input id="appearanceLoginIntro"></label>
+              <label>Texte d’accueil portail<input id="appearancePortalWelcome"></label>
+
+              <div class="field-grid two-lines">
+                <label>Logo page de connexion <small>JPG/PNG/WebP/SVG</small><input id="loginLogoFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"></label>
+                <label>Logo du portail <small>JPG/PNG/WebP/SVG</small><input id="portalLogoFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"></label>
+              </div>
+              <div class="field-grid two-lines">
+                <label>Fond de connexion <small>Image plein écran</small><input id="loginBackgroundFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label>
+                <label>Fond du portail <small>Image plein écran</small><input id="portalBackgroundFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label>
+              </div>
+              <div class="field-grid two-lines checks-grid">
+                <label class="check-row"><input id="removeLoginLogo" type="checkbox"> Supprimer le logo connexion</label>
+                <label class="check-row"><input id="removePortalLogo" type="checkbox"> Supprimer le logo portail</label>
+                <label class="check-row"><input id="removeLoginBackground" type="checkbox"> Supprimer le fond connexion</label>
+                <label class="check-row"><input id="removePortalBackground" type="checkbox"> Supprimer le fond portail</label>
+              </div>
+              <p id="appearanceFormError" class="form-error" aria-live="polite"></p>
+              <div class="form-actions"><button class="btn btn-primary" type="submit">Enregistrer la personnalisation</button></div>
+            </form>
+          </div>
+        </section>
+
+        <section class="admin-panel hidden" data-panel="users">
+          <div class="admin-layout one-column">
             <div class="list-card">
-              <div class="section-heading"><div><h3>Comptes PHENIX détectés</h3><p id="userCountText"></p></div></div>
+              <div class="section-heading"><div><h3>Comptes PHENIX vus par ARGOS</h3><p id="userCountText"></p></div></div>
               <div id="userAdminList" class="admin-list"></div>
             </div>
           </div>
