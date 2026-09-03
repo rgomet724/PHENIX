@@ -287,19 +287,22 @@ function renderAdmin() {
   const userList = el('userAdminList');
   userList.replaceChildren();
   state.users.forEach(user => {
-    const buttons = [];
-    if (!user.protected) {
-      buttons.push(miniButton('Nouveau mot de passe', 'reset-password', user.id));
-      if (user.id !== state.user.id) buttons.push(miniButton('Supprimer', 'delete-user', user.id, true));
-    }
+    const isRender = user.source === 'Render';
+    const accessText = user.accessEnabled === false
+      ? 'Accès ARGOS désactivé'
+      : (user.role === 'admin' ? 'Administrateur ARGOS' : 'Utilisateur ARGOS');
+    const sourceText = isRender
+      ? 'Compte de secours Render'
+      : `PHENIX${user.phenixRole ? ` • rôle ${user.phenixRole}` : ''}`;
+    const passwordText = user.passwordChangeRequired ? ' • mot de passe PHENIX à changer' : '';
     userList.appendChild(adminItem(
       `${user.name} — ${user.login}`,
-      `${user.role === 'admin' ? 'Administrateur' : 'Utilisateur'} • ${user.source || 'Portail'}`,
-      buttons,
-      user.protected ? 'Compte principal Render' : ''
+      `${accessText} • ${sourceText}${passwordText}`,
+      [],
+      isRender ? 'Secours Render' : (user.accessEnabled === false ? 'Non autorisé' : 'Compte PHENIX')
     ));
   });
-  el('userCountText').textContent = `${state.users.length} compte${state.users.length > 1 ? 's' : ''}`;
+  el('userCountText').textContent = `${state.users.length} compte${state.users.length > 1 ? 's' : ''} • source PHENIX`;
 }
 
 function resetAppForm() {
@@ -491,7 +494,6 @@ function bindEvents() {
   el('categoryForm').addEventListener('submit', saveCategory);
   el('categoryResetBtn').addEventListener('click', resetCategoryForm);
   el('categoryAdminList').addEventListener('click', handleAdminAction);
-  el('userForm').addEventListener('submit', createUser);
   el('userAdminList').addEventListener('click', handleAdminAction);
 }
 

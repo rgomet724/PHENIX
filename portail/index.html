@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
-  <title>Portail Police Municipale — Chalon-sur-Saône</title>
+  <title>ARGOS — Portail Police Municipale de Chalon-sur-Saône</title>
   <link rel="stylesheet" href="/portail/styles.css">
 </head>
 <body>
@@ -21,7 +21,7 @@
 
       <div class="notice-bar" role="status">
         <span class="status-dot" aria-hidden="true"></span>
-        Portail d’accès aux applications et ressources professionnelles
+        ARGOS — accès aux applications et ressources professionnelles
       </div>
 
       <main class="login-card">
@@ -29,7 +29,7 @@
           <span class="lock-mark" aria-hidden="true">●</span>
           <div>
             <h2>Authentification</h2>
-            <p>Renseignez vos identifiants pour ouvrir votre espace.</p>
+            <p>Utilisez les mêmes identifiants que pour PHENIX.</p>
           </div>
         </div>
 
@@ -61,7 +61,7 @@
         <div class="portal-identity">
           <img src="/portail/logo-pm.png" alt="Police Municipale">
           <div>
-            <p class="eyebrow">Portail professionnel</p>
+            <p class="eyebrow">ARGOS • Portail professionnel</p>
             <h1>Police Municipale</h1>
             <p>Chalon-sur-Saône</p>
           </div>
@@ -96,7 +96,7 @@
       <div id="categoriesRoot"></div>
     </main>
 
-    <footer class="portal-footer">Portail interne • Police Municipale de Chalon-sur-Saône</footer>
+    <footer class="portal-footer">ARGOS • Portail interne • Police Municipale de Chalon-sur-Saône</footer>
   </section>
 
   <div id="adminModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="adminTitle">
@@ -167,21 +167,21 @@
 
         <section class="admin-panel hidden" data-panel="users">
           <div class="admin-layout">
-            <form id="userForm" class="edit-card">
-              <div class="section-heading"><div><h3>Nouveau compte</h3><p>Créez un accès au portail.</p></div></div>
-              <div class="field-grid">
-                <label>Nom affiché<input id="newUserName" required></label>
-                <label>Identifiant<input id="newUserLogin" autocomplete="off" required></label>
+            <div class="edit-card">
+              <div class="section-heading">
+                <div>
+                  <h3>Comptes synchronisés avec PHENIX</h3>
+                  <p>ARGOS utilise directement les identifiants et mots de passe PHENIX.</p>
+                </div>
               </div>
-              <div class="field-grid">
-                <label>Mot de passe temporaire <small>12 caractères minimum</small><input id="newUserPassword" type="password" autocomplete="new-password" required></label>
-                <label>Rôle<select id="newUserRole"><option value="user">Utilisateur</option><option value="admin">Administrateur</option></select></label>
+              <p>Pour créer, modifier ou supprimer un compte, faites l’opération dans <strong>PHENIX</strong>. Le changement est pris en compte automatiquement par ARGOS, sans recopier le mot de passe.</p>
+              <p><strong>Rôles :</strong> admin PHENIX → administrateur ARGOS ; superviseur/opérateur → utilisateur ARGOS ; dashboard → accès ARGOS désactivé.</p>
+              <div class="form-actions">
+                <a class="btn btn-primary" href="/" target="_blank" rel="noopener noreferrer">Ouvrir PHENIX</a>
               </div>
-              <p id="userFormError" class="form-error" aria-live="polite"></p>
-              <div class="form-actions"><button class="btn btn-primary" type="submit">Créer le compte</button></div>
-            </form>
+            </div>
             <div class="list-card">
-              <div class="section-heading"><div><h3>Comptes autorisés</h3><p id="userCountText"></p></div></div>
+              <div class="section-heading"><div><h3>Comptes PHENIX détectés</h3><p id="userCountText"></p></div></div>
               <div id="userAdminList" class="admin-list"></div>
             </div>
           </div>
