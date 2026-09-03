@@ -3,218 +3,174 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
-  <title>ARGOS — Portail</title>
+  <title>Portail ARGOS</title>
   <link rel="stylesheet" href="/portail/styles.css">
 </head>
 <body>
-  <section id="loginView" class="login-view">
-    <div class="backdrop"></div>
-    <div class="login-frame">
-      <header class="login-brand">
-        <img id="loginBrandLogo" src="/portail/logo-pm.png" alt="Logo ARGOS">
-        <div class="brand-copy center">
-          <p id="loginEyebrow" class="eyebrow">ARGOS • Portail professionnel</p>
-          <h1 id="loginTitle">Portail ARGOS</h1>
-          <p id="loginSubtitle1" class="brand-subtitle">Police Municipale</p>
-          <p id="loginSubtitle2" class="brand-subtitle minor">Chalon-sur-Saône</p>
-        </div>
-      </header>
+  <section id="loginView" class="login-page">
+    <div id="loginBackdrop" class="page-background"></div>
 
-      <div id="loginIntro" class="notice-bar" role="status">
-        <span class="status-dot" aria-hidden="true"></span>
-        Portail d’accès aux applications et ressources professionnelles
-      </div>
-
-      <main class="login-card">
-        <div class="login-card-heading">
-          <span class="lock-mark" aria-hidden="true">●</span>
-          <div>
-            <h2>Authentification</h2>
-            <p>Renseignez vos identifiants pour ouvrir votre espace.</p>
-          </div>
-        </div>
-
-        <form id="loginForm" class="login-form" novalidate>
-          <label for="loginInput">Identifiant</label>
-          <div class="input-shell">
-            <span aria-hidden="true">👤</span>
-            <input id="loginInput" name="login" autocomplete="username" required>
-          </div>
-
-          <label for="passwordInput">Mot de passe</label>
-          <div class="input-shell">
-            <span aria-hidden="true">🔒</span>
-            <input id="passwordInput" name="password" type="password" autocomplete="current-password" required>
-          </div>
-
-          <button id="loginSubmit" class="btn btn-success login-submit" type="submit">Se connecter</button>
-          <p id="loginError" class="form-error" aria-live="polite"></p>
-        </form>
-      </main>
-
-      <footer class="login-footer">Accès réservé aux personnels autorisés • Police Municipale de Chalon-sur-Saône</footer>
-    </div>
-  </section>
-
-  <section id="portalView" class="portal-view hidden">
-    <div class="portal-backdrop"></div>
-    <header class="portal-header">
-      <div class="portal-header-inner">
-        <div class="portal-left-placeholder"></div>
-
-        <div class="portal-title-block">
-          <img id="portalBrandLogo" class="portal-brand-logo" src="/portail/logo-pm.png" alt="Logo ARGOS">
-          <p id="portalEyebrow" class="eyebrow center">ARGOS • Portail professionnel</p>
-          <h1 id="portalTitle">Portail ARGOS</h1>
-          <p id="portalSubtitle1" class="header-subtitle">Police Municipale</p>
-          <p id="portalSubtitle2" class="header-subtitle minor">Chalon-sur-Saône</p>
-        </div>
-
-        <div class="account-box">
-          <span class="connected-label">Connecté en tant que</span>
-          <strong id="userDisplayName">—</strong>
-          <span id="userRoleBadge" class="role-badge">Utilisateur</span>
-        </div>
-      </div>
-
-      <nav class="portal-nav" aria-label="Navigation du portail">
-        <div class="portal-nav-inner">
-          <div class="nav-primary"><span aria-hidden="true">⌂</span><strong>Vos applications</strong></div>
-          <div class="nav-actions">
-            <button id="adminOpenBtn" class="nav-button hidden" type="button">⚙ Administration</button>
-            <button id="logoutBtn" class="nav-button" type="button">↪ Déconnexion</button>
-          </div>
-        </div>
-      </nav>
+    <header class="llng-login-header">
+      <img id="loginBrandLogo" src="/portail/logo-pm.png" alt="Police Municipale">
+      <h1 id="loginTitle">Portail ARGOS</h1>
+      <p id="loginSubtitleLine"><span id="loginSubtitle1">Police Municipale</span> — <span id="loginSubtitle2">Chalon-sur-Saône</span></p>
     </header>
 
-    <main class="portal-main">
-      <div class="welcome-strip">
-        <div>
-          <strong>Bienvenue <span id="welcomeName"></span></strong>
-          <span id="welcomeText">Sélectionnez une application pour l’ouvrir dans un nouvel onglet.</span>
+    <div id="loginInfoBar" class="llng-info-bar">Authentification requise</div>
+
+    <main class="llng-login-main">
+      <form id="loginForm" class="llng-login-form" novalidate>
+        <div class="input-group">
+          <span class="input-addon" aria-hidden="true">♟</span>
+          <input id="loginInput" name="login" autocomplete="username" placeholder="Identifiant" required>
         </div>
-        <span class="secure-chip">● Session sécurisée</span>
-      </div>
-      <div id="categoriesRoot"></div>
+        <div class="input-group">
+          <span class="input-addon" aria-hidden="true">●</span>
+          <input id="passwordInput" name="password" type="password" autocomplete="current-password" placeholder="Mot de passe" required>
+        </div>
+        <button id="loginSubmit" class="btn btn-success" type="submit">Connexion</button>
+        <p id="loginError" class="alert alert-danger hidden" aria-live="polite"></p>
+      </form>
     </main>
 
-    <footer class="portal-footer">Portail interne • Police Municipale de Chalon-sur-Saône</footer>
+    <footer class="llng-footer">
+      Service fourni par <strong>ARGOS</strong> • Police Municipale de Chalon-sur-Saône
+    </footer>
+  </section>
+
+  <section id="portalView" class="portal-page hidden">
+    <div id="portalBackdrop" class="page-background"></div>
+
+    <nav class="llng-navbar" aria-label="Navigation ARGOS">
+      <div class="llng-navbar-inner">
+        <div class="llng-navbar-left">
+          <a class="nav-home" href="/portail/" aria-label="Accueil">⌂</a>
+          <button class="nav-link active" type="button">Vos applications</button>
+          <button id="adminOpenBtn" class="nav-link hidden" type="button">Administration</button>
+          <button id="logoutBtn" class="nav-link" type="button">Déconnexion</button>
+        </div>
+        <div class="llng-connected">Connecté en tant que <strong id="userDisplayName">—</strong></div>
+      </div>
+    </nav>
+
+    <header class="llng-portal-header">
+      <img id="portalBrandLogo" src="/portail/logo-pm.png" alt="Police Municipale">
+      <h1 id="portalTitle">Portail ARGOS</h1>
+      <p><span id="portalSubtitle1">Police Municipale</span> — <span id="portalSubtitle2">Chalon-sur-Saône</span></p>
+    </header>
+
+    <main class="llng-portal-main">
+      <div id="portalInfoBar" class="llng-info-bar portal-info">Sélectionnez une application</div>
+      <div id="categoriesRoot" class="categories-root"></div>
+    </main>
+
+    <footer class="llng-footer portal-footer">
+      Service fourni par <strong>ARGOS</strong> • Police Municipale de Chalon-sur-Saône
+    </footer>
   </section>
 
   <div id="adminModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="adminTitle">
-    <div class="modal-card">
-      <header class="modal-header">
-        <div>
-          <p class="eyebrow light">Gestion du portail</p>
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button id="adminCloseBtn" type="button" class="close" aria-label="Fermer">×</button>
           <h2 id="adminTitle">Administration ARGOS</h2>
         </div>
-        <button id="adminCloseBtn" class="modal-close" type="button" aria-label="Fermer">×</button>
-      </header>
 
-      <div class="admin-tabs" role="tablist">
-        <button class="admin-tab active" type="button" data-tab="apps">Applications</button>
-        <button class="admin-tab" type="button" data-tab="categories">Catégories</button>
-        <button class="admin-tab" type="button" data-tab="appearance">Apparence</button>
-        <button class="admin-tab" type="button" data-tab="users">Comptes PHENIX</button>
-      </div>
+        <div class="admin-tabs">
+          <button class="admin-tab active" type="button" data-tab="apps">Applications</button>
+          <button class="admin-tab" type="button" data-tab="categories">Catégories</button>
+          <button class="admin-tab" type="button" data-tab="appearance">Apparence</button>
+          <button class="admin-tab" type="button" data-tab="users">Comptes PHENIX</button>
+        </div>
 
-      <div class="modal-body">
-        <section class="admin-panel" data-panel="apps">
-          <div class="admin-layout">
-            <form id="appForm" class="edit-card">
-              <div class="section-heading">
-                <div><h3>Application / lien</h3><p>Ajoutez ou modifiez une tuile du portail.</p></div>
-                <button id="appResetBtn" class="btn btn-secondary" type="button">Nouveau</button>
+        <div class="modal-body">
+          <section class="admin-panel" data-panel="apps">
+            <div class="admin-grid">
+              <form id="appForm" class="panel panel-default">
+                <div class="panel-heading"><strong>Application / lien</strong><button id="appResetBtn" class="btn btn-default btn-xs" type="button">Nouveau</button></div>
+                <div class="panel-body form-stack">
+                  <input id="appId" type="hidden">
+                  <label>Nom<input id="appName" class="form-control" required></label>
+                  <label>Catégorie<select id="appCategory" class="form-control" required></select></label>
+                  <label>Description<input id="appDescription" class="form-control" maxlength="160"></label>
+                  <label>Lien<input id="appUrl" class="form-control" placeholder="https://... ou /" required></label>
+                  <label>Ordre<input id="appOrder" class="form-control" type="number" value="10"></label>
+                  <label>Logo <small>400 Ko max.</small><input id="appLogo" class="form-control" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"></label>
+                  <label id="removeLogoRow" class="checkbox hidden"><input id="removeLogo" type="checkbox"> Supprimer le logo actuel</label>
+                  <p id="appFormError" class="text-danger"></p>
+                  <button class="btn btn-primary" type="submit">Enregistrer</button>
+                </div>
+              </form>
+
+              <div class="panel panel-default">
+                <div class="panel-heading"><strong>Applications existantes</strong> <span id="appCountText" class="muted"></span></div>
+                <div id="appAdminList" class="admin-list panel-body"></div>
               </div>
-              <input id="appId" type="hidden">
-              <div class="field-grid">
-                <label>Nom<input id="appName" required></label>
-                <label>Catégorie<select id="appCategory" required></select></label>
-              </div>
-              <label>Description<input id="appDescription" maxlength="160"></label>
-              <label>Lien<input id="appUrl" placeholder="https://... ou /phenix/" required></label>
-              <div class="field-grid">
-                <label>Ordre<input id="appOrder" type="number" value="10"></label>
-                <label>Logo <small>PNG/JPG/WebP/GIF/SVG, 400 Ko max.</small><input id="appLogo" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"></label>
-              </div>
-              <label id="removeLogoRow" class="check-row hidden"><input id="removeLogo" type="checkbox"> Supprimer le logo actuel</label>
-              <p id="appFormError" class="form-error" aria-live="polite"></p>
-              <div class="form-actions"><button class="btn btn-primary" type="submit">Enregistrer</button></div>
-            </form>
-            <div class="list-card">
-              <div class="section-heading"><div><h3>Applications existantes</h3><p id="appCountText"></p></div></div>
-              <div id="appAdminList" class="admin-list"></div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        <section class="admin-panel hidden" data-panel="categories">
-          <div class="admin-layout">
-            <form id="categoryForm" class="edit-card">
-              <div class="section-heading">
-                <div><h3>Catégorie</h3><p>Organisez les applications par rubriques.</p></div>
-                <button id="categoryResetBtn" class="btn btn-secondary" type="button">Nouveau</button>
+          <section class="admin-panel hidden" data-panel="categories">
+            <div class="admin-grid">
+              <form id="categoryForm" class="panel panel-default">
+                <div class="panel-heading"><strong>Catégorie</strong><button id="categoryResetBtn" class="btn btn-default btn-xs" type="button">Nouveau</button></div>
+                <div class="panel-body form-stack">
+                  <input id="categoryId" type="hidden">
+                  <label>Nom<input id="categoryName" class="form-control" required></label>
+                  <label>Ordre<input id="categoryOrder" class="form-control" type="number" value="10"></label>
+                  <p id="categoryFormError" class="text-danger"></p>
+                  <button class="btn btn-primary" type="submit">Enregistrer</button>
+                </div>
+              </form>
+              <div class="panel panel-default">
+                <div class="panel-heading"><strong>Catégories existantes</strong> <span id="categoryCountText" class="muted"></span></div>
+                <div id="categoryAdminList" class="admin-list panel-body"></div>
               </div>
-              <input id="categoryId" type="hidden">
-              <label>Nom<input id="categoryName" required></label>
-              <label>Ordre<input id="categoryOrder" type="number" value="10"></label>
-              <p id="categoryFormError" class="form-error" aria-live="polite"></p>
-              <div class="form-actions"><button class="btn btn-primary" type="submit">Enregistrer</button></div>
-            </form>
-            <div class="list-card">
-              <div class="section-heading"><div><h3>Catégories existantes</h3><p id="categoryCountText"></p></div></div>
-              <div id="categoryAdminList" class="admin-list"></div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        <section class="admin-panel hidden" data-panel="appearance">
-          <div class="admin-layout one-column">
-            <form id="appearanceForm" class="edit-card">
-              <div class="section-heading">
-                <div><h3>Personnalisation</h3><p>Modifiez les titres, logos et fonds d’écran.</p></div>
-              </div>
-              <div class="field-grid">
-                <label>Titre principal<input id="appearanceTitle" value="Portail ARGOS"></label>
-                <label>Bandeau / accroche<input id="appearanceEyebrow" value="ARGOS • Portail professionnel"></label>
-              </div>
-              <div class="field-grid">
-                <label>Ligne 1<input id="appearanceSubtitle1" value="Police Municipale"></label>
-                <label>Ligne 2<input id="appearanceSubtitle2" value="Chalon-sur-Saône"></label>
-              </div>
-              <label>Texte d’introduction connexion<input id="appearanceLoginIntro"></label>
-              <label>Texte d’accueil portail<input id="appearancePortalWelcome"></label>
+          <section class="admin-panel hidden" data-panel="appearance">
+            <form id="appearanceForm" class="panel panel-default">
+              <div class="panel-heading"><strong>Personnalisation du portail</strong></div>
+              <div class="panel-body form-stack appearance-form">
+                <div class="form-row">
+                  <label>Titre principal<input id="appearanceTitle" class="form-control" value="Portail ARGOS"></label>
+                  <label>Texte d'information connexion<input id="appearanceLoginIntro" class="form-control" value="Authentification requise"></label>
+                </div>
+                <div class="form-row">
+                  <label>Ligne 1<input id="appearanceSubtitle1" class="form-control" value="Police Municipale"></label>
+                  <label>Ligne 2<input id="appearanceSubtitle2" class="form-control" value="Chalon-sur-Saône"></label>
+                </div>
+                <label>Texte d'information portail<input id="appearancePortalWelcome" class="form-control" value="Sélectionnez une application"></label>
+                <input id="appearanceEyebrow" type="hidden" value="ARGOS">
 
-              <div class="field-grid two-lines">
-                <label>Logo page de connexion <small>JPG/PNG/WebP/SVG</small><input id="loginLogoFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"></label>
-                <label>Logo du portail <small>JPG/PNG/WebP/SVG</small><input id="portalLogoFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"></label>
+                <div class="form-row">
+                  <label>Logo connexion<input id="loginLogoFile" class="form-control" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"></label>
+                  <label>Logo portail<input id="portalLogoFile" class="form-control" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"></label>
+                </div>
+                <div class="form-row">
+                  <label>Fond connexion<input id="loginBackgroundFile" class="form-control" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label>
+                  <label>Fond portail<input id="portalBackgroundFile" class="form-control" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label>
+                </div>
+                <div class="form-row checkbox-row">
+                  <label><input id="removeLoginLogo" type="checkbox"> Supprimer logo connexion</label>
+                  <label><input id="removePortalLogo" type="checkbox"> Supprimer logo portail</label>
+                  <label><input id="removeLoginBackground" type="checkbox"> Supprimer fond connexion</label>
+                  <label><input id="removePortalBackground" type="checkbox"> Supprimer fond portail</label>
+                </div>
+                <p id="appearanceFormError" class="text-danger"></p>
+                <button class="btn btn-primary" type="submit">Enregistrer</button>
               </div>
-              <div class="field-grid two-lines">
-                <label>Fond de connexion <small>Image plein écran</small><input id="loginBackgroundFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label>
-                <label>Fond du portail <small>Image plein écran</small><input id="portalBackgroundFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif"></label>
-              </div>
-              <div class="field-grid two-lines checks-grid">
-                <label class="check-row"><input id="removeLoginLogo" type="checkbox"> Supprimer le logo connexion</label>
-                <label class="check-row"><input id="removePortalLogo" type="checkbox"> Supprimer le logo portail</label>
-                <label class="check-row"><input id="removeLoginBackground" type="checkbox"> Supprimer le fond connexion</label>
-                <label class="check-row"><input id="removePortalBackground" type="checkbox"> Supprimer le fond portail</label>
-              </div>
-              <p id="appearanceFormError" class="form-error" aria-live="polite"></p>
-              <div class="form-actions"><button class="btn btn-primary" type="submit">Enregistrer la personnalisation</button></div>
             </form>
-          </div>
-        </section>
+          </section>
 
-        <section class="admin-panel hidden" data-panel="users">
-          <div class="admin-layout one-column">
-            <div class="list-card">
-              <div class="section-heading"><div><h3>Comptes PHENIX vus par ARGOS</h3><p id="userCountText"></p></div></div>
-              <div id="userAdminList" class="admin-list"></div>
+          <section class="admin-panel hidden" data-panel="users">
+            <div class="panel panel-default">
+              <div class="panel-heading"><strong>Comptes PHENIX</strong> <span id="userCountText" class="muted"></span></div>
+              <div id="userAdminList" class="admin-list panel-body"></div>
             </div>
-          </div>
-        </section>
+          </section>
+        </div>
       </div>
     </div>
   </div>
