@@ -61,7 +61,7 @@ function fileToDataUrl(file) {
 
 function applyAppearance() {
   const a = {
-    title: 'PORTAIL ARGOS',
+    title: 'Portail ARGOS',
     subtitle1: 'Police Municipale',
     subtitle2: 'Chalon-sur-Saône',
     eyebrow: 'ARGOS • Portail professionnel',
@@ -196,16 +196,20 @@ async function loadPortal() {
 
 async function initialize() {
   try {
-    const me = await api('/portail/api/me');
-    if (!me.user) {
+    try {
+      const publicAppearance = await api('/portail/api/appearance');
+      state.appearance = publicAppearance.appearance || {};
       applyAppearance();
-      return showLogin();
+    } catch {
+      applyAppearance();
     }
+
+    const me = await api('/portail/api/me');
+    if (!me.user) return showLogin();
     state.user = me.user;
     await loadPortal();
     showPortal();
   } catch {
-    applyAppearance();
     showLogin();
   }
 }
