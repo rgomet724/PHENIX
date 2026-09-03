@@ -2926,6 +2926,30 @@ body.lightMode #topRefreshBtn{
 .dashboardMode #topRefreshBtn,.dashboardMode .logoutBtn{display:inline-flex!important;align-items:center!important;gap:6px!important}
 @media(max-width:720px){.dashboardMode .top .tag#clock{display:none!important}.dashboardMode #topRefreshBtn span,.dashboardMode .logoutBtn span{display:none!important}}
 
+
+/* V87 - Menu PHENIX : icônes toujours visibles + accès ARGOS */
+.nav button .navIcon,
+.nav button:hover .navIcon,
+.nav button.activeNav .navIcon{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  opacity:1!important;
+  visibility:visible!important;
+}
+.nav button .navIcon svg,
+.nav button:hover .navIcon svg,
+.nav button.activeNav .navIcon svg,
+.nav button .navIcon svg *{
+  display:block!important;
+  opacity:1!important;
+  visibility:visible!important;
+}
+#argosPortalBtn{margin-top:10px!important;}
+body.lightMode #argosPortalBtn .navIcon svg,
+body.lightMode #argosPortalBtn .navIcon svg *{stroke:#0758b6!important;}
+body.lightMode #argosPortalBtn:hover .navIcon svg,
+body.lightMode #argosPortalBtn:hover .navIcon svg *{stroke:#0758b6!important;}
 </style>
 <style>
 
@@ -3119,7 +3143,7 @@ body.lightMode .wallPanel,body.lightMode .wallStat{background:#fff!important}bod
   <div id="msg" class="err"></div>
 </div></div>
 <div id="app" class="app"><div id="mobileNavBackdrop" class="mobileNavBackdrop" onclick="closeMobileNav()"></div><div class="top"><button type="button" class="mobileMenuBtn" onclick="toggleMobileNav()" aria-label="Ouvrir le menu">☰</button><div class="brand"><img class="logo" src="/logo.png" alt="Police Municipale"><div><h1>PHENIX</h1><div class="tag">Plateforme Hiérarchisée des Engagements et des Interventions</div></div></div><div class="right"><b id="agentName">Agent</b><div class="tag" id="clock"></div><div class="row topUserActions" style="justify-content:flex-end;margin-top:6px"><button id="notifBtn" class="notifSwitch desktopSoundControl" onclick="toggleNotifications()" title="Alertes sonores"><span class="notifKnob"></span><span id="notifText">ALERTES ON</span></button><button id="topRefreshBtn" type="button" onclick="manualRefresh()" title="Actualiser immédiatement les données PHENIX"><svg class="refreshIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.34 5.66"/><path d="M20 4v7h-7"/></svg><span>Actualiser</span></button><button class="small danger logoutBtn" onclick="logout()" title="Déconnexion"><svg class="logoutIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5"/><path d="M14 8l4 4-4 4"/><path d="M8 12h10"/></svg><span>Déconnexion</span></button></div></div></div>
-<div class="layout"><aside><div class="nav"><button onclick="show('dash')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5"/><path d="M9.5 20v-6h5v6"/></svg></span>Tableau de bord</button><button id="personnelBtn" onclick="show('personnel')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/><path d="M8 11.5h8"/></svg></span>Personnel</button><button onclick="show('notes')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h6"/></svg></span>Notes privées</button><button id="linksBtn" onclick="show('links')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a4 4 0 0 0 5.7 0l2.3-2.3a4 4 0 1 0-5.7-5.7L11 6.3"/><path d="M14 11a4 4 0 0 0-5.7 0L6 13.3A4 4 0 0 0 11.7 19l1.3-1.3"/></svg></span>Liens utiles</button><button onclick="show('events')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 9h18M7 13h2M11 13h2M15 13h2M7 17h2M11 17h2"/></svg></span>Événements</button><button id="historyBtn" onclick="show('history')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>Historique</button><button class="consigneNav" onclick="show('consignes')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/><path d="m6.5 8 .5.5 1-1"/></svg></span>Consignes <span id="consigneCount" class="consigneCount">(0)</span><span id="consigneBell" class="consigneBell">🔔</span></button><button id="settingsBtn" onclick="show('settings')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg></span>Paramètres</button><button id="adminBtn" onclick="show('admin')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 12H6.5a3.5 3.5 0 1 1 3.5-3.5V18a3 3 0 1 1-3-3h10a3 3 0 1 1-3 3V8.5A3.5 3.5 0 1 1 17.5 12H9Z"/></svg></span>Administration <span id="adminResetBadge" class="adminResetBadge hidden">0</span></button></div><div id="eventTodayBox" class="eventTodayBox hidden"></div></aside><main>
+<div class="layout"><aside><div class="nav"><button class="activeNav" onclick="show('dash')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5"/><path d="M9.5 20v-6h5v6"/></svg></span>Tableau de bord</button><button id="personnelBtn" onclick="show('personnel')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/><path d="M8 11.5h8"/></svg></span>Personnel</button><button onclick="show('notes')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h6"/></svg></span>Notes privées</button><button onclick="show('events')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 9h18M7 13h2M11 13h2M15 13h2M7 17h2M11 17h2"/></svg></span>Événements</button><button id="historyBtn" onclick="show('history')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>Historique</button><button class="consigneNav" onclick="show('consignes')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/><path d="m6.5 8 .5.5 1-1"/></svg></span>Consignes <span id="consigneCount" class="consigneCount">(0)</span><span id="consigneBell" class="consigneBell">🔔</span></button><button id="settingsBtn" onclick="show('settings')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg></span>Paramètres</button><button id="adminBtn" onclick="show('admin')"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 12H6.5a3.5 3.5 0 1 1 3.5-3.5V18a3 3 0 1 1-3-3h10a3 3 0 1 1-3 3V8.5A3.5 3.5 0 1 1 17.5 12H9Z"/></svg></span>Administration <span id="adminResetBadge" class="adminResetBadge hidden">0</span></button><button id="argosPortalBtn" type="button" onclick="openArgosPortal()" title="Ouvrir le Portail ARGOS"><span class="navIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v5M8 13h4M8 17h8"/></svg></span>Portail ARGOS</button></div><div id="eventTodayBox" class="eventTodayBox hidden"></div></aside><main>
 <section id="dash">
 <div id="wallDashboard" class="wallDashboard hidden">
   <div class="wallHero">
@@ -3654,7 +3678,7 @@ function showForcedPasswordChange(){const m=$('forcedPasswordModal');if(m)m.styl
 function hideForcedPasswordChange(){const m=$('forcedPasswordModal');if(m)m.style.display='none';['forcedOldPassword','forcedNewPassword','forcedNewPassword2'].forEach(id=>{if($(id))$(id).value=''})}
 async function submitForcedPasswordChange(){const oldPassword=$('forcedOldPassword').value,newPassword=$('forcedNewPassword').value,confirmPwd=$('forcedNewPassword2').value;const e=$('forcedPasswordError');if(newPassword!==confirmPwd){e.textContent='Les deux nouveaux mots de passe ne correspondent pas.';return}try{await api('/api/password',{method:'POST',body:JSON.stringify({oldPassword,newPassword})});hideForcedPasswordChange();$('login').style.display='none';$('app').style.display='block';await refresh();alert('Mot de passe modifié. Il sera à renouveler dans 90 jours.')}catch(err){e.textContent=err.message}}
 
-async function init(){applyTheme(localStorage.getItem('phenixTheme')||'light');applyDashDisplay();tick();setInterval(tick,1000);try{const st=await api('/api/status');S.flash=st.flash||{enabled:false,title:'INFO',text:''};renderFlash();if(st.user){if(st.user.passwordChangeRequired){$('login').style.display='none';showForcedPasswordChange()}else{$('login').style.display='none';$('app').style.display='block';await refresh();document.querySelector('.nav button[onclick="show(\'dash\')"]')?.classList.add('activeNav')}}else{$('setup').classList.toggle('hidden',!st.setupRequired);$('logbox').classList.toggle('hidden',st.setupRequired)}}catch(e){err(Error('Serveur non joignable : vérifie que Render est lancé'))}}
+async function init(){applyTheme(localStorage.getItem('phenixTheme')||'light');applyDashDisplay();tick();setInterval(tick,1000);try{const st=await api('/api/status');S.flash=st.flash||{enabled:false,title:'INFO',text:''};renderFlash();if(st.user){if(st.user.passwordChangeRequired){$('login').style.display='none';showForcedPasswordChange()}else{$('login').style.display='none';$('app').style.display='block';await refresh();syncActiveNav()}}else{$('setup').classList.toggle('hidden',!st.setupRequired);$('logbox').classList.toggle('hidden',st.setupRequired)}}catch(e){err(Error('Serveur non joignable : vérifie que Render est lancé'))}}
 function selectLoginOption(mode){
   const card=mode==='card';
   $('passwordLoginOption')?.classList.toggle('active',!card);
@@ -3711,15 +3735,30 @@ async function manualRefresh(){
 async function refresh(){return refreshSafe(true)}
 async function refreshSafe(force=false){if(!force && shouldPauseRefresh()) return; let next;try{next=await api('/api/data')}catch(e){if(e.code==='PASSWORD_CHANGE_REQUIRED'){showForcedPasswordChange();return}throw e}S=next;$('agentName').textContent=S.user.displayName;const dash=S.user.role==='dashboard';
 document.body.classList.toggle('dashboardMode',dash);
-if($('dashZoomTools'))$('dashZoomTools').classList.toggle('hidden',!dash);applyRoleNavigation();$('createCrewBtn').classList.toggle('hidden',dash);if((dash||phenixRole()==='operateur')&&!['dash','notes','links','consignes','events','settings'].includes(activeSection))activeSection='dash';checkCrewChanges(S.crews);renderAll(force);updateNotifButton();startRealtime();syncPhenixSounds(false);updateAdminResetBadge();}
+if($('dashZoomTools'))$('dashZoomTools').classList.toggle('hidden',!dash);applyRoleNavigation();$('createCrewBtn').classList.toggle('hidden',dash);if((dash||phenixRole()==='operateur')&&!['dash','notes','consignes','events','settings'].includes(activeSection))activeSection='dash';syncActiveNav();checkCrewChanges(S.crews);renderAll(force);updateNotifButton();startRealtime();syncPhenixSounds(false);updateAdminResetBadge();}
 function shouldPauseRefresh(){const el=document.activeElement; if(el && ['INPUT','TEXTAREA','SELECT'].includes(el.tagName)) return true; return ['personnel','admin','notes'].includes(activeSection)}
+function syncActiveNav(){
+  document.querySelectorAll('.nav button').forEach(b=>{
+    const action=b.getAttribute('onclick')||'';
+    b.classList.toggle('activeNav',action===`show('${activeSection}')`);
+  });
+}
 function show(id){
-  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('activeNav',b.getAttribute('onclick')===`show('${id}')`));
   const role=phenixRole();
   if(role==='dashboard' && !['dash','consignes','events','settings'].includes(id)){id='dash'}
-  if(role==='operateur' && !['dash','notes','links','events','consignes','settings'].includes(id)){id='dash'}
+  if(role==='operateur' && !['dash','notes','events','consignes','settings'].includes(id)){id='dash'}
   if(role==='superviseur' && id==='admin'){id='dash'}
-  activeSection=id;['dash','personnel','notes','links','events','history','consignes','settings','admin'].forEach(x=>$(x).classList.toggle('hidden',x!==id)); if(id==='notes') $('note').value=S.note||''; if(id==='consignes') renderConsignes(); if(id==='links') renderLinks(); if(id==='events') renderEvents(); if(id==='history') initSecurityHistory()}
+  activeSection=id;
+  syncActiveNav();
+  ['dash','personnel','notes','links','events','history','consignes','settings','admin'].forEach(x=>$(x).classList.toggle('hidden',x!==id));
+  if(id==='notes') $('note').value=S.note||'';
+  if(id==='consignes') renderConsignes();
+  if(id==='events') renderEvents();
+  if(id==='history') initSecurityHistory();
+}
+function openArgosPortal(){
+  window.location.href='https://pegase-2.onrender.com/portail/';
+}
 function an(m){const a=S.agents.find(x=>x.matricule===m);return a?`${a.matricule} ${a.nom||''} ${a.prenom||''}`.trim():m}
 
 function phenixRole(){
