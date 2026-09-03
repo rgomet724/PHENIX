@@ -105,9 +105,9 @@ function mountPortal(app) {
         title: 'Portail ARGOS',
         subtitle1: 'Police Municipale',
         subtitle2: 'Chalon-sur-Saône',
-        eyebrow: 'ARGOS • Portail professionnel',
-        loginIntro: 'Portail d’accès aux applications et ressources professionnelles',
-        portalWelcome: 'Sélectionnez une application pour l’ouvrir dans un nouvel onglet.',
+        eyebrow: 'ARGOS',
+        loginIntro: 'Authentification requise',
+        portalWelcome: 'Sélectionnez une application',
         loginLogoData: '',
         portalLogoData: '',
         loginBackgroundData: '',
@@ -448,9 +448,9 @@ function mountPortal(app) {
     const title = String(incoming.title || '').trim() || 'Portail ARGOS';
     const subtitle1 = String(incoming.subtitle1 || '').trim() || 'Police Municipale';
     const subtitle2 = String(incoming.subtitle2 || '').trim() || 'Chalon-sur-Saône';
-    const eyebrow = String(incoming.eyebrow || '').trim() || 'ARGOS • Portail professionnel';
-    const loginIntro = String(incoming.loginIntro || '').trim() || 'Portail d’accès aux applications et ressources professionnelles';
-    const portalWelcome = String(incoming.portalWelcome || '').trim() || 'Sélectionnez une application pour l’ouvrir dans un nouvel onglet.';
+    const eyebrow = String(incoming.eyebrow || '').trim() || 'ARGOS';
+    const loginIntro = String(incoming.loginIntro || '').trim() || 'Authentification requise';
+    const portalWelcome = String(incoming.portalWelcome || '').trim() || 'Sélectionnez une application';
 
     const loginLogoCheck = validateDataImage(incoming.loginLogoData || '', MAX_UI_IMAGE_SIZE);
     const portalLogoCheck = validateDataImage(incoming.portalLogoData || '', MAX_UI_IMAGE_SIZE);
