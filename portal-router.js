@@ -4,10 +4,11 @@ const express = require('express');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const bcrypt = require('bcryptjs');
 
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
 const MAX_LOGO_SIZE = 400 * 1024;
-const VERSION = '2.1.0-combined';
+const VERSION = '2.2.0-phenix-accounts';
 
 function safeEqual(a, b) {
   const aa = Buffer.from(String(a ?? ''));
@@ -78,6 +79,29 @@ function validAppUrl(value) {
   }
 }
 
+const PHENIX_PASSWORD_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
+
+function normalizePhenixRole(role) {
+  return String(role || '').trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function argosRoleFromPhenix(role) {
+  const normalized = normalizePhenixRole(role);
+  if (normalized === 'admin' || normalized === 'administrateur') return 'admin';
+  if (normalized === 'superviseur' || normalized === 'operateur') return 'user';
+  return null;
+}
+
+function phenixPasswordExpired(user) {
+  if (!user) return true;
+  if (normalizePhenixRole(user.role) === 'dashboard') return false;
+  if (user.mustChangePassword) return true;
+  if (!user.passwordChangedAt) return true;
+  const changed = new Date(user.passwordChangedAt).getTime();
+  return !Number.isFinite(changed) || (Date.now() - changed) >= PHENIX_PASSWORD_MAX_AGE_MS;
+}
+
 function mountPortal(app) {
   const IS_PROD = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
   const ADMIN_LOGIN = String(process.env.PORTAL_ADMIN_LOGIN || 'admin').trim() || 'admin';
@@ -91,6 +115,18 @@ function mountPortal(app) {
     ? [requestedDataDir]
     : ['/var/data', path.join(__dirname, 'data'), '/tmp/portail-pm-chalon']);
   const DB_FILE = path.join(DATA_DIR, 'portal.json');
+  const PHENIX_DB_FILE = String(process.env.PHENIX_DATA_FILE || '/var/data/data.json').trim() || '/var/data/data.json';
+
+  function loadPhenixUsers() {
+    try {
+      if (!fs.existsSync(PHENIX_DB_FILE)) return { ok: false, users: [], error: `Base PHENIX introuvable: ${PHENIX_DB_FILE}` };
+      const parsed = JSON.parse(fs.readFileSync(PHENIX_DB_FILE, 'utf8'));
+      return { ok: true, users: Array.isArray(parsed.users) ? parsed.users : [], error: '' };
+    } catch (err) {
+      console.error('[PORTAIL] Lecture comptes PHENIX impossible:', err.message);
+      return { ok: false, users: [], error: err.message };
+    }
+  }
 
   if (IS_PROD && ENV_SECRET.length < 32) console.warn('[PORTAIL] SESSION_SECRET absent ou trop court : jetons invalidés au redémarrage.');
   if (IS_PROD && !ADMIN_PASSWORD) console.warn('[PORTAIL] PORTAL_ADMIN_PASSWORD absent : connexion admin indisponible.');
@@ -140,6 +176,7 @@ function mountPortal(app) {
     const now = Date.now();
     const payload = Buffer.from(JSON.stringify({
       sub: user.id, login: user.login, name: user.name, role: user.role,
+      source: user.source || 'ARGOS', phenixRole: user.phenixRole || '',
       iat: now, exp: now + TOKEN_TTL_MS
     }), 'utf8').toString('base64url');
     const sig = crypto.createHmac('sha256', TOKEN_SECRET).update(payload).digest('base64url');
@@ -154,7 +191,14 @@ function mountPortal(app) {
       if (!safeEqual(expected, sig)) return null;
       const parsed = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
       if (!parsed.exp || parsed.exp < Date.now() || !parsed.sub || !parsed.login || !parsed.role) return null;
-      return { id: parsed.sub, login: parsed.login, name: parsed.name || parsed.login, role: parsed.role === 'admin' ? 'admin' : 'user' };
+      return {
+        id: parsed.sub,
+        login: parsed.login,
+        name: parsed.name || parsed.login,
+        role: parsed.role === 'admin' ? 'admin' : 'user',
+        source: parsed.source || 'ARGOS',
+        phenixRole: parsed.phenixRole || ''
+      };
     } catch {
       return null;
     }
@@ -180,7 +224,31 @@ function mountPortal(app) {
     return parseCookies(req.headers.cookie).pm_portal_auth || '';
   }
 
-  function currentUser(req) { return verifyToken(tokenFromRequest(req)); }
+  function currentUser(req) {
+    const user = verifyToken(tokenFromRequest(req));
+    if (!user) return null;
+
+    if (user.source === 'PHENIX') {
+      const phenix = loadPhenixUsers();
+      if (!phenix.ok) return null;
+      const rawId = String(user.id || '').startsWith('phenix:') ? String(user.id).slice(7) : String(user.id || '');
+      const stored = phenix.users.find(u => String(u.id) === rawId);
+      if (!stored) return null;
+
+      const role = argosRoleFromPhenix(stored.role);
+      if (!role || phenixPasswordExpired(stored)) return null;
+
+      return {
+        ...user,
+        login: stored.login,
+        name: stored.displayName || stored.login,
+        role,
+        phenixRole: normalizePhenixRole(stored.role)
+      };
+    }
+
+    return user;
+  }
   function isSecure(req) { return IS_PROD || String(req.headers['x-forwarded-proto'] || '').toLowerCase() === 'https'; }
   function cookie(req, token, maxAge = Math.floor(TOKEN_TTL_MS / 1000)) {
     const parts = [`pm_portal_auth=${encodeURIComponent(token)}`, 'Path=/portail', 'HttpOnly', 'SameSite=Lax', `Max-Age=${maxAge}`];
@@ -222,14 +290,21 @@ function mountPortal(app) {
     next();
   });
 
-  router.get('/healthz', (req, res) => res.json({
-    ok: true,
-    service: 'portail-pm-chalon',
-    version: VERSION,
-    adminConfigured: Boolean(ADMIN_PASSWORD),
-    sessionSecretConfigured: ENV_SECRET.length >= 32,
-    dataFile: DB_FILE
-  }));
+  router.get('/healthz', (req, res) => {
+    const phenix = loadPhenixUsers();
+    res.json({
+      ok: true,
+      service: 'argos-portail',
+      version: VERSION,
+      accountSource: 'PHENIX',
+      adminConfigured: Boolean(ADMIN_PASSWORD),
+      sessionSecretConfigured: ENV_SECRET.length >= 32,
+      phenixDataAvailable: phenix.ok,
+      phenixUserCount: phenix.users.length,
+      dataFile: DB_FILE,
+      phenixDataFile: PHENIX_DB_FILE
+    });
+  });
 
   router.get('/me', (req, res) => res.json({ user: currentUser(req) || null }));
 
@@ -239,22 +314,56 @@ function mountPortal(app) {
       const login = String(req.body?.login || '').trim();
       const password = String(req.body?.password || '');
       if (!login || !password) return res.status(400).json({ error: 'MISSING_CREDENTIALS', message: 'Identifiant et mot de passe requis.' });
+
       const loginNorm = login.toLocaleLowerCase('fr-FR');
       const envAdminMatches = loginNorm === ADMIN_LOGIN.toLocaleLowerCase('fr-FR');
       let user = null;
+
       if (envAdminMatches && ADMIN_PASSWORD && safeEqual(password, ADMIN_PASSWORD)) {
-        user = { id: 'env-admin', login: ADMIN_LOGIN, name: ADMIN_NAME, role: 'admin' };
+        user = { id: 'env-admin', login: ADMIN_LOGIN, name: ADMIN_NAME, role: 'admin', source: 'Render', phenixRole: '' };
       }
-      if (!user && !envAdminMatches) {
-        const data = loadData();
-        const stored = data.users.find(u => String(u.login || '').toLocaleLowerCase('fr-FR') === loginNorm);
-        if (stored && await verifyPassword(password, stored.passwordHash)) {
-          user = { id: stored.id, login: stored.login, name: stored.name || stored.login, role: stored.role === 'admin' ? 'admin' : 'user' };
+
+      if (!user) {
+        const phenix = loadPhenixUsers();
+        if (!phenix.ok) {
+          return res.status(503).json({
+            error: 'PHENIX_ACCOUNTS_UNAVAILABLE',
+            message: 'Les comptes PHENIX sont momentanément indisponibles. Vérifiez le disque persistant /var/data.'
+          });
+        }
+
+        const stored = phenix.users.find(u => String(u.login || '') === login)
+          || phenix.users.find(u => String(u.login || '').toLocaleLowerCase('fr-FR') === loginNorm);
+
+        if (stored && stored.passwordHash && bcrypt.compareSync(password, stored.passwordHash)) {
+          const role = argosRoleFromPhenix(stored.role);
+          if (!role) {
+            return res.status(403).json({
+              error: 'ARGOS_ACCESS_DISABLED',
+              message: 'Ce type de compte PHENIX n’est pas autorisé à accéder à ARGOS.'
+            });
+          }
+          if (phenixPasswordExpired(stored)) {
+            return res.status(428).json({
+              error: 'PASSWORD_CHANGE_REQUIRED',
+              message: 'Votre mot de passe PHENIX doit être changé. Connectez-vous d’abord à PHENIX pour le modifier.'
+            });
+          }
+
+          user = {
+            id: `phenix:${stored.id}`,
+            login: stored.login,
+            name: stored.displayName || stored.login,
+            role,
+            source: 'PHENIX',
+            phenixRole: normalizePhenixRole(stored.role)
+          };
         }
       }
+
       if (!user) return res.status(401).json({ error: 'BAD_CREDENTIALS', message: 'Identifiant ou mot de passe incorrect.' });
       const token = signToken(user);
-      console.log(`[PORTAIL] Connexion réussie: ${user.login} (${user.role})`);
+      console.log(`[PORTAIL] Connexion ARGOS réussie: ${user.login} (${user.source}/${user.role})`);
       res.set('Set-Cookie', cookie(req, token));
       res.json({ ok: true, user, token });
     } catch (err) { next(err); }
@@ -273,54 +382,57 @@ function mountPortal(app) {
   });
 
   router.get('/admin/users', requireAdmin, (req, res) => {
-    const data = loadData();
-    res.json({ users: [
-      { id: 'env-admin', login: ADMIN_LOGIN, name: ADMIN_NAME, role: 'admin', protected: true, source: 'Render' },
-      ...data.users.map(({ passwordHash, ...u }) => ({ ...u, protected: false, source: 'Portail' }))
-    ] });
-  });
-
-  router.post('/admin/users', requireAdmin, async (req, res, next) => {
-    try {
-      const data = loadData();
-      const login = String(req.body?.login || '').trim();
-      const name = String(req.body?.name || '').trim();
-      const password = String(req.body?.password || '');
-      const role = req.body?.role === 'admin' ? 'admin' : 'user';
-      if (!login || !name || password.length < 12) return res.status(400).json({ error: 'INVALID_USER', message: 'Nom, identifiant et mot de passe de 12 caractères minimum requis.' });
-      const norm = login.toLocaleLowerCase('fr-FR');
-      if (norm === ADMIN_LOGIN.toLocaleLowerCase('fr-FR') || data.users.some(u => String(u.login).toLocaleLowerCase('fr-FR') === norm)) {
-        return res.status(409).json({ error: 'LOGIN_EXISTS', message: 'Cet identifiant est déjà utilisé.' });
+    const phenix = loadPhenixUsers();
+    const users = [
+      {
+        id: 'env-admin',
+        login: ADMIN_LOGIN,
+        name: ADMIN_NAME,
+        role: 'admin',
+        protected: true,
+        source: 'Render',
+        phenixRole: '',
+        accessEnabled: true
       }
-      data.users.push({ id: crypto.randomUUID(), login, name, role, passwordHash: await hashPassword(password), createdAt: new Date().toISOString() });
-      saveData(data);
-      res.json({ ok: true });
-    } catch (err) { next(err); }
+    ];
+
+    if (phenix.ok) {
+      for (const u of phenix.users) {
+        const argosRole = argosRoleFromPhenix(u.role);
+        users.push({
+          id: `phenix:${u.id}`,
+          login: u.login,
+          name: u.displayName || u.login,
+          role: argosRole || 'user',
+          protected: true,
+          source: 'PHENIX',
+          phenixRole: normalizePhenixRole(u.role),
+          accessEnabled: Boolean(argosRole),
+          passwordChangeRequired: argosRole ? phenixPasswordExpired(u) : false
+        });
+      }
+    }
+
+    res.json({
+      users,
+      accountSource: 'PHENIX',
+      phenixAvailable: phenix.ok,
+      message: phenix.ok
+        ? 'Les comptes ARGOS sont gérés depuis PHENIX.'
+        : 'Impossible de lire les comptes PHENIX.'
+    });
   });
 
-  router.post('/admin/users/:id/password', requireAdmin, async (req, res, next) => {
-    try {
-      if (req.params.id === 'env-admin') return res.status(400).json({ error: 'ENV_ADMIN', message: 'Le mot de passe du compte Render se modifie dans PORTAL_ADMIN_PASSWORD.' });
-      const password = String(req.body?.password || '');
-      if (password.length < 12) return res.status(400).json({ error: 'WEAK_PASSWORD', message: '12 caractères minimum requis.' });
-      const data = loadData();
-      const target = data.users.find(u => u.id === req.params.id);
-      if (!target) return res.status(404).json({ error: 'NOT_FOUND', message: 'Utilisateur introuvable.' });
-      target.passwordHash = await hashPassword(password);
-      target.passwordChangedAt = new Date().toISOString();
-      saveData(data);
-      res.json({ ok: true });
-    } catch (err) { next(err); }
-  });
+  function accountsManagedByPhenix(req, res) {
+    return res.status(409).json({
+      error: 'ACCOUNTS_MANAGED_BY_PHENIX',
+      message: 'Les comptes ARGOS sont gérés dans PHENIX. Créez, modifiez ou supprimez le compte depuis PHENIX.'
+    });
+  }
 
-  router.delete('/admin/users/:id', requireAdmin, (req, res) => {
-    if (req.params.id === 'env-admin') return res.status(400).json({ error: 'PROTECTED_USER', message: 'Le compte administrateur Render est protégé.' });
-    const data = loadData();
-    if (!data.users.some(u => u.id === req.params.id)) return res.status(404).json({ error: 'NOT_FOUND', message: 'Utilisateur introuvable.' });
-    data.users = data.users.filter(u => u.id !== req.params.id);
-    saveData(data);
-    res.json({ ok: true });
-  });
+  router.post('/admin/users', requireAdmin, accountsManagedByPhenix);
+  router.post('/admin/users/:id/password', requireAdmin, accountsManagedByPhenix);
+  router.delete('/admin/users/:id', requireAdmin, accountsManagedByPhenix);
 
   router.post('/admin/categories', requireAdmin, (req, res) => {
     const data = loadData();
@@ -391,7 +503,7 @@ function mountPortal(app) {
   }));
   app.get('/portail/*', (req, res) => res.sendFile(path.join(PORTAL_DIR, 'index.html')));
 
-  console.log(`[PORTAIL] Disponible sur /portail/ — données: ${DB_FILE}`);
+  console.log(`[PORTAIL] ARGOS disponible sur /portail/ — comptes: PHENIX (${PHENIX_DB_FILE}) — données portail: ${DB_FILE}`);
 }
 
 module.exports = { mountPortal };
