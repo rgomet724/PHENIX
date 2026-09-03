@@ -379,7 +379,9 @@ function mountPortal(app) {
   });
 
   app.use('/portail/api', router);
-  app.get('/portail', (req, res) => res.redirect(302, '/portail/'));
+  // Regex stricte : /portail uniquement. Une route Express en chaîne accepte aussi
+  // la barre finale par défaut, ce qui créait une boucle /portail/ -> /portail/.
+  app.get(/^\/portail$/, (req, res) => res.redirect(302, '/portail/'));
   app.use('/portail', express.static(PORTAL_DIR, {
     etag: true,
     maxAge: 0,
