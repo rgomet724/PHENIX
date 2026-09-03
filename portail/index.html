@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Portail Police Municipale — Chalon-sur-Saône</title>
+  <link rel="stylesheet" href="/portail/styles.css">
+</head>
+<body>
+  <section id="loginView" class="login-view">
+    <div class="login-frame">
+      <header class="login-brand">
+        <img src="/portail/logo-pm.png" alt="Emblème de la Police Municipale de Chalon-sur-Saône">
+        <div>
+          <p class="eyebrow">Accès professionnel sécurisé</p>
+          <h1>Police Municipale</h1>
+          <p class="brand-subtitle">Chalon-sur-Saône</p>
+        </div>
+      </header>
+
+      <div class="notice-bar" role="status">
+        <span class="status-dot" aria-hidden="true"></span>
+        Portail d’accès aux applications et ressources professionnelles
+      </div>
+
+      <main class="login-card">
+        <div class="login-card-heading">
+          <span class="lock-mark" aria-hidden="true">●</span>
+          <div>
+            <h2>Authentification</h2>
+            <p>Renseignez vos identifiants pour ouvrir votre espace.</p>
+          </div>
+        </div>
+
+        <form id="loginForm" class="login-form" novalidate>
+          <label for="loginInput">Identifiant</label>
+          <div class="input-shell">
+            <span aria-hidden="true">👤</span>
+            <input id="loginInput" name="login" autocomplete="username" required>
+          </div>
+
+          <label for="passwordInput">Mot de passe</label>
+          <div class="input-shell">
+            <span aria-hidden="true">🔒</span>
+            <input id="passwordInput" name="password" type="password" autocomplete="current-password" required>
+          </div>
+
+          <button id="loginSubmit" class="btn btn-success login-submit" type="submit">Se connecter</button>
+          <p id="loginError" class="form-error" aria-live="polite"></p>
+        </form>
+      </main>
+
+      <footer class="login-footer">Accès réservé aux personnels autorisés • Police Municipale de Chalon-sur-Saône</footer>
+    </div>
+  </section>
+
+  <section id="portalView" class="portal-view hidden">
+    <header class="portal-header">
+      <div class="portal-header-inner">
+        <div class="portal-identity">
+          <img src="/portail/logo-pm.png" alt="Police Municipale">
+          <div>
+            <p class="eyebrow">Portail professionnel</p>
+            <h1>Police Municipale</h1>
+            <p>Chalon-sur-Saône</p>
+          </div>
+        </div>
+
+        <div class="account-box">
+          <span class="connected-label">Connecté en tant que</span>
+          <strong id="userDisplayName">—</strong>
+          <span id="userRoleBadge" class="role-badge">Utilisateur</span>
+        </div>
+      </div>
+
+      <nav class="portal-nav" aria-label="Navigation du portail">
+        <div class="portal-nav-inner">
+          <div class="nav-primary"><span aria-hidden="true">⌂</span><strong>Vos applications</strong></div>
+          <div class="nav-actions">
+            <button id="adminOpenBtn" class="nav-button hidden" type="button">⚙ Administration</button>
+            <button id="logoutBtn" class="nav-button" type="button">↪ Déconnexion</button>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="portal-main">
+      <div class="welcome-strip">
+        <div>
+          <strong>Bienvenue <span id="welcomeName"></span></strong>
+          <span>Sélectionnez une application pour l’ouvrir dans un nouvel onglet.</span>
+        </div>
+        <span class="secure-chip">● Session sécurisée</span>
+      </div>
+      <div id="categoriesRoot"></div>
+    </main>
+
+    <footer class="portal-footer">Portail interne • Police Municipale de Chalon-sur-Saône</footer>
+  </section>
+
+  <div id="adminModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="adminTitle">
+    <div class="modal-card">
+      <header class="modal-header">
+        <div>
+          <p class="eyebrow light">Gestion du portail</p>
+          <h2 id="adminTitle">Administration</h2>
+        </div>
+        <button id="adminCloseBtn" class="modal-close" type="button" aria-label="Fermer">×</button>
+      </header>
+
+      <div class="admin-tabs" role="tablist">
+        <button class="admin-tab active" type="button" data-tab="apps">Applications</button>
+        <button class="admin-tab" type="button" data-tab="categories">Catégories</button>
+        <button class="admin-tab" type="button" data-tab="users">Utilisateurs</button>
+      </div>
+
+      <div class="modal-body">
+        <section class="admin-panel" data-panel="apps">
+          <div class="admin-layout">
+            <form id="appForm" class="edit-card">
+              <div class="section-heading">
+                <div><h3>Application / lien</h3><p>Ajoutez ou modifiez une tuile du portail.</p></div>
+                <button id="appResetBtn" class="btn btn-secondary" type="button">Nouveau</button>
+              </div>
+              <input id="appId" type="hidden">
+              <div class="field-grid">
+                <label>Nom<input id="appName" required></label>
+                <label>Catégorie<select id="appCategory" required></select></label>
+              </div>
+              <label>Description<input id="appDescription" maxlength="160"></label>
+              <label>Lien<input id="appUrl" type="url" placeholder="https://..." required></label>
+              <div class="field-grid">
+                <label>Ordre<input id="appOrder" type="number" value="10"></label>
+                <label>Logo <small>PNG/JPG/WebP/GIF/SVG, 400 Ko max.</small><input id="appLogo" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"></label>
+              </div>
+              <label id="removeLogoRow" class="check-row hidden"><input id="removeLogo" type="checkbox"> Supprimer le logo actuel</label>
+              <p id="appFormError" class="form-error" aria-live="polite"></p>
+              <div class="form-actions"><button class="btn btn-primary" type="submit">Enregistrer</button></div>
+            </form>
+            <div class="list-card">
+              <div class="section-heading"><div><h3>Applications existantes</h3><p id="appCountText"></p></div></div>
+              <div id="appAdminList" class="admin-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="admin-panel hidden" data-panel="categories">
+          <div class="admin-layout">
+            <form id="categoryForm" class="edit-card">
+              <div class="section-heading">
+                <div><h3>Catégorie</h3><p>Organisez les applications par rubriques.</p></div>
+                <button id="categoryResetBtn" class="btn btn-secondary" type="button">Nouveau</button>
+              </div>
+              <input id="categoryId" type="hidden">
+              <label>Nom<input id="categoryName" required></label>
+              <label>Ordre<input id="categoryOrder" type="number" value="10"></label>
+              <p id="categoryFormError" class="form-error" aria-live="polite"></p>
+              <div class="form-actions"><button class="btn btn-primary" type="submit">Enregistrer</button></div>
+            </form>
+            <div class="list-card">
+              <div class="section-heading"><div><h3>Catégories existantes</h3><p id="categoryCountText"></p></div></div>
+              <div id="categoryAdminList" class="admin-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="admin-panel hidden" data-panel="users">
+          <div class="admin-layout">
+            <form id="userForm" class="edit-card">
+              <div class="section-heading"><div><h3>Nouveau compte</h3><p>Créez un accès au portail.</p></div></div>
+              <div class="field-grid">
+                <label>Nom affiché<input id="newUserName" required></label>
+                <label>Identifiant<input id="newUserLogin" autocomplete="off" required></label>
+              </div>
+              <div class="field-grid">
+                <label>Mot de passe temporaire <small>12 caractères minimum</small><input id="newUserPassword" type="password" autocomplete="new-password" required></label>
+                <label>Rôle<select id="newUserRole"><option value="user">Utilisateur</option><option value="admin">Administrateur</option></select></label>
+              </div>
+              <p id="userFormError" class="form-error" aria-live="polite"></p>
+              <div class="form-actions"><button class="btn btn-primary" type="submit">Créer le compte</button></div>
+            </form>
+            <div class="list-card">
+              <div class="section-heading"><div><h3>Comptes autorisés</h3><p id="userCountText"></p></div></div>
+              <div id="userAdminList" class="admin-list"></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script src="/portail/app.js" defer></script>
+</body>
+</html>

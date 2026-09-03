@@ -1,566 +1,1061 @@
-'use strict';
-
-const http = require('http');
+const express = require('express');
+const session = require('express-session');
+const bcrypt = require('bcryptjs');
+const helmet = require('helmet');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
+const MemoryStore = require('memorystore')(session);
+const FileStore = require('session-file-store')(session);
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
-const PROD = process.env.NODE_ENV === 'production';
-const PORT = Number(process.env.PORT || 3000);
-const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
-const MAX_BODY_SIZE = 1024 * 1024;
-const MAX_LOGO_SIZE = 400 * 1024;
-const VERSION = '2.0.0';
-const PUBLIC_DIR = path.join(__dirname, 'public');
+const app = express();
+const PORT = process.env.PORT || 3000;
+const DB = "/var/data/data.json";
+const DB_BACKUP = "/var/data/data.backup.json";
+const DB_BACKUP_2 = "/var/data/data.backup2.json";
+const DB_BACKUP_3 = "/var/data/data.backup3.json";
+const DB_TMP = "/var/data/data.tmp.json";
+const IS_PROD = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+// Session persistante longue durée : plus de déconnexion quotidienne.
+const SESSION_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 365; // 1 an
+const SESSION_TTL_SECONDS = 60 * 60 * 24 * 365;       // 1 an
+const BCRYPT_ROUNDS = 12;
+const PASSWORD_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000; // 90 jours
+const PASSWORD_POLICY_START = '2026-08-28T00:00:00.000Z';
+const SOUND_KINDS = ['crew','urgent','system'];
 
-function resolveDataDir() {
-  const requested = String(process.env.DATA_DIR || '').trim();
-  const candidates = requested ? [requested] : [path.join(__dirname, 'data'), '/tmp/portail-pm-chalon'];
-  for (const dir of candidates) {
-    try {
-      fs.mkdirSync(dir, { recursive: true });
-      const probe = path.join(dir, '.write-test');
-      fs.writeFileSync(probe, 'ok');
-      fs.unlinkSync(probe);
-      return dir;
-    } catch (err) {
-      console.warn(`[storage] ${dir} indisponible: ${err.message}`);
-    }
-  }
-  throw new Error('Aucun répertoire de données accessible en écriture.');
+const SESSION_SECRET = String(process.env.SESSION_SECRET || '');
+if (IS_PROD && Buffer.byteLength(SESSION_SECRET, 'utf8') < 32) {
+  throw new Error('SESSION_SECRET manquant ou trop court. Configure une valeur aléatoire d’au moins 32 octets dans Render.');
+}
+const EFFECTIVE_SESSION_SECRET = SESSION_SECRET || crypto.randomBytes(48).toString('base64');
+
+function normalizeLogin(v){ return String(v||'').trim().slice(0,80); }
+function validPassword(v){
+  const s=String(v||'');
+  return s.length >= 12 && s.length <= 72 && Buffer.byteLength(s,'utf8') <= 72;
+}
+function newCsrfToken(){ return crypto.randomBytes(32).toString('hex'); }
+function safeEqual(a,b){
+  const aa=Buffer.from(String(a||'')), bb=Buffer.from(String(b||''));
+  return aa.length===bb.length && crypto.timingSafeEqual(aa,bb);
 }
 
-const DATA_DIR = resolveDataDir();
-const DB_FILE = path.join(DATA_DIR, 'portal.json');
-const ADMIN_LOGIN = String(process.env.PORTAL_ADMIN_LOGIN || 'admin').trim();
-const ADMIN_PASSWORD = String(process.env.PORTAL_ADMIN_PASSWORD || '');
-const ADMIN_NAME = String(process.env.PORTAL_ADMIN_NAME || 'Administrateur').trim() || 'Administrateur';
-const ENV_SECRET = String(process.env.SESSION_SECRET || '');
-const TOKEN_SECRET = ENV_SECRET.length >= 32 ? ENV_SECRET : crypto.randomBytes(48).toString('base64url');
+function interventionLabel(v){
+  const raw=String(v||'').trim();
+  const m=raw.match(/^(?:\d{1,4}|[^|:-]{1,20})\s*[|:-]\s*(.+)$/);
+  return (m?m[1]:raw).trim();
+}
+function normalizeInterventions(list){
+  const labels=[...new Set((Array.isArray(list)?list:[])
+    .map(interventionLabel)
+    .map(x=>String(x||'').trim())
+    .filter(Boolean))];
+  labels.sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base',numeric:true}));
+  return labels.slice(0,500).map((label,i)=>String(20+i).padStart(3,'0')+' | '+label);
+}
 
-if (PROD && ENV_SECRET.length < 32) console.warn('[config] SESSION_SECRET absent ou trop court : secret temporaire généré pour ce démarrage.');
-if (PROD && !ADMIN_PASSWORD) console.warn('[config] PORTAL_ADMIN_PASSWORD absent : le serveur démarre mais le compte admin Render ne pourra pas se connecter.');
 
-function defaultData() {
+function baseData(){
   return {
-    schemaVersion: 2,
     users: [],
-    categories: [
-      { id: 'cat-operationnel', name: 'Opérationnel', order: 10 },
-      { id: 'cat-outils', name: 'Outils et applications', order: 20 },
-      { id: 'cat-documentation', name: 'Documentation', order: 30 }
-    ],
-    apps: [
-      {
-        id: 'app-phenix',
-        categoryId: 'cat-operationnel',
-        name: 'PHENIX',
-        description: 'Plateforme opérationnelle',
-        url: 'https://VOTRE-LIEN-PHENIX.onrender.com',
-        logoData: '',
-        order: 10
-      }
-    ]
+    agents: Array.from({length:150}, (_,i)=>({matricule:String(i+1).padStart(2,'0'), nom:'', prenom:'', actif:true})),
+    callsigns: ['TV ALPHA','TV BRAVO','TV CHARLY','TV DELTA','TC ECHO','TV HOTEL','TV INDIA','TM MIKE','TP PAPA','TV VICTOR'],
+    interventions: ['Accident','Cambriolage','Différend familial','Contrôle routier','Assistance personne','Renfort','Patrouille'],
+    crews: [],
+    logs: [],
+    notes: {},
+    consignes: [],
+    links: [],
+    events: [],
+    messages: [], // Anciennes données conservées mais la messagerie n'est plus exposée
+    messageThreadDeletes: {},
+    passwordResetRequests: [],
+    notificationSounds: {},
+    flash: { enabled:false, title:'INFO', text:'' }
   };
 }
 
-function loadData() {
-  const base = defaultData();
-  try {
-    if (!fs.existsSync(DB_FILE)) return base;
-    const parsed = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-    return {
-      schemaVersion: 2,
-      users: Array.isArray(parsed.users) ? parsed.users : [],
-      categories: Array.isArray(parsed.categories) ? parsed.categories : base.categories,
-      apps: Array.isArray(parsed.apps) ? parsed.apps : base.apps
-    };
-  } catch (err) {
-    console.error('[storage] Lecture portal.json impossible:', err);
-    return base;
-  }
-}
-
-function saveData(data) {
-  const tmp = `${DB_FILE}.${process.pid}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(data, null, 2), { encoding: 'utf8', mode: 0o600 });
-  fs.renameSync(tmp, DB_FILE);
-}
-
-function safeEqual(a, b) {
-  const aa = Buffer.from(String(a));
-  const bb = Buffer.from(String(b));
-  return aa.length === bb.length && crypto.timingSafeEqual(aa, bb);
-}
-
-function scrypt(password, salt) {
-  return new Promise((resolve, reject) => {
-    crypto.scrypt(password, salt, 64, { N: 16384, r: 8, p: 1 }, (err, key) => err ? reject(err) : resolve(key));
+function migrate(d){
+  d.users=d.users||[];
+  d.agents=d.agents||baseData().agents;
+  d.callsigns=d.callsigns||baseData().callsigns;
+  d.interventions=normalizeInterventions(d.interventions||baseData().interventions);
+  d.crews=d.crews||[];
+  d.logs=d.logs||[];
+  d.notes=d.notes||{};
+  d.consignes=d.consignes||[];
+  d.links=d.links||[];
+  d.events=d.events||[];
+  d.messages=Array.isArray(d.messages)?d.messages:[];
+  d.messageThreadDeletes=d.messageThreadDeletes&&typeof d.messageThreadDeletes==='object'?d.messageThreadDeletes:{};
+  d.passwordResetRequests=Array.isArray(d.passwordResetRequests)?d.passwordResetRequests:[];
+  d.notificationSounds=d.notificationSounds&&typeof d.notificationSounds==='object'?d.notificationSounds:{};
+  // Migration de l'ancien son unique vers le son "équipage".
+  if(d.notificationSound && !d.notificationSounds.crew) d.notificationSounds.crew=d.notificationSound;
+  d.flash=d.flash||{enabled:false,title:'INFO',text:''};
+  if(typeof d.flash.enabled!=='boolean') d.flash.enabled=false;
+  d.flash.title=String(d.flash.title||'INFO').trim()||'INFO';
+  d.flash.text=String(d.flash.text||'');
+  d.users.forEach(u=>{
+    if(!u.brigades) u.brigades={jour:true,nuit:true};
+    // Les comptes existants repartent avec 90 jours à compter de cette mise à jour.
+    if(!u.passwordChangedAt && !u.mustChangePassword) u.passwordChangedAt=PASSWORD_POLICY_START;
   });
+  return d;
 }
 
-async function hashPassword(password) {
-  const salt = crypto.randomBytes(16).toString('hex');
-  const key = await scrypt(password, salt);
-  return `scrypt$${salt}$${key.toString('hex')}`;
-}
-
-async function verifyPassword(password, encoded) {
-  try {
-    const [algo, salt, hashHex] = String(encoded || '').split('$');
-    if (algo !== 'scrypt' || !salt || !hashHex) return false;
-    const expected = Buffer.from(hashHex, 'hex');
-    const actual = await scrypt(password, salt);
-    return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
-  } catch {
-    return false;
-  }
-}
-
-function b64urlJson(value) {
-  return Buffer.from(JSON.stringify(value), 'utf8').toString('base64url');
-}
-
-function signToken(user) {
-  const now = Date.now();
-  const payload = b64urlJson({ sub: user.id, login: user.login, name: user.name, role: user.role, iat: now, exp: now + TOKEN_TTL_MS });
-  const sig = crypto.createHmac('sha256', TOKEN_SECRET).update(payload).digest('base64url');
-  return `v1.${payload}.${sig}`;
-}
-
-function verifyToken(token) {
-  try {
-    const [version, payload, sig] = String(token || '').split('.');
-    if (version !== 'v1' || !payload || !sig) return null;
-    const expected = crypto.createHmac('sha256', TOKEN_SECRET).update(payload).digest('base64url');
-    if (!safeEqual(expected, sig)) return null;
-    const parsed = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-    if (!parsed.exp || parsed.exp < Date.now() || !parsed.sub || !parsed.login || !parsed.role) return null;
-    return { id: parsed.sub, login: parsed.login, name: parsed.name || parsed.login, role: parsed.role === 'admin' ? 'admin' : 'user' };
-  } catch {
+function readDataFile(file){
+  try{
+    if(!fs.existsSync(file)) return null;
+    const raw=fs.readFileSync(file,'utf8');
+    if(!raw.trim()) return null;
+    return migrate(JSON.parse(raw));
+  }catch(e){
+    console.error('[PHENIX] Lecture impossible '+file+':',e.message);
     return null;
   }
 }
-
-function parseCookies(header) {
-  const out = {};
-  for (const part of String(header || '').split(';')) {
-    const i = part.indexOf('=');
-    if (i < 0) continue;
-    const key = part.slice(0, i).trim();
-    const value = part.slice(i + 1).trim();
-    if (key) out[key] = decodeURIComponent(value);
+function writeDataAtomic(d,{backup=true}={}){
+  fs.mkdirSync(path.dirname(DB),{recursive:true});
+  if(backup && fs.existsSync(DB)){
+    try{
+      const current=fs.readFileSync(DB,'utf8');
+      JSON.parse(current);
+      // Trois générations pour éviter qu'une mauvaise version écrase immédiatement la seule sauvegarde.
+      if(fs.existsSync(DB_BACKUP_2)){ try{fs.copyFileSync(DB_BACKUP_2,DB_BACKUP_3)}catch(e){} }
+      if(fs.existsSync(DB_BACKUP)){ try{fs.copyFileSync(DB_BACKUP,DB_BACKUP_2)}catch(e){} }
+      fs.writeFileSync(DB_BACKUP,current);
+    }catch(e){ console.error('[PHENIX] Backup ignoré :',e.message); }
   }
-  return out;
+  fs.writeFileSync(DB_TMP,JSON.stringify(d,null,2));
+  fs.renameSync(DB_TMP,DB);
 }
-
-function tokenFromRequest(req) {
-  const auth = String(req.headers.authorization || '');
-  if (auth.startsWith('Bearer ')) return auth.slice(7).trim();
-  return parseCookies(req.headers.cookie).pm_portal_auth || '';
-}
-
-function currentUser(req) {
-  return verifyToken(tokenFromRequest(req));
-}
-
-function isSecureRequest(req) {
-  return PROD || String(req.headers['x-forwarded-proto'] || '').toLowerCase() === 'https';
-}
-
-function authCookie(req, token) {
-  const parts = [
-    `pm_portal_auth=${encodeURIComponent(token)}`,
-    'Path=/',
-    'HttpOnly',
-    'SameSite=Lax',
-    `Max-Age=${Math.floor(TOKEN_TTL_MS / 1000)}`
+function eventRecoveryCandidates(){
+  const fixed=[
+    DB_BACKUP, DB_BACKUP_2, DB_BACKUP_3,
+    '/var/data/data.old.json','/var/data/data.previous.json','/var/data/data.json.bak','/var/data/backup.json'
   ];
-  if (isSecureRequest(req)) parts.push('Secure');
-  return parts.join('; ');
+  try{
+    if(fs.existsSync('/var/data')){
+      for(const name of fs.readdirSync('/var/data')){
+        const full=path.join('/var/data',name);
+        if(full===DB || fixed.includes(full)) continue;
+        try{
+          if(fs.statSync(full).isFile() && /\.json$/i.test(name)) fixed.push(full);
+        }catch(e){}
+      }
+    }
+  }catch(e){ console.error('[PHENIX] Recherche sauvegardes événements :',e.message); }
+  return [...new Set(fixed)];
+}
+function recoverEventsFromKnownFiles(current){
+  if(Array.isArray(current.events) && current.events.length) return current;
+  let best=[]; let source='';
+  for(const f of eventRecoveryCandidates()){
+    const x=readDataFile(f);
+    if(x && Array.isArray(x.events) && x.events.length>best.length){best=x.events;source=f}
+  }
+  if(best.length){
+    current.events=best;
+    writeDataAtomic(current,{backup:false});
+    console.log('[PHENIX] '+best.length+' anciens événements restaurés depuis '+source);
+  }
+  return current;
 }
 
-function clearCookie(req) {
-  const parts = ['pm_portal_auth=', 'Path=/', 'HttpOnly', 'SameSite=Lax', 'Max-Age=0'];
-  if (isSecureRequest(req)) parts.push('Secure');
-  return parts.join('; ');
+function load(){
+  let d=readDataFile(DB);
+  const backup=readDataFile(DB_BACKUP);
+  if(!d){
+    if(backup){
+      console.error('[PHENIX] data.json illisible : restauration depuis data.backup.json');
+      writeDataAtomic(backup,{backup:false});
+      return recoverEventsFromKnownFiles(backup);
+    }
+    if(fs.existsSync(DB)) throw new Error('data.json existe mais est illisible. Restauration manuelle nécessaire.');
+    d=baseData();writeDataAtomic(d,{backup:false});return d;
+  }
+  return recoverEventsFromKnownFiles(d);
 }
 
-function securityHeaders(extra = {}) {
+function save(d){ writeDataAtomic(d,{backup:true}); }
+function passwordExpired(u){
+  if(!u || normalizedRole(u.role)==='dashboard') return false;
+  if(u.mustChangePassword) return true;
+  const changed=u.passwordChangedAt?new Date(u.passwordChangedAt).getTime():0;
+  return !changed || (Date.now()-changed)>=PASSWORD_MAX_AGE_MS;
+}
+function passwordExpiresAt(u){
+  if(!u || normalizedRole(u.role)==='dashboard' || !u.passwordChangedAt) return null;
+  return new Date(new Date(u.passwordChangedAt).getTime()+PASSWORD_MAX_AGE_MS).toISOString();
+}
+function safe(u){ return u ? {
+  id:u.id, login:u.login, displayName:u.displayName, role:u.role,
+  brigades:u.brigades||{jour:true,nuit:true},
+  passwordChangeRequired:passwordExpired(u),
+  passwordExpiresAt:passwordExpiresAt(u)
+} : null; }
+function current(req){ const d=load(); return d.users.find(u=>u.id===req.session.userId); }
+function needLogin(req,res,next){
+  if(!req.session || !req.session.userId) return res.status(401).json({error:'Session expirée ou non connecté'});
+  const u=current(req);
+  if(!u) return res.status(401).json({error:'Compte introuvable'});
+  if(passwordExpired(u) && req.path!=='/api/password'){
+    return res.status(428).json({error:'Votre mot de passe doit être changé avant de continuer.',code:'PASSWORD_CHANGE_REQUIRED'});
+  }
+  next();
+}
+function needAdmin(req,res,next){ const u=current(req); if(!u || u.role!=='admin') return res.status(403).json({error:'Réservé admin'}); next(); }
+function normalizedRole(role){
+  const r=String(role||'').trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  if(r==='administrateur') return 'admin';
+  if(r==='operateur') return 'operateur';
+  return r;
+}
+function needOperational(req,res,next){
+  const u=current(req);
+  if(!u || normalizedRole(u.role)==='dashboard') return res.status(403).json({error:'Accès lecture seule'});
+  next();
+}
+function needConsigneManager(req,res,next){ const u=current(req); if(!u || !['admin','superviseur'].includes(u.role)) return res.status(403).json({error:'Réservé superviseur/admin'}); next(); }
+function auditType(msg){
+  const s=String(msg||'').toLowerCase();
+  if(s.includes('connexion')||s.includes('mot de passe')||s.includes('utilisateur')) return 'Sécurité / comptes';
+  if(s.includes('équipage')||s.includes('dispo')||s.includes('indispo')) return 'Équipages';
+  if(s.includes('consigne')) return 'Consignes';
+  if(s.includes('événement')) return 'Événements';
+  if(s.includes('lien')) return 'Liens utiles';
+  if(s.includes('personnel')||s.includes('agent')) return 'Personnel';
+  if(s.includes('flash')||s.includes('son')) return 'Administration';
+  return 'Autre';
+}
+function requestIp(req){
+  const forwarded=String(req.headers['x-forwarded-for']||'').split(',')[0].trim();
+  return forwarded || req.ip || req.socket?.remoteAddress || '';
+}
+function audit(d, req, msg, type){
+  const u=current(req);
+  const deviceId=String(req.get('x-phenix-device-id')||'').slice(0,80);
+  const deviceName=String(req.get('x-phenix-device-name')||'').slice(0,100);
+  d.logs.unshift({
+    id:crypto.randomUUID(), date:new Date().toISOString(),
+    userId:u?u.id:null, user:u?u.displayName:'Système',
+    type:type||auditType(msg), msg,
+    deviceId, deviceName:deviceName||deviceId||'Poste non identifié',
+    ip:requestIp(req), userAgent:String(req.get('user-agent')||'').slice(0,300),
+    method:req.method, route:req.originalUrl
+  });
+  d.logs=d.logs.slice(0,10000);
+}
+function messageUnreadFor(m,userId){
+  return m.fromId!==userId && messageVisibleTo(m,userId) && !(Array.isArray(m.readBy)&&m.readBy.includes(userId));
+}
+function messageSummary(d,u){
+  if(!canUseMessaging(u)) return {enabled:false,unread:0,lastMessageId:null};
+  const visible=(d.messages||[]).filter(m=>messageVisibleTo(m,u.id)&&messageAfterThreadDelete(d,u,m));
+  const unread=visible.filter(m=>messageUnreadFor(m,u.id)).length;
   return {
-    'Content-Security-Policy': "default-src 'self'; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'",
-    'Referrer-Policy': 'no-referrer',
-    'X-Content-Type-Options': 'nosniff',
-    'X-Frame-Options': 'DENY',
-    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
-    ...extra
+    enabled:true,
+    unread,
+    lastMessageId:visible.length?visible[visible.length-1].id:null
   };
 }
 
-function sendJson(res, status, data, extraHeaders = {}) {
-  const body = JSON.stringify(data);
-  res.writeHead(status, securityHeaders({
-    'Content-Type': 'application/json; charset=utf-8',
-    'Cache-Control': 'no-store',
-    'Content-Length': Buffer.byteLength(body),
-    ...extraHeaders
-  }));
-  res.end(body);
+function notificationSoundMeta(d){
+  const n=d.notificationSound||{};
+  return {custom:!!n.custom,filename:String(n.filename||''),updatedAt:String(n.updatedAt||'')};
 }
 
-function sendText(res, status, text) {
-  const body = String(text);
-  res.writeHead(status, securityHeaders({ 'Content-Type': 'text/plain; charset=utf-8', 'Content-Length': Buffer.byteLength(body) }));
-  res.end(body);
+function trimMessages(d){
+  d.messages=(d.messages||[]).slice(-3000);
 }
 
-function requireLogin(req, res) {
-  const user = currentUser(req);
-  if (!user) {
-    sendJson(res, 401, { error: 'AUTH_REQUIRED', message: 'Authentification requise.' });
-    return null;
-  }
-  return user;
+function threadKey(scope,peerId){
+  return 'private:'+String(peerId||'');
+}
+function threadDeletedAt(d,userId,key){
+  const userMap=d.messageThreadDeletes&&d.messageThreadDeletes[userId];
+  const v=userMap&&userMap[key];
+  return v?new Date(v).getTime():0;
+}
+function messageAfterThreadDelete(d,u,m){
+  const peerId=m.fromId===u.id?m.toId:m.fromId;
+  const cut=threadDeletedAt(d,u.id,threadKey(m.scope,peerId));
+  return !cut || new Date(m.createdAt).getTime()>cut;
 }
 
-function requireAdmin(req, res) {
-  const user = requireLogin(req, res);
-  if (!user) return null;
-  if (user.role !== 'admin') {
-    sendJson(res, 403, { error: 'ADMIN_REQUIRED', message: 'Droits administrateur requis.' });
-    return null;
-  }
-  return user;
-}
 
-function readJson(req) {
-  return new Promise((resolve, reject) => {
-    let size = 0;
-    const chunks = [];
-    req.on('data', chunk => {
-      size += chunk.length;
-      if (size > MAX_BODY_SIZE) {
-        reject(Object.assign(new Error('Requête trop volumineuse.'), { statusCode: 413 }));
-        req.destroy();
-        return;
-      }
-      chunks.push(chunk);
-    });
-    req.on('end', () => {
-      if (!chunks.length) return resolve({});
-      try {
-        resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')));
-      } catch {
-        reject(Object.assign(new Error('JSON invalide.'), { statusCode: 400 }));
-      }
-    });
-    req.on('error', reject);
-  });
-}
+function atFour(date=new Date()){ const d=new Date(date); d.setHours(4,0,0,0); return d; }
 
-function validHttpUrl(value) {
-  try {
-    const url = new URL(value);
-    return url.protocol === 'https:' || url.protocol === 'http:';
-  } catch {
-    return false;
-  }
-}
-
-function validateLogoData(value) {
-  if (!value) return { ok: true, value: '' };
-  const match = /^data:(image\/(?:png|jpeg|webp|gif|svg\+xml));base64,([A-Za-z0-9+/=]+)$/.exec(String(value));
-  if (!match) return { ok: false, message: 'Format de logo non pris en charge.' };
-  try {
-    const decoded = Buffer.from(match[2], 'base64');
-    if (decoded.length > MAX_LOGO_SIZE) return { ok: false, message: 'Le logo doit faire moins de 400 Ko.' };
-    return { ok: true, value: String(value) };
-  } catch {
-    return { ok: false, message: 'Logo invalide.' };
-  }
-}
-
-const loginAttempts = new Map();
-function loginAllowed(req) {
-  const key = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown').split(',')[0].trim();
-  const now = Date.now();
-  const windowMs = 15 * 60 * 1000;
-  const max = 25;
-  const state = loginAttempts.get(key);
-  if (!state || state.resetAt <= now) {
-    loginAttempts.set(key, { count: 1, resetAt: now + windowMs });
-    return true;
-  }
-  state.count += 1;
-  return state.count <= max;
-}
-
-const mimeTypes = {
-  '.html': 'text/html; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.webp': 'image/webp',
-  '.svg': 'image/svg+xml',
-  '.ico': 'image/x-icon'
-};
-
-function serveFile(req, res, pathname) {
-  let relative = pathname === '/' ? '/index.html' : pathname;
-  let filePath;
-  try {
-    relative = decodeURIComponent(relative);
-    filePath = path.normalize(path.join(PUBLIC_DIR, relative));
-  } catch {
-    return false;
-  }
-  if (!filePath.startsWith(PUBLIC_DIR + path.sep) && filePath !== path.join(PUBLIC_DIR, 'index.html')) return false;
-  if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) return false;
-
-  const ext = path.extname(filePath).toLowerCase();
-  const cache = ext === '.html' || ext === '.js' ? 'no-cache, no-store, must-revalidate' : 'public, max-age=600';
-  const headers = securityHeaders({ 'Content-Type': mimeTypes[ext] || 'application/octet-stream', 'Cache-Control': cache });
-  res.writeHead(200, headers);
-  fs.createReadStream(filePath).pipe(res);
+function visibleConsigne(c,u){
+  if(['admin','superviseur'].includes(u.role)) return true;
+  const b=u.brigades||{};
+  if(c.brigade==='all') return true;
+  if(c.brigade==='jour') return !!b.jour;
+  if(c.brigade==='nuit') return !!b.nuit;
   return true;
 }
 
-async function handleApi(req, res, pathname) {
-  if (req.method === 'GET' && pathname === '/healthz') {
-    return sendJson(res, 200, {
-      ok: true,
-      service: 'portail-pm-chalon',
-      version: VERSION,
-      authMode: 'signed-token-cookie-and-bearer',
-      adminConfigured: Boolean(ADMIN_PASSWORD),
-      sessionSecretConfigured: ENV_SECRET.length >= 32,
-      persistentDataConfigured: Boolean(process.env.DATA_DIR)
-    });
-  }
-
-  if (req.method === 'GET' && pathname === '/api/me') {
-    return sendJson(res, 200, { user: currentUser(req) || null });
-  }
-
-  if (req.method === 'POST' && pathname === '/api/login') {
-    if (!loginAllowed(req)) return sendJson(res, 429, { error: 'TOO_MANY_ATTEMPTS', message: 'Trop de tentatives. Réessayez dans quelques minutes.' });
-    const body = await readJson(req);
-    const login = String(body.login || '').trim();
-    const loginNorm = login.toLocaleLowerCase('fr-FR');
-    const password = String(body.password || '');
-    if (!login || !password) return sendJson(res, 400, { error: 'MISSING_CREDENTIALS', message: 'Identifiant et mot de passe requis.' });
-
-    let user = null;
-    const envAdminMatches = loginNorm === ADMIN_LOGIN.toLocaleLowerCase('fr-FR');
-    if (envAdminMatches) {
-      if (!ADMIN_PASSWORD) return sendJson(res, 503, { error: 'ADMIN_NOT_CONFIGURED', message: 'Le compte administrateur Render n’est pas encore configuré.' });
-      if (safeEqual(password, ADMIN_PASSWORD)) user = { id: 'env-admin', login: ADMIN_LOGIN, name: ADMIN_NAME, role: 'admin' };
-    }
-
-    if (!user && !envAdminMatches) {
-      const data = loadData();
-      const stored = data.users.find(u => String(u.login || '').toLocaleLowerCase('fr-FR') === loginNorm);
-      if (stored && await verifyPassword(password, stored.passwordHash)) {
-        user = { id: stored.id, login: stored.login, name: stored.name || stored.login, role: stored.role === 'admin' ? 'admin' : 'user' };
-      }
-    }
-
-    if (!user) {
-      console.warn(`[auth] Échec de connexion pour « ${login.replace(/[\r\n]/g, '')} ».`);
-      return sendJson(res, 401, { error: 'BAD_CREDENTIALS', message: 'Identifiant ou mot de passe incorrect.' });
-    }
-
-    const token = signToken(user);
-    console.log(`[auth] Connexion réussie: ${user.login} (${user.role}).`);
-    return sendJson(res, 200, { ok: true, user, token }, { 'Set-Cookie': authCookie(req, token) });
-  }
-
-  if (req.method === 'POST' && pathname === '/api/logout') {
-    return sendJson(res, 200, { ok: true }, { 'Set-Cookie': clearCookie(req) });
-  }
-
-  if (req.method === 'GET' && pathname === '/api/portal') {
-    const user = requireLogin(req, res);
-    if (!user) return;
-    const data = loadData();
-    const categories = [...data.categories].sort((a, b) => Number(a.order || 0) - Number(b.order || 0) || String(a.name).localeCompare(String(b.name), 'fr'));
-    const apps = [...data.apps].sort((a, b) => Number(a.order || 0) - Number(b.order || 0) || String(a.name).localeCompare(String(b.name), 'fr'));
-    return sendJson(res, 200, { categories, apps, user });
-  }
-
-  if (req.method === 'GET' && pathname === '/api/admin/users') {
-    const user = requireAdmin(req, res);
-    if (!user) return;
-    const data = loadData();
-    const users = [
-      { id: 'env-admin', login: ADMIN_LOGIN, name: ADMIN_NAME, role: 'admin', protected: true, source: 'Render' },
-      ...data.users.map(({ passwordHash, ...u }) => ({ ...u, protected: false, source: 'Portail' }))
-    ];
-    return sendJson(res, 200, { users });
-  }
-
-  if (req.method === 'POST' && pathname === '/api/admin/users') {
-    const user = requireAdmin(req, res);
-    if (!user) return;
-    const body = await readJson(req);
-    const data = loadData();
-    const login = String(body.login || '').trim();
-    const name = String(body.name || '').trim();
-    const password = String(body.password || '');
-    const role = body.role === 'admin' ? 'admin' : 'user';
-    if (!login || !name || password.length < 12) return sendJson(res, 400, { error: 'INVALID_USER', message: 'Nom, identifiant et mot de passe de 12 caractères minimum requis.' });
-    const norm = login.toLocaleLowerCase('fr-FR');
-    if (norm === ADMIN_LOGIN.toLocaleLowerCase('fr-FR') || data.users.some(u => String(u.login).toLocaleLowerCase('fr-FR') === norm)) {
-      return sendJson(res, 409, { error: 'LOGIN_EXISTS', message: 'Cet identifiant est déjà utilisé.' });
-    }
-    data.users.push({ id: crypto.randomUUID(), login, name, role, passwordHash: await hashPassword(password), createdAt: new Date().toISOString() });
-    saveData(data);
-    return sendJson(res, 200, { ok: true });
-  }
-
-  let match = pathname.match(/^\/api\/admin\/users\/([^/]+)\/password$/);
-  if (req.method === 'POST' && match) {
-    const user = requireAdmin(req, res);
-    if (!user) return;
-    const id = decodeURIComponent(match[1]);
-    if (id === 'env-admin') return sendJson(res, 400, { error: 'ENV_ADMIN', message: 'Le mot de passe du compte Render se modifie dans PORTAL_ADMIN_PASSWORD.' });
-    const body = await readJson(req);
-    const password = String(body.password || '');
-    if (password.length < 12) return sendJson(res, 400, { error: 'WEAK_PASSWORD', message: '12 caractères minimum requis.' });
-    const data = loadData();
-    const target = data.users.find(u => u.id === id);
-    if (!target) return sendJson(res, 404, { error: 'NOT_FOUND', message: 'Utilisateur introuvable.' });
-    target.passwordHash = await hashPassword(password);
-    target.passwordChangedAt = new Date().toISOString();
-    saveData(data);
-    return sendJson(res, 200, { ok: true });
-  }
-
-  match = pathname.match(/^\/api\/admin\/users\/([^/]+)$/);
-  if (req.method === 'DELETE' && match) {
-    const user = requireAdmin(req, res);
-    if (!user) return;
-    const id = decodeURIComponent(match[1]);
-    if (id === 'env-admin') return sendJson(res, 400, { error: 'PROTECTED_USER', message: 'Le compte administrateur Render est protégé.' });
-    if (id === user.id) return sendJson(res, 400, { error: 'SELF_DELETE', message: 'Vous ne pouvez pas supprimer votre propre compte.' });
-    const data = loadData();
-    if (!data.users.some(u => u.id === id)) return sendJson(res, 404, { error: 'NOT_FOUND', message: 'Utilisateur introuvable.' });
-    data.users = data.users.filter(u => u.id !== id);
-    saveData(data);
-    return sendJson(res, 200, { ok: true });
-  }
-
-  if (req.method === 'POST' && pathname === '/api/admin/categories') {
-    const user = requireAdmin(req, res);
-    if (!user) return;
-    const body = await readJson(req);
-    const data = loadData();
-    const id = String(body.id || '').trim();
-    const name = String(body.name || '').trim();
-    const order = Number.isFinite(Number(body.order)) ? Number(body.order) : 10;
-    if (!name) return sendJson(res, 400, { error: 'NAME_REQUIRED', message: 'Le nom de la catégorie est requis.' });
-    if (id) {
-      const category = data.categories.find(c => c.id === id);
-      if (!category) return sendJson(res, 404, { error: 'NOT_FOUND', message: 'Catégorie introuvable.' });
-      category.name = name;
-      category.order = order;
-    } else {
-      data.categories.push({ id: crypto.randomUUID(), name, order });
-    }
-    saveData(data);
-    return sendJson(res, 200, { ok: true });
-  }
-
-  match = pathname.match(/^\/api\/admin\/categories\/([^/]+)$/);
-  if (req.method === 'DELETE' && match) {
-    const user = requireAdmin(req, res);
-    if (!user) return;
-    const id = decodeURIComponent(match[1]);
-    const data = loadData();
-    if (!data.categories.some(c => c.id === id)) return sendJson(res, 404, { error: 'NOT_FOUND', message: 'Catégorie introuvable.' });
-    data.categories = data.categories.filter(c => c.id !== id);
-    data.apps = data.apps.filter(a => a.categoryId !== id);
-    saveData(data);
-    return sendJson(res, 200, { ok: true });
-  }
-
-  if (req.method === 'POST' && pathname === '/api/admin/apps') {
-    const user = requireAdmin(req, res);
-    if (!user) return;
-    const body = await readJson(req);
-    const data = loadData();
-    const id = String(body.id || '').trim();
-    const name = String(body.name || '').trim();
-    const description = String(body.description || '').trim();
-    const url = String(body.url || '').trim();
-    const categoryId = String(body.categoryId || '').trim();
-    const order = Number.isFinite(Number(body.order)) ? Number(body.order) : 10;
-    if (!name || !url || !categoryId) return sendJson(res, 400, { error: 'MISSING_FIELDS', message: 'Nom, lien et catégorie requis.' });
-    if (!validHttpUrl(url)) return sendJson(res, 400, { error: 'INVALID_URL', message: 'Le lien doit commencer par http:// ou https://.' });
-    if (!data.categories.some(c => c.id === categoryId)) return sendJson(res, 400, { error: 'INVALID_CATEGORY', message: 'Catégorie invalide.' });
-    let logoData = null;
-    if (body.logoData) {
-      const validated = validateLogoData(body.logoData);
-      if (!validated.ok) return sendJson(res, 400, { error: 'INVALID_LOGO', message: validated.message });
-      logoData = validated.value;
-    }
-    if (id) {
-      const target = data.apps.find(a => a.id === id);
-      if (!target) return sendJson(res, 404, { error: 'NOT_FOUND', message: 'Application introuvable.' });
-      target.name = name;
-      target.description = description;
-      target.url = url;
-      target.categoryId = categoryId;
-      target.order = order;
-      if (logoData) target.logoData = logoData;
-      if (body.removeLogo === true) target.logoData = '';
-    } else {
-      data.apps.push({ id: crypto.randomUUID(), categoryId, name, description, url, logoData: logoData || '', order });
-    }
-    saveData(data);
-    return sendJson(res, 200, { ok: true });
-  }
-
-  match = pathname.match(/^\/api\/admin\/apps\/([^/]+)$/);
-  if (req.method === 'DELETE' && match) {
-    const user = requireAdmin(req, res);
-    if (!user) return;
-    const id = decodeURIComponent(match[1]);
-    const data = loadData();
-    if (!data.apps.some(a => a.id === id)) return sendJson(res, 404, { error: 'NOT_FOUND', message: 'Application introuvable.' });
-    data.apps = data.apps.filter(a => a.id !== id);
-    saveData(data);
-    return sendJson(res, 200, { ok: true });
-  }
-
-  return sendJson(res, 404, { error: 'NOT_FOUND', message: 'Route API introuvable.' });
+function activeConsigne(c){
+  const now=new Date();
+  if(c.startDate){ const s=new Date(c.startDate+'T00:00:00'); if(now<s) return false; }
+  if(c.endDate){ const e=new Date(c.endDate+'T23:59:59'); if(now>e) return false; }
+  return true;
 }
 
-const server = http.createServer(async (req, res) => {
-  try {
-    const url = new URL(req.url, 'http://localhost');
-    const pathname = url.pathname;
-
-    if (pathname === '/healthz' || pathname.startsWith('/api/')) {
-      await handleApi(req, res, pathname);
-      return;
-    }
-
-    if (req.method !== 'GET' && req.method !== 'HEAD') return sendText(res, 405, 'Méthode non autorisée.');
-    if (serveFile(req, res, pathname)) return;
-    if (serveFile(req, res, '/index.html')) return;
-    sendText(res, 404, 'Introuvable.');
-  } catch (err) {
-    console.error('[server]', err);
-    if (!res.headersSent) sendJson(res, err.statusCode || 500, { error: 'SERVER_ERROR', message: err.message || 'Erreur serveur.' });
-    else res.end();
+function readLimit(c){
+  const now=new Date();
+  if(c.recurrence==='daily'){ const f=atFour(now); if(now<f) f.setDate(f.getDate()-1); return f; }
+  if(c.recurrence==='weekly'){
+    const days=Array.isArray(c.days)?c.days:[];
+    const d=atFour(now);
+    for(let i=0;i<8;i++){ const x=new Date(d); x.setDate(d.getDate()-i); if(days.includes(x.getDay()) && now>=x) return x; }
   }
+  return new Date(c.createdAt||0);
+}
+
+function consignesForUser(d,u){
+  return (d.consignes||[]).filter(c=>activeConsigne(c)&&visibleConsigne(c,u)).map(c=>{
+    const limit=readLimit(c);
+    const readAt=c.reads&&c.reads[u.id]?new Date(c.reads[u.id]):null;
+    const read=!!(readAt && readAt>=limit);
+    return {...c, read, unread:!read};
+  });
+}
+
+
+function visibleLink(l,u){
+  if(['admin','superviseur'].includes(u.role)) return true;
+  const b=u.brigades||{};
+  const v=l.visible||{};
+  if(!v.jour && !v.nuit) return true;
+  return (v.jour&&b.jour)||(v.nuit&&b.nuit);
+}
+function linksForUser(d,u){
+  return (d.links||[]).filter(l=>visibleLink(l,u));
+}
+
+function cleanLogo(v){
+  let s=String(v||'🔗').trim();
+  // Si l'utilisateur a copié/collé avec l'icône par défaut devant, on la retire
+  s=s.replace(/^🔗\s*/,'').trim();
+  if(!s) s='🔗';
+  return s;
+}
+
+
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
+
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      baseUri: ["'self'"],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+      formAction: ["'self'"],
+      scriptSrc: ["'self'","'unsafe-inline'"],
+      scriptSrcAttr: ["'unsafe-inline'"],
+      styleSrc: ["'self'","'unsafe-inline'"],
+      imgSrc: ["'self'","data:","blob:"],
+      fontSrc: ["'self'","data:"],
+      connectSrc: ["'self'"]
+    }
+  },
+  crossOriginEmbedderPolicy: false,
+  strictTransportSecurity: IS_PROD ? {maxAge:31536000, includeSubDomains:true} : false,
+  referrerPolicy: {policy:'no-referrer'}
+}));
+
+app.use(express.json({limit:'4mb', strict:true}));
+
+const sessionPath = IS_PROD ? '/var/data/sessions' : path.join(__dirname,'.sessions');
+try{ fs.mkdirSync(sessionPath,{recursive:true}); }catch(e){}
+const sessionStore = new FileStore({
+  path: sessionPath,
+  ttl: SESSION_TTL_SECONDS,
+  retries: 1,
+  reapInterval: 24*60*60
+});
+app.use(session({
+  name: 'phenix.sid',
+  store: sessionStore,
+  secret: EFFECTIVE_SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  rolling: true,
+  unset: 'destroy',
+  proxy: IS_PROD,
+  cookie: {
+    path:'/',
+    httpOnly:true,
+    secure:IS_PROD,
+    sameSite:'strict',
+    maxAge:SESSION_MAX_AGE_MS,
+    priority:'high'
+  }
+}));
+
+// Refuse les requêtes API mutantes venant d'une autre origine.
+app.use('/api', (req,res,next)=>{
+  if(['GET','HEAD','OPTIONS'].includes(req.method)) return next();
+  const origin=req.get('origin');
+  if(origin){
+    try{
+      if(new URL(origin).host !== req.get('host')) return res.status(403).json({error:'Origine refusée'});
+    }catch(e){ return res.status(403).json({error:'Origine refusée'}); }
+  }
+  next();
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Portail PM Chalon v${VERSION} démarré sur le port ${PORT}.`);
-  console.log(`[storage] Données: ${DATA_DIR}${process.env.DATA_DIR ? ' (DATA_DIR configuré)' : ' (stockage local)'}.`);
-  console.log(`[auth] Administrateur Render: ${ADMIN_LOGIN}; mot de passe ${ADMIN_PASSWORD ? 'configuré' : 'ABSENT'}.`);
+const apiLimiter = rateLimit({
+  windowMs:5*60*1000,
+  limit:500,
+  standardHeaders:'draft-8',
+  legacyHeaders:false,
+  message:{error:'Trop de requêtes. Réessaie dans quelques minutes.'}
 });
+app.use('/api', apiLimiter);
+
+const authLimiter = rateLimit({
+  windowMs:15*60*1000,
+  limit:8,
+  standardHeaders:'draft-8',
+  legacyHeaders:false,
+  skipSuccessfulRequests:true,
+  keyGenerator:req => `${ipKeyGenerator(req.ip)}:${normalizeLogin(req.body && req.body.login).toLowerCase()}`,
+  message:{error:'Trop de tentatives de connexion. Réessaie dans 15 minutes.'}
+});
+
+// CSRF : obligatoire pour toutes les actions authentifiées.
+app.use('/api', (req,res,next)=>{
+  if(['GET','HEAD','OPTIONS'].includes(req.method)) return next();
+  if(['/api/login','/api/setup'].includes(req.path)) return next();
+  if(!req.session || !req.session.userId) return next();
+  if(!req.session.csrfToken || !safeEqual(req.get('x-csrf-token'), req.session.csrfToken)){
+    return res.status(403).json({error:'Jeton de sécurité invalide. Recharge la page et reconnecte-toi.'});
+  }
+  next();
+});
+
+app.use('/api', (req,res,next)=>{
+  res.set('Cache-Control','no-store, max-age=0');
+  res.set('Pragma','no-cache');
+  next();
+});
+
+app.use(express.static(path.join(__dirname,'public'), {
+  etag:true,
+  maxAge:0,
+  setHeaders(res,filePath){
+    if(filePath.endsWith('.html')) res.setHeader('Cache-Control','no-store');
+  }
+}));
+
+app.get('/api/status', (req,res)=>{
+  const d=load();
+  res.json({
+    setupRequired:d.users.length===0,
+    user:safe(current(req)),
+    csrfToken:req.session&&req.session.userId?req.session.csrfToken:null,
+    flash:d.flash||{enabled:false,title:'INFO',text:''}
+  });
+});
+
+app.post('/api/setup', authLimiter, (req,res)=>{
+  const d=load();
+  if(d.users.length>0) return res.status(403).json({error:'Le premier compte admin existe déjà'});
+  const {displayName,login,password}=req.body||{};
+  if(!displayName || !login || !password) return res.status(400).json({error:'Nom, identifiant et mot de passe obligatoires'});
+  if(!validPassword(password)) return res.status(400).json({error:'Mot de passe requis : 12 à 72 caractères'});
+  const cleanLogin=normalizeLogin(login);
+  const u={id:Date.now().toString(), displayName:String(displayName).trim().slice(0,120), login:cleanLogin, role:'admin', brigades:{jour:true,nuit:true}, passwordHash:bcrypt.hashSync(String(password),BCRYPT_ROUNDS), passwordChangedAt:new Date().toISOString(), mustChangePassword:false};
+  d.users.push(u); audit(d,req,'Création du premier admin'); save(d);
+  req.session.regenerate(err=>{
+    if(err) return res.status(500).json({error:'Impossible de créer la session'});
+    req.session.userId=u.id;
+    req.session.csrfToken=newCsrfToken();
+    req.session.save(()=>{
+      const d2=load(); audit(d2,req,'Connexion'); save(d2);
+      res.json({ok:true,user:safe(u),csrfToken:req.session.csrfToken});
+    });
+  });
+});
+
+
+const passwordResetLimiter=rateLimit({
+  windowMs:15*60*1000,max:5,standardHeaders:true,legacyHeaders:false,
+  message:{error:'Trop de demandes. Réessayez dans quelques minutes.'}
+});
+app.post('/api/password-reset/request', passwordResetLimiter, (req,res)=>{
+  const d=load(); const login=normalizeLogin(req.body&&req.body.login);
+  const u=d.users.find(x=>String(x.login||'')===login && normalizedRole(x.role)!=='dashboard');
+  if(u){
+    const recent=(d.passwordResetRequests||[]).find(x=>x.userId===u.id&&x.status==='pending'&&(Date.now()-new Date(x.createdAt).getTime())<60*60*1000);
+    if(!recent){
+      const r={id:crypto.randomUUID(),userId:u.id,login:u.login,displayName:u.displayName,status:'pending',createdAt:new Date().toISOString(),requestIp:requestIp(req),deviceName:String(req.get('x-phenix-device-name')||'').slice(0,100),deviceId:String(req.get('x-phenix-device-id')||'').slice(0,80)};
+      d.passwordResetRequests.unshift(r); d.passwordResetRequests=d.passwordResetRequests.slice(0,500);
+      audit(d,req,'Demande de mot de passe oublié pour '+u.login,'Sécurité / comptes'); save(d);
+      pushRealtimeEvent(d.users.filter(x=>x.role==='admin').map(x=>x.id),{type:'password-reset-request',id:r.id,displayName:r.displayName,createdAt:r.createdAt});
+    }
+  }
+  // Réponse volontairement générique pour ne pas révéler les identifiants existants.
+  res.json({ok:true,message:'Si cet identifiant existe, la demande a été transmise à un administrateur PHENIX.'});
+});
+app.post('/api/admin/password-resets/:id/complete', needLogin, needAdmin, (req,res)=>{
+  const d=load(); const r=(d.passwordResetRequests||[]).find(x=>x.id===req.params.id&&x.status==='pending');
+  if(!r) return res.status(404).json({error:'Demande introuvable'});
+  const u=d.users.find(x=>x.id===r.userId); if(!u) return res.status(404).json({error:'Utilisateur introuvable'});
+  const pwd=String(req.body&&req.body.temporaryPassword||''); if(!validPassword(pwd)) return res.status(400).json({error:'Mot de passe temporaire requis : 12 à 72 caractères'});
+  u.passwordHash=bcrypt.hashSync(pwd,BCRYPT_ROUNDS); u.mustChangePassword=true; u.passwordChangedAt=null;
+  r.status='completed'; r.completedAt=new Date().toISOString(); r.completedBy=current(req).id;
+  audit(d,req,'Réinitialisation temporaire du mot de passe de '+u.login,'Sécurité / comptes'); save(d);
+  res.json({ok:true});
+});
+app.post('/api/admin/password-resets/:id/dismiss', needLogin, needAdmin, (req,res)=>{
+  const d=load(); const r=(d.passwordResetRequests||[]).find(x=>x.id===req.params.id&&x.status==='pending');
+  if(!r) return res.status(404).json({error:'Demande introuvable'});
+  r.status='dismissed'; r.completedAt=new Date().toISOString(); r.completedBy=current(req).id;
+  audit(d,req,'Classement d’une demande de mot de passe oublié','Sécurité / comptes'); save(d); res.json({ok:true});
+});
+
+app.post('/api/login', authLimiter, (req,res)=>{
+  const d=load();
+  const login=normalizeLogin(req.body&&req.body.login);
+  const password=String(req.body&&req.body.password||'');
+  if(!login || !password || login.length>80 || password.length>100){
+    return res.status(401).json({error:'Identifiant ou mot de passe incorrect'});
+  }
+  const u=d.users.find(x=>String(x.login||'')===login);
+  if(!u || !bcrypt.compareSync(password, u.passwordHash)){
+    // Petit délai uniforme pour rendre le brute-force moins rentable.
+    return setTimeout(()=>res.status(401).json({error:'Identifiant ou mot de passe incorrect'}), 300);
+  }
+  req.session.regenerate(err=>{
+    if(err) return res.status(500).json({error:'Impossible de créer la session'});
+    req.session.userId=u.id;
+    req.session.csrfToken=newCsrfToken();
+    req.session.save(err2=>{
+      if(err2) return res.status(500).json({error:'Impossible d’enregistrer la session'});
+      const d2=load(); audit(d2,req,'Connexion'); save(d2);
+      res.json({ok:true,user:safe(u),csrfToken:req.session.csrfToken});
+    });
+  });
+});
+
+app.post('/api/logout', (req,res)=>{
+  const d=load(); audit(d,req,'Déconnexion'); save(d);
+  req.session.destroy(()=>{
+    res.clearCookie('phenix.sid',{path:'/',httpOnly:true,secure:IS_PROD,sameSite:'strict'});
+    res.json({ok:true});
+  });
+});
+
+app.post('/api/password', needLogin, (req,res)=>{
+  const d=load(); const u=d.users.find(x=>x.id===req.session.userId);
+  if(!bcrypt.compareSync(String(req.body.oldPassword||''), u.passwordHash)) return res.status(400).json({error:'Ancien mot de passe incorrect'});
+  if(!validPassword(req.body.newPassword)) return res.status(400).json({error:'Nouveau mot de passe requis : 12 à 72 caractères'});
+  if(String(req.body.oldPassword||'')===String(req.body.newPassword||'')) return res.status(400).json({error:'Le nouveau mot de passe doit être différent'});
+  u.passwordHash=bcrypt.hashSync(String(req.body.newPassword),BCRYPT_ROUNDS);
+  u.passwordChangedAt=new Date().toISOString();
+  u.mustChangePassword=false;
+  audit(d,req,'Changement de mot de passe','Sécurité / comptes'); save(d);
+  req.session.regenerate(err=>{
+    if(err) return res.status(500).json({error:'Mot de passe modifié, mais reconnexion nécessaire'});
+    req.session.userId=u.id; req.session.csrfToken=newCsrfToken();
+    req.session.save(()=>res.json({ok:true,csrfToken:req.session.csrfToken}));
+  });
+});
+
+app.get('/api/data', needLogin, (req,res)=>{
+  const d=load(); const u=current(req);
+  res.json({
+    user:safe(u),
+    csrfToken:req.session.csrfToken,
+    agents:d.agents,
+    callsigns:d.callsigns,
+    interventions:d.interventions,
+    crews:d.crews,
+    logs:d.logs.slice(0,100),
+    note:d.notes[u.id]||'',
+    consignes:consignesForUser(d,u),
+    links:linksForUser(d,u),
+    events:d.events||[],
+    flash:d.flash||{enabled:false,title:'INFO',text:''},
+    users:['admin','superviseur'].includes(u.role)?d.users.map(safe):undefined,
+    adminPasswordResets:u.role==='admin'?(d.passwordResetRequests||[]).filter(x=>x.status==='pending').slice(0,50):undefined,
+    adminAlerts:u.role==='admin'?{passwordResetPending:(d.passwordResetRequests||[]).filter(x=>x.status==='pending').length}:undefined
+  });
+});
+
+
+
+
+
+// Messagerie temps réel
+const realtimeStreams = new Map();
+
+function addRealtimeStream(userId,res){
+  if(!realtimeStreams.has(userId)) realtimeStreams.set(userId,new Set());
+  realtimeStreams.get(userId).add(res);
+}
+function removeRealtimeStream(userId,res){
+  const set=realtimeStreams.get(userId);
+  if(!set) return;
+  set.delete(res);
+  if(!set.size) realtimeStreams.delete(userId);
+}
+function pushRealtimeEvent(userIds,payload){
+  const data='data: '+JSON.stringify(payload)+'\n\n';
+  for(const uid of new Set((userIds||[]).filter(Boolean))){
+    const set=realtimeStreams.get(uid);
+    if(!set) continue;
+    for(const res of [...set]){
+      try{res.write(data)}catch(e){removeRealtimeStream(uid,res)}
+    }
+  }
+}
+
+
+app.get('/api/realtime/stream', needLogin, (req,res)=>{
+  const u=current(req);
+  if(!u) return res.status(401).end();
+
+  res.status(200);
+  res.set({
+    'Content-Type':'text/event-stream',
+    'Cache-Control':'no-cache, no-transform',
+    'Connection':'keep-alive',
+    'X-Accel-Buffering':'no'
+  });
+  if(res.flushHeaders) res.flushHeaders();
+
+  addRealtimeStream(u.id,res);
+  res.write('event: ready\ndata: {"ok":true}\n\n');
+
+  const heartbeat=setInterval(()=>{
+    try{res.write(': ping\n\n')}catch(e){}
+  },25000);
+
+  req.on('close',()=>{
+    clearInterval(heartbeat);
+    removeRealtimeStream(u.id,res);
+  });
+});
+
+// La messagerie privée a été retirée de PHENIX. Les anciennes données ne sont pas exposées.
+
+
+function soundMeta(d,kind){
+  const n=(d.notificationSounds||{})[kind]||{};
+  return {kind,custom:!!n.custom,filename:String(n.filename||''),updatedAt:String(n.updatedAt||'')};
+}
+function soundPath(d,kind){
+  const n=(d.notificationSounds||{})[kind]||{};
+  if(n.custom && n.path && fs.existsSync(n.path)) return n.path;
+  return '';
+}
+function makeFallbackWav(kind='crew'){
+  const sampleRate=22050, duration=kind==='crew'?0.72:0.55;
+  const count=Math.floor(sampleRate*duration), data=Buffer.alloc(count*2);
+  const freq=kind==='crew'?880:(kind==='urgent'?1046:660);
+  for(let i=0;i<count;i++){
+    const t=i/sampleRate;
+    const gate=kind==='crew' ? ((t<0.28 || (t>0.38&&t<0.68))?1:0) : 1;
+    const env=Math.min(1,t*35)*Math.min(1,(duration-t)*18);
+    const v=Math.sin(2*Math.PI*freq*t)*0.38*gate*env;
+    data.writeInt16LE(Math.max(-32767,Math.min(32767,Math.round(v*32767))),i*2);
+  }
+  const out=Buffer.alloc(44+data.length);
+  out.write('RIFF',0); out.writeUInt32LE(36+data.length,4); out.write('WAVE',8);
+  out.write('fmt ',12); out.writeUInt32LE(16,16); out.writeUInt16LE(1,20);
+  out.writeUInt16LE(1,22); out.writeUInt32LE(sampleRate,24);
+  out.writeUInt32LE(sampleRate*2,28); out.writeUInt16LE(2,32); out.writeUInt16LE(16,34);
+  out.write('data',36); out.writeUInt32LE(data.length,40); data.copy(out,44);
+  return out;
+}
+app.get('/api/sounds/:kind', needLogin, (req,res)=>{
+  const kind=String(req.params.kind||'');
+  if(!SOUND_KINDS.includes(kind)) return res.status(404).end();
+  const d=load(), p=soundPath(d,kind);
+  res.set('Cache-Control','no-store, no-cache, must-revalidate');
+  res.set('Pragma','no-cache');
+  if(p && fs.existsSync(p)){
+    const ext=path.extname(p).toLowerCase();
+    return res.type(ext==='.mp3'?'audio/mpeg':'audio/wav').sendFile(path.resolve(p));
+  }
+  // Fallback intégré : aucun fichier alerte.wav externe n'est nécessaire.
+  return res.type('audio/wav').send(makeFallbackWav(kind));
+});
+app.get('/api/sounds/meta', needLogin, (req,res)=>{
+  const d=load();
+  res.set('Cache-Control','no-store');
+  res.json({sounds:SOUND_KINDS.map(k=>soundMeta(d,k)),serverTime:Date.now()});
+});
+
+app.get('/api/realtime/snapshot', needLogin, (req,res)=>{
+  const d=load();
+  res.set('Cache-Control','no-store');
+  res.json({
+    serverTime:Date.now(),
+    crews:(d.crews||[]).map(c=>({id:c.id,status:c.status,callsign:c.callsign,intervention:c.intervention||''})),
+    sounds:SOUND_KINDS.map(k=>soundMeta(d,k))
+  });
+});
+
+app.get('/api/admin/sounds', needLogin, needAdmin, (req,res)=>{
+  const d=load(); res.json({sounds:SOUND_KINDS.map(k=>soundMeta(d,k))});
+});
+app.post('/api/admin/sounds/:kind', needLogin, needAdmin, express.json({limit:'12mb'}), (req,res)=>{
+  const kind=String(req.params.kind||'');
+  if(!SOUND_KINDS.includes(kind)) return res.status(400).json({error:'Type de son invalide'});
+  const d=load(); const filename=String(req.body&&req.body.filename||'').trim();
+  const dataUrl=String(req.body&&req.body.data||''); const ext=path.extname(filename).toLowerCase();
+  if(!['.mp3','.wav','.wave'].includes(ext)) return res.status(400).json({error:'Format accepté : MP3 ou WAV'});
+  const m=dataUrl.match(/^data:audio\/[^;]+;base64,(.+)$/);
+  if(!m) return res.status(400).json({error:'Fichier audio invalide'});
+  let buf; try{buf=Buffer.from(m[1],'base64')}catch(e){return res.status(400).json({error:'Fichier audio invalide'})}
+  if(!buf.length || buf.length>8*1024*1024) return res.status(400).json({error:'Le fichier doit faire moins de 8 Mo'});
+  const dir=IS_PROD?'/var/data':path.join(__dirname,'.data'); fs.mkdirSync(dir,{recursive:true});
+  const realExt=ext==='.mp3'?'.mp3':'.wav'; const dest=path.join(dir,'phenix-sound-'+kind+realExt);
+  for(const oldExt of ['.mp3','.wav']){ const old=path.join(dir,'phenix-sound-'+kind+oldExt); if(old!==dest&&fs.existsSync(old)){try{fs.unlinkSync(old)}catch(e){}} }
+  fs.writeFileSync(dest,buf); d.notificationSounds=d.notificationSounds||{};
+  d.notificationSounds[kind]={custom:true,filename:filename.slice(0,180),path:dest,updatedAt:new Date().toISOString()};
+  audit(d,req,'Modification du son '+kind,'Administration'); save(d);
+  pushRealtimeEvent(d.users.map(x=>x.id),{type:'sound-config',kind,updatedAt:d.notificationSounds[kind].updatedAt});
+  res.json({ok:true,...soundMeta(d,kind)});
+});
+app.delete('/api/admin/sounds/:kind', needLogin, needAdmin, (req,res)=>{
+  const kind=String(req.params.kind||''); if(!SOUND_KINDS.includes(kind)) return res.status(400).json({error:'Type de son invalide'});
+  const d=load(); const n=(d.notificationSounds||{})[kind]||{};
+  if(n.path&&fs.existsSync(n.path)){try{fs.unlinkSync(n.path)}catch(e){}}
+  d.notificationSounds=d.notificationSounds||{}; d.notificationSounds[kind]={custom:false,filename:'',path:'',updatedAt:new Date().toISOString()};
+  audit(d,req,'Restauration du son '+kind,'Administration'); save(d);
+  pushRealtimeEvent(d.users.map(x=>x.id),{type:'sound-config',kind,updatedAt:d.notificationSounds[kind].updatedAt});
+  res.json({ok:true,...soundMeta(d,kind)});
+});
+
+app.post('/api/note', needLogin, needOperational, (req,res)=>{
+  const d=load();
+  d.notes[req.session.userId]=String(req.body.note||'');
+  audit(d,req,'Modification notes privées');
+  save(d);
+  res.json({ok:true});
+});
+
+app.post('/api/agents', needLogin, needAdmin, (req,res)=>{
+  const d=load();
+  d.agents=Array.isArray(req.body.agents)?req.body.agents:d.agents;
+  audit(d,req,'Mise à jour personnel');
+  save(d);
+  res.json({ok:true});
+});
+
+app.post('/api/crew', needLogin, needOperational, (req,res)=>{
+  const d=load(); const c=req.body.crew||{};
+  if(!c.callsign) return res.status(400).json({error:'Indicatif obligatoire'});
+
+  if(c.id){
+    const i=d.crews.findIndex(x=>x.id===c.id);
+    if(i<0) return res.status(404).json({error:'Équipage introuvable'});
+    d.crews[i]={...d.crews[i], callsign:c.callsign, matricules:c.matricules||[], observations:c.observations||'', meal:c.meal||'', shiftStart:String(c.shiftStart||''), shiftEnd:String(c.shiftEnd||'')};
+    audit(d,req,'Modification équipage '+c.callsign);
+  } else {
+    d.crews.push({id:Date.now().toString(), callsign:c.callsign, matricules:c.matricules||[], observations:c.observations||'', meal:c.meal||'', shiftStart:String(c.shiftStart||''), shiftEnd:String(c.shiftEnd||''), status:'DISPO', intervention:''});
+    audit(d,req,'Création équipage '+c.callsign);
+  }
+
+  save(d);
+  res.json({ok:true});
+});
+
+app.delete('/api/crew/:id', needLogin, needOperational, (req,res)=>{
+  const d=load();
+  const c=d.crews.find(x=>x.id===req.params.id);
+  d.crews=d.crews.filter(x=>x.id!==req.params.id);
+  if(c) audit(d,req,'Suppression équipage '+c.callsign);
+  save(d);
+  res.json({ok:true});
+});
+
+app.post('/api/crew/:id/status', needLogin, needOperational, (req,res)=>{
+  const d=load();
+  const c=d.crews.find(x=>x.id===req.params.id);
+  if(!c) return res.status(404).json({error:'Équipage introuvable'});
+  c.status=req.body.status==='INDISPO'?'INDISPO':'DISPO';
+  if(c.status==='INDISPO'){
+    c.intervention=String(req.body.intervention||'Intervention');
+    c.interventionCode=String(req.body.code||'').trim().toUpperCase();
+    c.interventionSource=String(req.body.source||'nature');
+    c.eventId=String(req.body.eventId||'');
+  }else{
+    c.intervention='';
+    c.interventionCode='';
+    c.interventionSource='';
+    c.eventId='';
+  }
+  const codeTxt=c.interventionCode?' ['+c.interventionCode+']':'';
+  audit(d,req,`${c.callsign} ${c.status}${codeTxt}${c.intervention?' - '+c.intervention:''}`);
+  save(d);
+  pushRealtimeEvent(d.users.map(x=>x.id),{
+    type:'crew-status',
+    crewId:c.id,
+    callsign:c.callsign,
+    status:c.status,
+    intervention:c.intervention||'',
+    changedAt:new Date().toISOString()
+  });
+  res.json({ok:true});
+});
+
+app.post('/api/consignes', needLogin, needConsigneManager, (req,res)=>{
+  const d=load(); const u=current(req); const r=req.body||{};
+  if(!String(r.title||'').trim()) return res.status(400).json({error:'Titre obligatoire'});
+  if(!String(r.body||'').trim()) return res.status(400).json({error:'Texte obligatoire'});
+
+  const data={
+    title:String(r.title).trim(),
+    body:String(r.body).trim(),
+    brigade:['jour','nuit','all'].includes(r.brigade)?r.brigade:'all',
+    priority:['info','important','urgent'].includes(r.priority)?r.priority:'info',
+    startDate:String(r.startDate||''),
+    endDate:String(r.endDate||''),
+    recurrence:['none','daily','weekly'].includes(r.recurrence)?r.recurrence:'none',
+    days:Array.isArray(r.days)?r.days.map(Number).filter(x=>x>=0&&x<=6):[],
+    updatedAt:new Date().toISOString(),
+    updatedBy:u.displayName
+  };
+
+  if(r.id){
+    const c=d.consignes.find(x=>x.id===r.id);
+    if(!c) return res.status(404).json({error:'Consigne introuvable'});
+    Object.assign(c,data);
+    audit(d,req,'Modification consigne '+c.title);
+  } else {
+    d.consignes.unshift({id:Date.now().toString(), createdAt:new Date().toISOString(), createdBy:u.displayName, reads:{}, ...data});
+    audit(d,req,'Création consigne '+data.title);
+  }
+
+  save(d);
+  const currentConsigne=r.id?d.consignes.find(x=>x.id===r.id):d.consignes[0];
+  if(currentConsigne && currentConsigne.priority==='urgent'){
+    const recipients=d.users.filter(x=>visibleConsigne(currentConsigne,x)).map(x=>x.id);
+    pushRealtimeEvent(recipients,{type:'urgent-consigne',id:currentConsigne.id,title:currentConsigne.title,updatedAt:new Date().toISOString()});
+  }
+  res.json({ok:true});
+});
+
+app.post('/api/consignes/:id/read', needLogin, (req,res)=>{
+  const d=load();
+  const c=d.consignes.find(x=>x.id===req.params.id);
+  if(!c) return res.status(404).json({error:'Consigne introuvable'});
+  c.reads=c.reads||{};
+  c.reads[req.session.userId]=new Date().toISOString();
+  save(d);
+  res.json({ok:true});
+});
+
+app.delete('/api/consignes/:id', needLogin, needConsigneManager, (req,res)=>{
+  const d=load();
+  const c=d.consignes.find(x=>x.id===req.params.id);
+  d.consignes=d.consignes.filter(x=>x.id!==req.params.id);
+  if(c) audit(d,req,'Suppression consigne '+c.title);
+  save(d);
+  res.json({ok:true});
+});
+
+app.post('/api/admin/flash', needLogin, needAdmin, (req,res)=>{
+  const d=load();
+  d.flash={
+    enabled: !!req.body.enabled,
+    title: String(req.body.title||'INFO').trim() || 'INFO',
+    text: String(req.body.text||'').trim()
+  };
+  audit(d,req,'Modification texte flash');
+  save(d);
+  if(d.flash.enabled && d.flash.text) pushRealtimeEvent(d.users.map(x=>x.id),{type:'system-alert',title:d.flash.title,text:d.flash.text,updatedAt:new Date().toISOString()});
+  res.json({ok:true, flash:d.flash});
+});
+
+
+app.post('/api/links', needLogin, needConsigneManager, (req,res)=>{
+  const d=load(); const r=req.body||{};
+  if(!String(r.name||'').trim()) return res.status(400).json({error:'Nom du lien obligatoire'});
+  if(!String(r.url||'').trim()) return res.status(400).json({error:'URL obligatoire'});
+  const data={
+    name:String(r.name).trim(),
+    url:String(r.url).trim(),
+    logo:cleanLogo(r.logo),
+    description:String(r.description||'').trim(),
+    visible:{
+      jour:!!(r.visible&&r.visible.jour),
+      nuit:!!(r.visible&&r.visible.nuit)
+    },
+    updatedAt:new Date().toISOString()
+  };
+  if(r.id){
+    const l=d.links.find(x=>x.id===r.id);
+    if(!l) return res.status(404).json({error:'Lien introuvable'});
+    Object.assign(l,data);
+    audit(d,req,'Modification lien utile '+data.name);
+  } else {
+    d.links.unshift({id:Date.now().toString(), createdAt:new Date().toISOString(), ...data});
+    audit(d,req,'Création lien utile '+data.name);
+  }
+  save(d); res.json({ok:true});
+});
+
+app.delete('/api/links/:id', needLogin, needConsigneManager, (req,res)=>{
+  const d=load();
+  const l=d.links.find(x=>x.id===req.params.id);
+  d.links=d.links.filter(x=>x.id!==req.params.id);
+  if(l) audit(d,req,'Suppression lien utile '+l.name);
+  save(d); res.json({ok:true});
+});
+
+
+app.get('/api/history', needLogin, (req,res)=>{
+  const d=load(); const u=current(req);
+  if(!u || !['admin','superviseur'].includes(u.role)) return res.status(403).json({error:'Réservé superviseur/admin'});
+  let arr=(d.logs||[]).slice();
+  const userId=String(req.query.userId||''); const type=String(req.query.type||''); const search=String(req.query.search||'').trim().toLowerCase();
+  const from=req.query.from?new Date(String(req.query.from)+'T00:00:00').getTime():0;
+  const to=req.query.to?new Date(String(req.query.to)+'T23:59:59.999').getTime():Date.now();
+  arr=arr.filter(l=>{
+    const t=new Date(l.date).getTime();
+    if(!Number.isFinite(t)||t<from||t>to) return false;
+    if(userId&&l.userId!==userId) return false;
+    if(type&&String(l.type||'Autre')!==type) return false;
+    if(search&&!([l.user,l.msg,l.deviceName,l.ip,l.route].join(' ').toLowerCase().includes(search))) return false;
+    return true;
+  }).slice(0,1000);
+  const types=[...new Set((d.logs||[]).map(l=>String(l.type||'Autre')))].sort();
+  res.json({logs:arr,types});
+});
+
+app.get('/api/history/:userId', needLogin, (req,res)=>{
+  const d=load(); const u=current(req);
+  if(!u || !['admin','superviseur'].includes(u.role)) return res.status(403).json({error:'Réservé superviseur/admin'});
+  const since=Date.now()-7*24*60*60*1000;
+  const logs=(d.logs||[]).filter(l=>{
+    const t=new Date(l.date).getTime();
+    return t>=since && (l.userId===req.params.userId || (!l.userId && d.users.find(x=>x.id===req.params.userId && x.displayName===l.user)));
+  });
+  res.json({logs});
+});
+
+
+app.get('/api/logo-check/:file', needLogin, (req,res)=>{
+  const file=String(req.params.file||'').replace(/[^a-zA-Z0-9_.-]/g,'');
+  const full=path.join(__dirname,'public',file);
+  res.json({file, exists:fs.existsSync(full), path:'/'.concat(file)});
+});
+
+
+app.get('/api/events/recovery-status', needLogin, (req,res)=>{
+  const u=current(req);
+  if(!u || !['admin','superviseur'].includes(normalizedRole(u.role))) return res.status(403).json({error:'Réservé superviseur/admin'});
+  const files=[DB,...eventRecoveryCandidates()];
+  res.json({sources:[...new Set(files)].map(file=>{const d=readDataFile(file);return {file,exists:fs.existsSync(file),events:d&&Array.isArray(d.events)?d.events.length:0}})});
+});
+
+app.post('/api/events', needLogin, needConsigneManager, (req,res)=>{
+  const d=load(); const u=current(req); const r=req.body||{};
+  const title=String(r.title||'').trim();
+  const code=String(r.code||'').trim().toUpperCase();
+  const start=String(r.start||'').trim();
+  const end=String(r.end||'').trim();
+  if(!title) return res.status(400).json({error:'Nom de l’événement obligatoire'});
+  if(!start || !end) return res.status(400).json({error:'Début et fin obligatoires'});
+  const sd=new Date(start), ed=new Date(end);
+  if(isNaN(sd.getTime()) || isNaN(ed.getTime()) || ed<=sd) return res.status(400).json({error:'Dates invalides'});
+  const data={title,code,start,end,description:String(r.description||'').trim(),color:['blue','red','green','orange','purple','gray'].includes(r.color)?r.color:'blue',updatedAt:new Date().toISOString(),updatedBy:u.displayName};
+  if(r.id){
+    const ev=(d.events||[]).find(x=>x.id===r.id);
+    if(!ev) return res.status(404).json({error:'Événement introuvable'});
+    Object.assign(ev,data);
+    audit(d,req,'Modification événement '+title);
+  }else{
+    d.events=d.events||[];
+    d.events.unshift({id:Date.now().toString(),createdAt:new Date().toISOString(),createdBy:u.displayName,...data});
+    audit(d,req,'Création événement '+title);
+  }
+  save(d); res.json({ok:true});
+});
+
+app.delete('/api/events/:id', needLogin, needConsigneManager, (req,res)=>{
+  const d=load();
+  const ev=(d.events||[]).find(x=>x.id===req.params.id);
+  d.events=(d.events||[]).filter(x=>x.id!==req.params.id);
+  if(ev) audit(d,req,'Suppression événement '+ev.title);
+  save(d); res.json({ok:true});
+});
+
+app.post('/api/admin/users', needLogin, needAdmin, (req,res)=>{
+  const d=load(); const r=req.body||{};
+  if(!r.displayName||!r.login||!r.role) return res.status(400).json({error:'Nom, identifiant et rôle obligatoires'});
+  r.login=normalizeLogin(r.login);
+  r.displayName=String(r.displayName).trim().slice(0,120);
+  if(!['admin','superviseur','operateur','dashboard'].includes(r.role)) return res.status(400).json({error:'Rôle invalide'});
+
+  const brigades={jour:!!(r.brigades&&r.brigades.jour), nuit:!!(r.brigades&&r.brigades.nuit)};
+  if(['admin','superviseur'].includes(r.role)){ brigades.jour=true; brigades.nuit=true; }
+
+  if(r.id){
+    const u=d.users.find(x=>x.id===r.id);
+    if(!u) return res.status(404).json({error:'Utilisateur introuvable'});
+    if(d.users.some(x=>x.id!==u.id && String(x.login||'').toLowerCase()===r.login.toLowerCase())) return res.status(400).json({error:'Identifiant déjà utilisé'});
+    u.displayName=r.displayName;
+    u.login=r.login;
+    u.role=r.role;
+    u.brigades=brigades;
+    if(r.password){ if(!validPassword(r.password)) return res.status(400).json({error:'Mot de passe requis : 12 à 72 caractères'}); u.passwordHash=bcrypt.hashSync(String(r.password),BCRYPT_ROUNDS); u.mustChangePassword=true; u.passwordChangedAt=null; }
+  } else {
+    if(!r.password) return res.status(400).json({error:'Mot de passe obligatoire pour créer'});
+    if(!validPassword(r.password)) return res.status(400).json({error:'Mot de passe requis : 12 à 72 caractères'});
+    if(d.users.some(u=>u.id!==r.id && String(u.login||'').toLowerCase()===r.login.toLowerCase())) return res.status(400).json({error:'Identifiant déjà utilisé'});
+    d.users.push({id:Date.now().toString(), displayName:r.displayName, login:r.login, role:r.role, brigades, passwordHash:bcrypt.hashSync(String(r.password),BCRYPT_ROUNDS), mustChangePassword:r.role!=='dashboard', passwordChangedAt:r.role==='dashboard'?new Date().toISOString():null});
+  }
+
+  audit(d,req,'Gestion utilisateur');
+  save(d);
+  res.json({ok:true});
+});
+
+app.delete('/api/admin/users/:id', needLogin, needAdmin, (req,res)=>{
+  const d=load();
+  if(req.params.id===req.session.userId) return res.status(400).json({error:'Impossible de supprimer ton compte connecté'});
+  d.users=d.users.filter(u=>u.id!==req.params.id);
+  audit(d,req,'Suppression utilisateur');
+  save(d);
+  res.json({ok:true});
+});
+
+app.post('/api/admin/lists', needLogin, needAdmin, (req,res)=>{
+  const d=load();
+  if(Array.isArray(req.body.callsigns)){
+    d.callsigns=[...new Set(req.body.callsigns.map(x=>String(x||'').trim().toUpperCase()).filter(Boolean))].slice(0,250);
+  }
+  if(Array.isArray(req.body.interventions)){
+    d.interventions=normalizeInterventions(req.body.interventions);
+  }
+  audit(d,req,'Modification listes admin');
+  save(d);
+  res.json({ok:true,callsigns:d.callsigns,interventions:d.interventions});
+});
+
+// Portail d'accès professionnel (isolé de PHENIX)
+const { mountPortal } = require('./portal-router');
+mountPortal(app);
+
+app.use((err,req,res,next)=>{
+  console.error('[PHENIX]',err && err.stack ? err.stack : err);
+  if(res.headersSent) return next(err);
+  res.status(500).json({error:'Erreur interne du serveur'});
+});
+
+app.listen(PORT,'0.0.0.0',()=>console.log('PHENIX sécurisé prêt sur le port '+PORT));
