@@ -8,7 +8,7 @@ const bcrypt = require('bcryptjs');
 
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
 const MAX_LOGO_SIZE = 400 * 1024;
-const VERSION = '2.2.0-phenix-accounts';
+const VERSION = '2.2.1-arretes-sso';
 
 function safeEqual(a, b) {
   const aa = Buffer.from(String(a ?? ''));
@@ -224,8 +224,8 @@ function mountPortal(app) {
     return parseCookies(req.headers.cookie).pm_portal_auth || '';
   }
 
-  function currentUser(req) {
-    const user = verifyToken(tokenFromRequest(req));
+  function resolveTokenUser(token) {
+    const user = verifyToken(token);
     if (!user) return null;
 
     if (user.source === 'PHENIX') {
@@ -248,6 +248,53 @@ function mountPortal(app) {
     }
 
     return user;
+  }
+
+  function currentUser(req) {
+    return resolveTokenUser(tokenFromRequest(req));
+  }
+
+  const usedArretesTokens = new Map();
+  function signArretesSsoToken(user) {
+    const now = Date.now();
+    const payload = Buffer.from(JSON.stringify({
+      aud: 'arretes-municipaux',
+      sub: user.id,
+      login: user.login,
+      name: user.name,
+      role: user.role,
+      source: user.source || 'ARGOS',
+      phenixRole: user.phenixRole || '',
+      jti: crypto.randomUUID(),
+      iat: now,
+      exp: now + 45 * 1000
+    }), 'utf8').toString('base64url');
+    const sig = crypto.createHmac('sha256', TOKEN_SECRET).update(`arretes.${payload}`).digest('base64url');
+    return `a1.${payload}.${sig}`;
+  }
+
+  function consumeArretesSsoToken(token) {
+    try {
+      const [version, payload, sig] = String(token || '').split('.');
+      if (version !== 'a1' || !payload || !sig) return null;
+      const expected = crypto.createHmac('sha256', TOKEN_SECRET).update(`arretes.${payload}`).digest('base64url');
+      if (!safeEqual(expected, sig)) return null;
+      const parsed = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+      if (parsed.aud !== 'arretes-municipaux' || !parsed.jti || !parsed.exp || parsed.exp < Date.now()) return null;
+      if (usedArretesTokens.has(parsed.jti)) return null;
+      usedArretesTokens.set(parsed.jti, parsed.exp);
+      for (const [jti, expiresAt] of usedArretesTokens) if (expiresAt < Date.now()) usedArretesTokens.delete(jti);
+      return resolveTokenUser(signToken({
+        id: parsed.sub,
+        login: parsed.login,
+        name: parsed.name,
+        role: parsed.role,
+        source: parsed.source,
+        phenixRole: parsed.phenixRole
+      }));
+    } catch {
+      return null;
+    }
   }
   function isSecure(req) { return IS_PROD || String(req.headers['x-forwarded-proto'] || '').toLowerCase() === 'https'; }
   function cookie(req, token, maxAge = Math.floor(TOKEN_TTL_MS / 1000)) {
@@ -491,6 +538,19 @@ function mountPortal(app) {
   });
 
   app.use('/portail/api', router);
+
+  app.get('/portail/sso/arretes-municipaux', requireLogin, (req, res) => {
+    const token = signArretesSsoToken(req.portalUser);
+    res.redirect(303, `/arretes/sso/consume?token=${encodeURIComponent(token)}`);
+  });
+
+  const { mountArretes } = require('./arretes/router');
+  mountArretes(app, {
+    consumeSsoToken: consumeArretesSsoToken,
+    issueSessionToken: signToken,
+    verifySessionToken: resolveTokenUser
+  });
+
   // Regex stricte : /portail uniquement. Une route Express en chaîne accepte aussi
   // la barre finale par défaut, ce qui créait une boucle /portail/ -> /portail/.
   app.get(/^\/portail$/, (req, res) => res.redirect(302, '/portail/'));

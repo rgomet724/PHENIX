@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Gestion interne des arrêtés municipaux de Chalon-sur-Saône">
+    <title>Arrêtés municipaux — ARGOS</title>
+    <link rel="stylesheet" href="/arretes/assets/styles.css">
+    <script src="/arretes/assets/app.js" defer></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="brand-mark" aria-hidden="true">AM</div>
+      <div class="brand-copy">
+        <p class="eyebrow">PORTAIL ARGOS</p>
+        <h1>Arrêtés municipaux</h1>
+        <p>Police Municipale · Chalon-sur-Saône</p>
+      </div>
+      <div class="account">
+        <span id="user-name">Chargement…</span>
+        <small id="user-role"></small>
+        <a href="/arretes/auth/logout">Retour à ARGOS</a>
+      </div>
+    </header>
+
+    <nav class="tabs" aria-label="Navigation principale">
+      <button class="tab active" type="button" data-view="records">Consulter</button>
+      <button class="tab" type="button" data-view="create">Enregistrer un arrêté</button>
+      <button class="tab admin-only hidden" type="button" data-view="streets">Voies</button>
+    </nav>
+
+    <main>
+      <section id="view-records" class="view active" aria-labelledby="records-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">REGISTRE</p>
+            <h2 id="records-title">Rechercher un arrêté</h2>
+          </div>
+          <span id="record-count" class="count">0 résultat</span>
+        </div>
+
+        <form id="search-form" class="search-panel">
+          <label class="field field-wide">
+            <span>Numéro, nom ou lieu</span>
+            <input id="search-query" name="q" type="search" placeholder="Ex. 2026-145, stationnement, République">
+          </label>
+          <label class="field">
+            <span>Voie</span>
+            <select id="search-street" name="street">
+              <option value="">Toutes les voies</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Type</span>
+            <select id="search-status" name="status">
+              <option value="all">Tous les arrêtés</option>
+              <option value="temporary">Temporaires</option>
+              <option value="permanent">Permanents</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Du</span>
+            <input id="search-from" name="from" type="date">
+          </label>
+          <label class="field">
+            <span>Au</span>
+            <input id="search-to" name="to" type="date">
+          </label>
+          <div class="search-actions">
+            <button class="button primary" type="submit">Rechercher</button>
+            <button id="reset-search" class="button secondary" type="button">Effacer</button>
+          </div>
+        </form>
+
+        <div id="records-loading" class="state-panel">Chargement du registre…</div>
+        <div id="records-empty" class="state-panel hidden">
+          <strong>Aucun arrêté trouvé</strong>
+          <span>Modifiez les critères ou enregistrez un nouvel arrêté.</span>
+        </div>
+        <div id="records-list" class="records-list" aria-live="polite"></div>
+      </section>
+
+      <section id="view-create" class="view" aria-labelledby="create-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">NOUVEL ENREGISTREMENT</p>
+            <h2 id="create-title">Enregistrer un arrêté</h2>
+          </div>
+        </div>
+
+        <form id="record-form" class="record-form" enctype="multipart/form-data">
+          <div class="form-grid">
+            <label class="field">
+              <span>Numéro de l’arrêté *</span>
+              <input name="number" required maxlength="80" autocomplete="off" placeholder="Ex. PM-2026-0145">
+            </label>
+            <label class="field">
+              <span>Date de l’arrêté *</span>
+              <input id="record-date" name="date" type="date" required>
+            </label>
+            <label class="field field-full">
+              <span>Nom de l’arrêté *</span>
+              <input name="name" required maxlength="220" autocomplete="off" placeholder="Ex. Réglementation temporaire du stationnement">
+            </label>
+            <div class="field field-full">
+              <span>Rue(s), boulevard(s), place(s) ou impasse(s) *</span>
+              <div class="street-picker">
+                <div id="selected-streets" class="chips" aria-live="polite"></div>
+                <input id="street-input" type="search" autocomplete="off" placeholder="Rechercher puis sélectionner une voie" aria-controls="street-suggestions" aria-expanded="false">
+                <div id="street-suggestions" class="suggestions hidden" role="listbox"></div>
+              </div>
+              <small>Vous pouvez sélectionner plusieurs voies.</small>
+            </div>
+            <label class="field field-full">
+              <span>Précisions sur le lieu</span>
+              <textarea name="locationDetails" maxlength="500" rows="3" placeholder="Numéros, carrefour, portion concernée, côté de circulation…"></textarea>
+            </label>
+            <label class="field field-full file-field">
+              <span>Pièce jointe PDF *</span>
+              <input name="attachment" type="file" accept="application/pdf,.pdf" required>
+              <small>Un seul PDF, 15 Mo maximum.</small>
+            </label>
+          </div>
+
+          <div class="temporary-panel">
+            <label class="switch-row">
+              <input id="temporary" name="temporary" type="checkbox">
+              <span>
+                <strong>Arrêté temporaire</strong>
+                <small>Le dossier sera supprimé automatiquement deux jours après la date de fin.</small>
+              </span>
+            </label>
+            <div id="temporary-dates" class="temporary-dates hidden">
+              <label class="field">
+                <span>Date de début *</span>
+                <input id="start-date" name="startDate" type="date">
+              </label>
+              <label class="field">
+                <span>Date de fin *</span>
+                <input id="end-date" name="endDate" type="date">
+              </label>
+            </div>
+          </div>
+
+          <div id="form-message" class="message hidden" role="status"></div>
+          <div class="form-actions">
+            <button class="button primary" type="submit">Enregistrer l’arrêté</button>
+            <button class="button secondary" type="reset">Réinitialiser</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="view-streets" class="view" aria-labelledby="streets-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">ADMINISTRATION</p>
+            <h2 id="streets-title">Référentiel des voies</h2>
+          </div>
+        </div>
+        <div class="admin-panel">
+          <p id="streets-metadata">Le référentiel est chargé automatiquement depuis la Base Adresse Nationale.</p>
+          <div class="admin-actions">
+            <button id="refresh-streets" class="button primary" type="button">Actualiser depuis la BAN</button>
+          </div>
+          <form id="add-street-form" class="inline-form">
+            <label class="field">
+              <span>Ajouter une voie manuellement</span>
+              <input name="name" required maxlength="160" placeholder="Nom complet de la voie">
+            </label>
+            <button class="button secondary" type="submit">Ajouter</button>
+          </form>
+          <div id="street-admin-message" class="message hidden" role="status"></div>
+        </div>
+      </section>
+    </main>
+
+    <template id="record-template">
+      <article class="record-card">
+        <div class="record-stripe"></div>
+        <div class="record-main">
+          <div class="record-topline">
+            <span class="record-number"></span>
+            <span class="record-type"></span>
+          </div>
+          <h3 class="record-name"></h3>
+          <div class="record-meta"></div>
+          <div class="record-streets"></div>
+          <p class="record-location"></p>
+          <p class="record-expiry"></p>
+          <p class="record-storage"></p>
+        </div>
+        <div class="record-actions">
+          <a class="button primary record-pdf" target="_blank" rel="noopener">Ouvrir le PDF</a>
+          <button class="button danger record-delete admin-only hidden" type="button">Supprimer</button>
+        </div>
+      </article>
+    </template>
+  </body>
+</html>
