@@ -2,15 +2,16 @@
 
 Ce paquet ajoute l'application **Arrêtés municipaux** au service PEGASE-2 existant.
 
-Fichiers remplacés à la racine :
+Fichiers à déposer directement à la racine de PHENIX :
 
 - `portal-router.js`
 - `package.json`
 - `package-lock.json`
+- `arretes-router.js`
+- `LIRE-MOI-ARRETES.md`
 
-Nouveau dossier à ajouter à la racine :
-
-- `arretes/`
+`arretes-router.js` contient déjà toute l'application (interface, stockage,
+compression PDF et référentiel des voies). Il n'y a aucun dossier à envoyer.
 
 Ne remplacez pas `server.js`, `Public/`, `Portail/` ni les données existantes.
 
@@ -34,4 +35,3 @@ Dans l'administration ARGOS, créez une application avec :
 - Catégorie : celle de votre choix
 
 Le stockage utilise automatiquement `/var/data/arretes` sur le disque actuel de PEGASE-2. Aucune nouvelle variable Render n'est nécessaire.
-

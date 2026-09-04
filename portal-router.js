@@ -544,7 +544,7 @@ function mountPortal(app) {
     res.redirect(303, `/arretes/sso/consume?token=${encodeURIComponent(token)}`);
   });
 
-  const { mountArretes } = require('./arretes/router');
+  const { mountArretes } = require('./arretes-router');
   mountArretes(app, {
     consumeSsoToken: consumeArretesSsoToken,
     issueSessionToken: signToken,
