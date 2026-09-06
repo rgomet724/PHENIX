@@ -1,199 +1,161 @@
 <!doctype html>
 <html lang="fr">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Gestion interne des arrêtés Municipaux de Chalon-sur-Saône">
-    <title>Arrêtés Municipaux — ARGOS</title>
-    <link rel="stylesheet" href="/arretes/assets/styles.css">
-    <script src="/arretes/assets/app.js" defer></script>
-  </head>
-  <body>
-    <header class="site-header">
-      <div class="brand-mark" aria-hidden="true">AM</div>
-      <div class="brand-copy">
-        <p class="eyebrow">PORTAIL ARGOS</p>
-        <h1>Arrêtés Municipaux</h1>
-        <p>Police Municipale · Chalon-sur-Saône</p>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>ATLAS — Gestion des interventions</title>
+  <link rel="stylesheet" href="/portail/atlas/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">R</div>
+      <div>
+        <strong>ATLAS</strong>
+        <span>Gestion de l’attente des interventions</span>
       </div>
-      <div class="account">
-        <span id="user-name">Chargement…</span>
-        <small id="user-role"></small>
-        <a href="/arretes/auth/logout">Retour à ARGOS</a>
+    </div>
+    <div class="top-actions">
+      <span id="syncState" class="sync-pill">PHENIX connecté</span>
+      <span id="currentUser" class="user-pill">—</span>
+      <a class="btn ghost" href="/portail/">← ARGOS</a>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="hero-grid">
+      <div class="next-card">
+        <div class="eyebrow">MISSION PRIORITAIRE</div>
+        <div id="nextMissionBox" class="next-content">
+          <div class="empty-next">Chargement…</div>
+        </div>
       </div>
-    </header>
+      <div class="next-action-card">
+        <label for="nextCrew">Patrouille</label>
+        <select id="nextCrew"></select>
+        <button id="takeNextBtn" class="btn primary large" type="button">Nouvelle mission</button>
+        <small>Le système affecte automatiquement la mission en attente la plus prioritaire.</small>
+      </div>
+    </section>
 
-    <nav class="tabs" aria-label="Navigation principale">
-      <button class="tab active" type="button" data-view="records">Consulter</button>
-      <button class="tab" type="button" data-view="create">Enregistrer un arrêté</button>
-      <button class="tab admin-only hidden" type="button" data-view="streets">Voies</button>
-    </nav>
+    <section class="toolbar">
+      <div>
+        <h1>Interventions</h1>
+        <p><span id="waitingCount">0</span> en attente · <span id="activeCount">0</span> en cours</p>
+      </div>
+      <div class="toolbar-actions">
+        <button id="manageBtn" class="btn secondary hidden" type="button">⚙ Paramètres</button>
+        <button id="newMissionBtn" class="btn primary" type="button">＋ Ajouter une intervention</button>
+      </div>
+    </section>
 
-    <main>
-      <section id="view-records" class="view active" aria-labelledby="records-title">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">REGISTRE</p>
-            <h2 id="records-title">Rechercher un arrêté</h2>
-          </div>
-          <span id="record-count" class="count">0 résultat</span>
+    <section class="board-grid">
+      <div class="board-column">
+        <div class="column-head">
+          <h2>En attente</h2>
+          <span class="legend"><i class="dot red"></i> urgente <i class="dot orange"></i> normale</span>
         </div>
+        <div id="waitingList" class="mission-list"></div>
+      </div>
+      <div class="board-column">
+        <div class="column-head"><h2>En cours</h2></div>
+        <div id="activeList" class="mission-list"></div>
+      </div>
+    </section>
+  </main>
 
-        <form id="search-form" class="search-panel">
-          <label class="field field-wide">
-            <span>Numéro, nom ou lieu</span>
-            <input id="search-query" name="q" type="search" placeholder="Ex. 2026-145, stationnement, République">
-          </label>
-          <label class="field">
-            <span>Voie</span>
-            <select id="search-street" name="street">
-              <option value="">Toutes les voies</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>Type</span>
-            <select id="search-status" name="status">
-              <option value="all">Tous les arrêtés</option>
-              <option value="temporary">Temporaires</option>
-              <option value="permanent">Permanents</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>Du</span>
-            <input id="search-from" name="from" type="date">
-          </label>
-          <label class="field">
-            <span>Au</span>
-            <input id="search-to" name="to" type="date">
-          </label>
-          <div class="search-actions">
-            <button class="button primary" type="submit">Rechercher</button>
-            <button id="reset-search" class="button secondary" type="button">Effacer</button>
-          </div>
-        </form>
-
-        <div id="records-loading" class="state-panel">Chargement du registre…</div>
-        <div id="records-empty" class="state-panel hidden">
-          <strong>Aucun arrêté trouvé</strong>
-          <span>Modifiez les critères ou enregistrez un nouvel arrêté.</span>
+  <div id="missionModal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div><span class="eyebrow">NOUVELLE INTERVENTION</span><h2>Ajouter une mission</h2></div>
+        <button class="icon-btn" data-close="missionModal" type="button">×</button>
+      </div>
+      <form id="missionForm" class="form-grid">
+        <label class="span-2">Nature d’intervention
+          <select id="missionNature" required></select>
+        </label>
+        <label>Priorité
+          <select id="missionPriority">
+            <option value="NORMAL">Normale — orange</option>
+            <option value="URGENT">Urgente — rouge</option>
+          </select>
+        </label>
+        <label>Intervenant / patrouille
+          <select id="missionCrew"><option value="">À affecter plus tard</option></select>
+        </label>
+        <label>N° de voirie
+          <input id="missionNumber" maxlength="20" placeholder="Ex : 12 bis">
+        </label>
+        <label class="span-2">Voie
+          <input id="missionStreet" list="streetSuggestions" maxlength="180" required placeholder="Commencez à saisir la voie">
+          <datalist id="streetSuggestions"></datalist>
+        </label>
+        <label class="span-2">Complément
+          <input id="missionComplement" maxlength="240" placeholder="Bâtiment, étage, appartement, entrée…">
+        </label>
+        <label class="span-2">Observations
+          <textarea id="missionNotes" rows="3" maxlength="1000" placeholder="Informations utiles pour la patrouille"></textarea>
+        </label>
+        <p id="missionError" class="error span-2"></p>
+        <div class="modal-actions span-2">
+          <button class="btn ghost" data-close="missionModal" type="button">Annuler</button>
+          <button id="missionSubmit" class="btn primary" type="submit">Créer l’intervention</button>
         </div>
-        <div id="records-list" class="records-list" aria-live="polite"></div>
-      </section>
+      </form>
+    </div>
+  </div>
 
-      <section id="view-create" class="view" aria-labelledby="create-title">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">NOUVEL ENREGISTREMENT</p>
-            <h2 id="create-title">Enregistrer un arrêté</h2>
-          </div>
-        </div>
+  <div id="assignModal" class="modal hidden">
+    <div class="modal-card small-card">
+      <div class="modal-head"><div><span class="eyebrow">AFFECTATION</span><h2>Choisir une patrouille</h2></div><button class="icon-btn" data-close="assignModal" type="button">×</button></div>
+      <input id="assignMissionId" type="hidden">
+      <label>Patrouille active dans PHENIX<select id="assignCrew"></select></label>
+      <p id="assignError" class="error"></p>
+      <div class="modal-actions"><button class="btn ghost" data-close="assignModal" type="button">Annuler</button><button id="assignSubmit" class="btn primary" type="button">Affecter</button></div>
+    </div>
+  </div>
 
-        <form id="record-form" class="record-form" enctype="multipart/form-data">
-          <div class="form-grid">
-            <label class="field">
-              <span>Numéro de l’arrêté *</span>
-              <input name="number" required maxlength="80" autocomplete="off" placeholder="Ex. PM-2026-0145">
-            </label>
-            <label class="field">
-              <span>Date de signature de l’arrêté *</span>
-              <input id="record-date" name="date" type="date" required>
-            </label>
-            <label class="field field-full">
-              <span>Nom de l’arrêté *</span>
-              <input name="name" required maxlength="220" autocomplete="off" placeholder="Ex. Réglementation temporaire du stationnement">
-            </label>
-            <div class="field field-full">
-              <span>Rue(s), boulevard(s), place(s) ou impasse(s) *</span>
-              <div class="street-picker">
-                <div id="selected-streets" class="chips" aria-live="polite"></div>
-                <input id="street-input" type="search" autocomplete="off" placeholder="Rechercher puis sélectionner une voie" aria-controls="street-suggestions" aria-expanded="false">
-                <div id="street-suggestions" class="suggestions hidden" role="listbox"></div>
-              </div>
-              <small>Vous pouvez sélectionner plusieurs voies.</small>
-            </div>
-            <label class="field field-full">
-              <span>Précisions sur le lieu</span>
-              <textarea name="locationDetails" maxlength="500" rows="3" placeholder="Numéros, carrefour, portion concernée, côté de circulation…"></textarea>
-            </label>
-            <label class="field field-full file-field">
-              <span>Pièce jointe PDF *</span>
-              <input name="attachment" type="file" accept="application/pdf,.pdf" required>
-              <small>Un seul PDF, 15 Mo maximum.</small>
-            </label>
-          </div>
+  <div id="manageModal" class="modal hidden">
+    <div class="modal-card wide-card">
+      <div class="modal-head"><div><span class="eyebrow">ADMINISTRATION</span><h2>Paramètres ATLAS</h2></div><button class="icon-btn" data-close="manageModal" type="button">×</button></div>
+      <div class="manage-grid">
+        <section class="manage-panel">
+          <h3>Natures d’intervention</h3>
+          <p>Cette liste est partagée avec PHENIX.</p>
+          <div id="natureRows" class="edit-list"></div>
+          <button id="addNatureBtn" class="btn secondary" type="button">＋ Ajouter une nature</button>
+        </section>
+        <section class="manage-panel">
+          <h3>Base des voiries</h3>
+          <p>Les voies saisies dans les missions sont mémorisées automatiquement.</p>
+          <div id="streetRows" class="edit-list"></div>
+          <button id="addStreetBtn" class="btn secondary" type="button">＋ Ajouter une voie</button>
+        </section>
+      </div>
+      <p id="manageError" class="error"></p>
+      <div class="modal-actions"><button class="btn ghost" data-close="manageModal" type="button">Fermer</button><button id="saveCatalogBtn" class="btn primary" type="button">Enregistrer les listes</button></div>
+    </div>
+  </div>
 
-          <div class="temporary-panel">
-            <label class="switch-row">
-              <input id="temporary" name="temporary" type="checkbox">
-              <span>
-                <strong>Arrêté temporaire</strong>
-                <small>Le dossier sera supprimé automatiquement deux jours après la date de fin.</small>
-              </span>
-            </label>
-            <div id="temporary-dates" class="temporary-dates hidden">
-              <label class="field">
-                <span>Date de début *</span>
-                <input id="start-date" name="startDate" type="date">
-              </label>
-              <label class="field">
-                <span>Date de fin *</span>
-                <input id="end-date" name="endDate" type="date">
-              </label>
-            </div>
-          </div>
+  <template id="missionTemplate">
+    <article class="mission-card">
+      <div class="mission-priority"></div>
+      <div class="mission-top">
+        <div><span class="priority-label"></span><h3 class="nature"></h3></div>
+        <span class="status-badge"></span>
+      </div>
+      <div class="address"></div>
+      <div class="notes"></div>
+      <div class="mission-meta">
+        <div><span>Créée</span><strong class="created"></strong></div>
+        <div><span>Patrouille</span><strong class="crew"></strong></div>
+        <div><span>Temps d’intervention</span><strong class="elapsed"></strong></div>
+      </div>
+      <div class="mission-actions"></div>
+    </article>
+  </template>
 
-          <div id="form-message" class="message hidden" role="status"></div>
-          <div class="form-actions">
-            <button class="button primary" type="submit">Enregistrer l’arrêté</button>
-            <button class="button secondary" type="reset">Réinitialiser</button>
-          </div>
-        </form>
-      </section>
-
-      <section id="view-streets" class="view" aria-labelledby="streets-title">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">ADMINISTRATION</p>
-            <h2 id="streets-title">Référentiel des voies</h2>
-          </div>
-        </div>
-        <div class="admin-panel">
-          <p id="streets-metadata">Le référentiel est chargé automatiquement depuis la Base Adresse Nationale.</p>
-          <div class="admin-actions">
-            <button id="refresh-streets" class="button primary" type="button">Actualiser depuis la BAN</button>
-          </div>
-          <form id="add-street-form" class="inline-form">
-            <label class="field">
-              <span>Ajouter une voie manuellement</span>
-              <input name="name" required maxlength="160" placeholder="Nom complet de la voie">
-            </label>
-            <button class="button secondary" type="submit">Ajouter</button>
-          </form>
-          <div id="street-admin-message" class="message hidden" role="status"></div>
-        </div>
-      </section>
-    </main>
-
-    <template id="record-template">
-      <article class="record-card">
-        <div class="record-stripe"></div>
-        <div class="record-main">
-          <div class="record-topline">
-            <span class="record-number"></span>
-            <span class="record-type"></span>
-          </div>
-          <h3 class="record-name"></h3>
-          <div class="record-meta"></div>
-          <div class="record-streets"></div>
-          <p class="record-location"></p>
-          <p class="record-expiry"></p>
-          <p class="record-storage"></p>
-        </div>
-        <div class="record-actions">
-          <a class="button primary record-pdf" target="_blank" rel="noopener">Ouvrir le PDF</a>
-          <button class="button danger record-delete admin-only hidden" type="button">Supprimer</button>
-        </div>
-      </article>
-    </template>
-  </body>
+  <script src="/portail/atlas/app.js" defer></script>
+</body>
 </html>

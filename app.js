@@ -1,374 +1,124 @@
-const state = {
-  csrfToken: '',
-  user: null,
-  streets: [],
-  streetsMetadata: null,
-  selectedStreets: [],
-};
+const state = { user:null, canManage:false, missions:[], crews:[], natures:[], streets:[], nextMissionId:null, serverTime:Date.now() };
+const $ = id => document.getElementById(id);
 
-const BASE_PATH = '/arretes';
+async function api(url,opt={}){
+  const headers=new Headers(opt.headers||{});
+  if(opt.body!==undefined && !headers.has('Content-Type'))headers.set('Content-Type','application/json');
+  const r=await fetch(url,{...opt,headers,credentials:'same-origin',cache:'no-store'});
+  const j=await r.json().catch(()=>({}));
+  if(r.status===401){setTimeout(()=>{location.href='/portail/';},250);throw new Error(j.message||'Connexion ARGOS requise.');}
+  if(!r.ok)throw new Error(j.message||j.error||('Erreur '+r.status));
+  return j;
+}
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function fmtTime(v){if(!v)return '—';return new Date(v).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
+function elapsed(from){if(!from)return 'Non démarrée';const ms=Math.max(0,Date.now()-new Date(from).getTime());const h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000),s=Math.floor((ms%60000)/1000);return h?`${h} h ${String(m).padStart(2,'0')} min`:`${m} min ${String(s).padStart(2,'0')} s`;}
+function fullAddress(m){return [m.number,m.street,m.complement].filter(Boolean).join(' ');}
+function statusLabel(s){return ({WAITING:'EN ATTENTE',ASSIGNED:'AFFECTÉE',DEPARTED:'PARTIE',ONSCENE:'SUR PLACE'})[s]||s;}
+function priorityLabel(p){return p==='URGENT'?'URGENTE':'NORMALE';}
+function crewById(id){return state.crews.find(c=>String(c.id)===String(id));}
 
-const elements = {
-  tabs: [...document.querySelectorAll('.tab')],
-  views: [...document.querySelectorAll('.view')],
-  userName: document.querySelector('#user-name'),
-  userRole: document.querySelector('#user-role'),
-  searchForm: document.querySelector('#search-form'),
-  resetSearch: document.querySelector('#reset-search'),
-  recordsLoading: document.querySelector('#records-loading'),
-  recordsEmpty: document.querySelector('#records-empty'),
-  recordsList: document.querySelector('#records-list'),
-  recordCount: document.querySelector('#record-count'),
-  recordTemplate: document.querySelector('#record-template'),
-  recordForm: document.querySelector('#record-form'),
-  recordDate: document.querySelector('#record-date'),
-  temporary: document.querySelector('#temporary'),
-  temporaryDates: document.querySelector('#temporary-dates'),
-  startDate: document.querySelector('#start-date'),
-  endDate: document.querySelector('#end-date'),
-  formMessage: document.querySelector('#form-message'),
-  streetInput: document.querySelector('#street-input'),
-  selectedStreets: document.querySelector('#selected-streets'),
-  streetSuggestions: document.querySelector('#street-suggestions'),
-  searchStreet: document.querySelector('#search-street'),
-  refreshStreets: document.querySelector('#refresh-streets'),
-  addStreetForm: document.querySelector('#add-street-form'),
-  streetAdminMessage: document.querySelector('#street-admin-message'),
-  streetsMetadata: document.querySelector('#streets-metadata'),
-};
+function openModal(id){$(id).classList.remove('hidden');document.body.style.overflow='hidden';}
+function closeModal(id){$(id).classList.add('hidden');if(document.querySelectorAll('.modal:not(.hidden)').length===0)document.body.style.overflow='';}
 
-document.addEventListener('DOMContentLoaded', initialize);
+document.addEventListener('click',e=>{const b=e.target.closest('[data-close]');if(b)closeModal(b.dataset.close);if(e.target.classList.contains('modal'))closeModal(e.target.id);});
 
-async function initialize() {
-  bindEvents();
-  elements.recordDate.value = localIsoDate();
-  try {
-    const me = await api('/api/me');
-    state.user = me.user;
-    state.csrfToken = me.csrfToken;
-    elements.userName.textContent = me.user.name;
-    elements.userRole.textContent = me.user.role;
-    if (me.user.admin) document.querySelectorAll('.admin-only').forEach((item) => item.classList.remove('hidden'));
-    await loadStreets();
-    await loadRecords();
-  } catch (error) {
-    showMessage(elements.formMessage, error.message, 'error');
-    elements.recordsLoading.textContent = error.message;
+function populateSelects(){
+  const natureOpts=state.natures.map(n=>`<option value="${esc(n.code+'|'+n.label)}">${esc((n.code?n.code+' — ':'')+n.label)}</option>`).join('');
+  $('missionNature').innerHTML=natureOpts||'<option value="">Aucune nature configurée</option>';
+  const crewOptions=state.crews.map(c=>`<option value="${esc(c.id)}">${esc(c.callsign)} — ${esc(c.status)}</option>`).join('');
+  $('missionCrew').innerHTML='<option value="">À affecter plus tard</option>'+crewOptions;
+  $('assignCrew').innerHTML=crewOptions||'<option value="">Aucune patrouille active</option>';
+  $('nextCrew').innerHTML='<option value="">Choisir une patrouille</option>'+crewOptions;
+  $('streetSuggestions').innerHTML=state.streets.map(s=>`<option value="${esc(s)}"></option>`).join('');
+}
+
+function renderNext(){
+  const box=$('nextMissionBox');
+  const m=state.missions.find(x=>x.id===state.nextMissionId);
+  if(!m){box.innerHTML='<div class="empty-next">Aucune mission à venir</div>';return;}
+  box.innerHTML=`<div class="next-summary"><div><h2>${esc(m.natureLabel)}</h2><p>${esc(fullAddress(m))}</p></div><span class="next-priority ${m.priority==='URGENT'?'urgent':'normal'}">${priorityLabel(m.priority)}</span></div>`;
+}
+
+function missionCard(m){
+  const t=$('missionTemplate').content.cloneNode(true);
+  const card=t.querySelector('.mission-card');
+  card.classList.add(m.priority==='URGENT'?'urgent':'normal');
+  t.querySelector('.priority-label').textContent=priorityLabel(m.priority);
+  t.querySelector('.nature').textContent=(m.natureCode?m.natureCode+' — ':'')+m.natureLabel;
+  t.querySelector('.status-badge').textContent=statusLabel(m.status);
+  t.querySelector('.address').textContent=fullAddress(m);
+  const notes=t.querySelector('.notes');notes.textContent=m.notes||'';notes.classList.toggle('hidden',!m.notes);
+  t.querySelector('.created').textContent=fmtTime(m.createdAt);
+  const liveCrew=crewById(m.crewId);
+  t.querySelector('.crew').textContent=m.crewCallsign||'Non affectée';
+  if(m.crewId&&!liveCrew)t.querySelector('.crew').textContent+=(m.crewCallsign?' · ':'')+'absente de PHENIX';
+  t.querySelector('.elapsed').textContent=elapsed(m.departedAt);
+  const actions=t.querySelector('.mission-actions');
+
+  if(!m.crewId){
+    actions.append(button('Affecter une patrouille','secondary',()=>openAssign(m.id)));
+  }else if(m.status==='ASSIGNED'){
+    actions.append(button('PARTIE','departed',()=>setStatus(m.id,'DEPARTED')));
+  }else if(m.status==='DEPARTED'){
+    actions.append(button('SUR PLACE','onscene',()=>setStatus(m.id,'ONSCENE')));
+    actions.append(button('TERMINÉ','done',()=>setStatus(m.id,'DONE')));
+  }else if(m.status==='ONSCENE'){
+    actions.append(button('TERMINÉ','done',()=>setStatus(m.id,'DONE')));
   }
+  if(state.canManage)actions.append(button('Supprimer','danger',()=>deleteMission(m.id)));
+  return t;
+}
+function button(label,kind,fn){const b=document.createElement('button');b.type='button';b.className='btn '+kind;b.textContent=label;b.addEventListener('click',fn);return b;}
+
+function renderMissions(){
+  const waiting=state.missions.filter(m=>['WAITING','ASSIGNED'].includes(m.status));
+  const active=state.missions.filter(m=>['DEPARTED','ONSCENE'].includes(m.status));
+  $('waitingCount').textContent=waiting.length;$('activeCount').textContent=active.length;
+  const w=$('waitingList'),a=$('activeList');w.replaceChildren();a.replaceChildren();
+  if(!waiting.length)w.innerHTML='<div class="empty-list">Aucune mission à venir</div>';else waiting.forEach(m=>w.appendChild(missionCard(m)));
+  if(!active.length)a.innerHTML='<div class="empty-list">Aucune intervention en cours</div>';else active.forEach(m=>a.appendChild(missionCard(m)));
 }
 
-function bindEvents() {
-  elements.tabs.forEach((tab) => tab.addEventListener('click', () => switchView(tab.dataset.view)));
-  elements.searchForm.addEventListener('submit', (event) => {
-    event.preventDefault();
-    loadRecords();
-  });
-  elements.resetSearch.addEventListener('click', () => {
-    elements.searchForm.reset();
-    loadRecords();
-  });
-  elements.temporary.addEventListener('change', updateTemporaryFields);
-  elements.recordForm.addEventListener('submit', submitRecord);
-  elements.recordForm.addEventListener('reset', () => {
-    setTimeout(() => {
-      state.selectedStreets = [];
-      renderSelectedStreets();
-      elements.recordDate.value = localIsoDate();
-      updateTemporaryFields();
-      hideMessage(elements.formMessage);
-    });
-  });
-  elements.streetInput.addEventListener('input', renderStreetSuggestions);
-  elements.streetInput.addEventListener('focus', renderStreetSuggestions);
-  elements.streetInput.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') closeSuggestions();
-  });
-  document.addEventListener('click', (event) => {
-    if (!event.target.closest('.street-picker')) closeSuggestions();
-  });
-  elements.refreshStreets.addEventListener('click', refreshStreets);
-  elements.addStreetForm.addEventListener('submit', addStreet);
+function renderAll(){
+  $('currentUser').textContent=state.user?`${state.user.name} · ${state.user.role}`:'—';
+  $('manageBtn').classList.toggle('hidden',!state.canManage);
+  populateSelects();renderNext();renderMissions();
 }
 
-function switchView(name) {
-  elements.tabs.forEach((tab) => tab.classList.toggle('active', tab.dataset.view === name));
-  elements.views.forEach((view) => view.classList.toggle('active', view.id === `view-${name}`));
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+async function refresh(silent=false){
+  try{
+    const d=await api('/portail/atlas/api/state');Object.assign(state,d);$('syncState').textContent='PHENIX connecté';$('syncState').style.background='rgba(255,255,255,.13)';renderAll();
+  }catch(e){$('syncState').textContent='Connexion perdue';$('syncState').style.background='rgba(217,35,46,.35)';if(!silent)alert(e.message);}
 }
 
-async function api(url, options = {}) {
-  const headers = new Headers(options.headers || {});
-  if (!['GET', 'HEAD'].includes((options.method || 'GET').toUpperCase()) && state.csrfToken) {
-    headers.set('x-csrf-token', state.csrfToken);
-  }
-  if (options.body && !(options.body instanceof FormData)) headers.set('content-type', 'application/json');
-  const response = await fetch(`${BASE_PATH}${url}`, { ...options, headers, credentials: 'same-origin' });
-  if (response.status === 401) {
-    window.location.reload();
-    throw new Error('Session ARGOS expirée');
-  }
-  if (response.status === 204) return null;
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload.error || 'Une erreur est survenue');
-  return payload;
-}
+$('newMissionBtn').addEventListener('click',()=>{$('missionForm').reset();$('missionError').textContent='';populateSelects();openModal('missionModal');});
+$('missionForm').addEventListener('submit',async e=>{
+  e.preventDefault();$('missionError').textContent='';const submit=$('missionSubmit');submit.disabled=true;
+  try{
+    const [natureCode,natureLabel]=String($('missionNature').value||'|').split('|');
+    await api('/portail/atlas/api/missions',{method:'POST',body:JSON.stringify({natureCode,natureLabel,priority:$('missionPriority').value,crewId:$('missionCrew').value,number:$('missionNumber').value,street:$('missionStreet').value,complement:$('missionComplement').value,notes:$('missionNotes').value})});
+    closeModal('missionModal');await refresh(true);
+  }catch(err){$('missionError').textContent=err.message;}finally{submit.disabled=false;}
+});
 
-async function loadStreets() {
-  const payload = await api('/api/streets');
-  state.streets = payload.streets;
-  state.streetsMetadata = payload.metadata;
-  fillStreetSelect();
-  updateStreetMetadata();
-}
+function openAssign(id){$('assignMissionId').value=id;$('assignError').textContent='';populateSelects();openModal('assignModal');}
+$('assignSubmit').addEventListener('click',async()=>{const id=$('assignMissionId').value,crewId=$('assignCrew').value;$('assignError').textContent='';try{await api(`/portail/atlas/api/missions/${encodeURIComponent(id)}/assign`,{method:'POST',body:JSON.stringify({crewId})});closeModal('assignModal');await refresh(true);}catch(e){$('assignError').textContent=e.message;}});
 
-function fillStreetSelect() {
-  const selected = elements.searchStreet.value;
-  elements.searchStreet.replaceChildren(new Option('Toutes les voies', ''));
-  state.streets.forEach((street) => elements.searchStreet.add(new Option(displayStreet(street), street)));
-  elements.searchStreet.value = selected;
-}
+async function setStatus(id,status){try{await api(`/portail/atlas/api/missions/${encodeURIComponent(id)}/status`,{method:'POST',body:JSON.stringify({status})});await refresh(true);}catch(e){alert(e.message);}}
+async function deleteMission(id){if(!confirm('Supprimer cette intervention ?'))return;try{await api(`/portail/atlas/api/missions/${encodeURIComponent(id)}`,{method:'DELETE'});await refresh(true);}catch(e){alert(e.message);}}
 
-function updateStreetMetadata() {
-  if (!state.streetsMetadata?.updatedAt) {
-    elements.streetsMetadata.textContent = `${state.streets.length} voies disponibles. La synchronisation BAN sera lancée automatiquement.`;
-    return;
-  }
-  elements.streetsMetadata.textContent = `${state.streets.length} voies · source ${state.streetsMetadata.source} · mise à jour le ${formatDateTime(state.streetsMetadata.updatedAt)}.`;
-}
+$('takeNextBtn').addEventListener('click',async()=>{const crewId=$('nextCrew').value;if(!crewId){alert('Choisissez une patrouille.');return;}try{const d=await api('/portail/atlas/api/next',{method:'POST',body:JSON.stringify({crewId})});if(!d.mission)alert('Aucune mission à venir.');await refresh(true);}catch(e){alert(e.message);}});
 
-async function loadRecords() {
-  elements.recordsLoading.classList.remove('hidden');
-  elements.recordsEmpty.classList.add('hidden');
-  elements.recordsList.replaceChildren();
-  const parameters = new URLSearchParams(new FormData(elements.searchForm));
-  [...parameters.entries()].forEach(([key, value]) => !value && parameters.delete(key));
-  try {
-    const payload = await api(`/api/arretes?${parameters}`);
-    renderRecords(payload.records);
-  } catch (error) {
-    elements.recordsLoading.textContent = error.message;
-  }
+function editRow(value,type){const row=document.createElement('div');row.className='edit-row';const input=document.createElement('input');input.value=value;input.dataset.type=type;const del=document.createElement('button');del.type='button';del.textContent='×';del.addEventListener('click',()=>row.remove());row.append(input,del);return row;}
+function renderManage(){
+  const n=$('natureRows'),s=$('streetRows');n.replaceChildren();s.replaceChildren();state.natures.forEach(x=>n.appendChild(editRow(x.label,'nature')));state.streets.forEach(x=>s.appendChild(editRow(x,'street')));
 }
+$('manageBtn').addEventListener('click',()=>{renderManage();$('manageError').textContent='';openModal('manageModal');});
+$('addNatureBtn').addEventListener('click',()=>{$('natureRows').appendChild(editRow('','nature'));$('natureRows').lastElementChild.querySelector('input').focus();});
+$('addStreetBtn').addEventListener('click',()=>{$('streetRows').appendChild(editRow('','street'));$('streetRows').lastElementChild.querySelector('input').focus();});
+$('saveCatalogBtn').addEventListener('click',async()=>{$('manageError').textContent='';try{const labels=[...$('natureRows').querySelectorAll('input')].map(i=>i.value.trim()).filter(Boolean);const streets=[...$('streetRows').querySelectorAll('input')].map(i=>i.value.trim()).filter(Boolean);await api('/portail/atlas/api/catalog/natures',{method:'POST',body:JSON.stringify({labels})});await api('/portail/atlas/api/catalog/streets',{method:'POST',body:JSON.stringify({streets})});closeModal('manageModal');await refresh(true);}catch(e){$('manageError').textContent=e.message;}});
 
-function renderRecords(records) {
-  elements.recordsLoading.classList.add('hidden');
-  elements.recordCount.textContent = `${records.length} résultat${records.length > 1 ? 's' : ''}`;
-  if (!records.length) {
-    elements.recordsEmpty.classList.remove('hidden');
-    return;
-  }
-
-  records.forEach((record) => {
-    const card = elements.recordTemplate.content.firstElementChild.cloneNode(true);
-    card.classList.toggle('temporary', record.temporary);
-    card.querySelector('.record-number').textContent = `N° ${record.number}`;
-    card.querySelector('.record-type').textContent = record.temporary ? 'Temporaire' : 'Permanent';
-    card.querySelector('.record-name').textContent = record.name;
-    card.querySelector('.record-meta').textContent = `Arrêté du ${formatDate(record.date)} · enregistré par ${record.createdBy?.name || 'ARGOS'} le ${formatDateTime(record.createdAt)}`;
-    const streetsContainer = card.querySelector('.record-streets');
-    record.streets.forEach((street) => {
-      const item = document.createElement('span');
-      item.textContent = displayStreet(street);
-      streetsContainer.append(item);
-    });
-    const location = card.querySelector('.record-location');
-    if (record.locationDetails) location.textContent = record.locationDetails;
-    else location.remove();
-    const expiry = card.querySelector('.record-expiry');
-    if (record.temporary) {
-      expiry.textContent = `Valable du ${formatDate(record.startDate)} au ${formatDate(record.endDate)} · suppression automatique le ${formatDateTime(record.deleteAt)}.`;
-    } else {
-      expiry.remove();
-    }
-    const storage = card.querySelector('.record-storage');
-    const originalSize = Number(record.attachment?.originalSize || record.attachment?.size || 0);
-    const storedSize = Number(record.attachment?.size || 0);
-    const saved = Math.max(0, originalSize - storedSize);
-    if (originalSize && saved) {
-      const percent = Math.round((saved / originalSize) * 100);
-      storage.textContent = `PDF optimisé : ${formatBytes(storedSize)} sur le disque · gain ${percent} %.`;
-    } else if (storedSize) {
-      storage.textContent = `PDF déjà optimisé : ${formatBytes(storedSize)} sur le disque.`;
-    } else {
-      storage.remove();
-    }
-    const pdf = card.querySelector('.record-pdf');
-    pdf.href = `${BASE_PATH}/api/arretes/${encodeURIComponent(record.id)}/piece-jointe`;
-    const deleteButton = card.querySelector('.record-delete');
-    if (state.user.admin) {
-      deleteButton.classList.remove('hidden');
-      deleteButton.addEventListener('click', () => deleteRecord(record));
-    }
-    elements.recordsList.append(card);
-  });
-}
-
-async function submitRecord(event) {
-  event.preventDefault();
-  if (!state.selectedStreets.length) {
-    showMessage(elements.formMessage, 'Sélectionnez au moins une voie.', 'error');
-    elements.streetInput.focus();
-    return;
-  }
-  const submitButton = elements.recordForm.querySelector('[type="submit"]');
-  submitButton.disabled = true;
-  hideMessage(elements.formMessage);
-  const body = new FormData(elements.recordForm);
-  body.set('temporary', elements.temporary.checked ? 'true' : 'false');
-  body.set('streets', JSON.stringify(state.selectedStreets));
-  try {
-    await api('/api/arretes', { method: 'POST', body });
-    elements.recordForm.reset();
-    state.selectedStreets = [];
-    renderSelectedStreets();
-    elements.recordDate.value = localIsoDate();
-    showMessage(elements.formMessage, 'L’arrêté et sa pièce jointe ont été enregistrés.', 'success');
-    await loadRecords();
-    switchView('records');
-  } catch (error) {
-    showMessage(elements.formMessage, error.message, 'error');
-  } finally {
-    submitButton.disabled = false;
-  }
-}
-
-function updateTemporaryFields() {
-  const enabled = elements.temporary.checked;
-  elements.temporaryDates.classList.toggle('hidden', !enabled);
-  elements.startDate.required = enabled;
-  elements.endDate.required = enabled;
-  if (!enabled) {
-    elements.startDate.value = '';
-    elements.endDate.value = '';
-  }
-}
-
-function renderStreetSuggestions() {
-  const query = normalize(elements.streetInput.value);
-  if (!query) return closeSuggestions();
-  const matches = state.streets
-    .filter((street) => normalize(street).includes(query) && !state.selectedStreets.includes(street))
-    .slice(0, 18);
-  elements.streetSuggestions.replaceChildren();
-  if (!matches.length) return closeSuggestions();
-  matches.forEach((street) => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'suggestion';
-    button.role = 'option';
-    button.textContent = displayStreet(street);
-    button.addEventListener('click', () => selectStreet(street));
-    elements.streetSuggestions.append(button);
-  });
-  elements.streetSuggestions.classList.remove('hidden');
-  elements.streetInput.setAttribute('aria-expanded', 'true');
-}
-
-function selectStreet(street) {
-  if (!state.selectedStreets.includes(street)) state.selectedStreets.push(street);
-  elements.streetInput.value = '';
-  renderSelectedStreets();
-  closeSuggestions();
-  elements.streetInput.focus();
-}
-
-function renderSelectedStreets() {
-  elements.selectedStreets.replaceChildren();
-  state.selectedStreets.forEach((street) => {
-    const chip = document.createElement('span');
-    chip.className = 'chip';
-    chip.append(document.createTextNode(displayStreet(street)));
-    const remove = document.createElement('button');
-    remove.type = 'button';
-    remove.setAttribute('aria-label', `Retirer ${displayStreet(street)}`);
-    remove.textContent = '×';
-    remove.addEventListener('click', () => {
-      state.selectedStreets = state.selectedStreets.filter((item) => item !== street);
-      renderSelectedStreets();
-    });
-    chip.append(remove);
-    elements.selectedStreets.append(chip);
-  });
-}
-
-function closeSuggestions() {
-  elements.streetSuggestions.classList.add('hidden');
-  elements.streetInput.setAttribute('aria-expanded', 'false');
-}
-
-async function refreshStreets() {
-  elements.refreshStreets.disabled = true;
-  showMessage(elements.streetAdminMessage, 'Actualisation en cours…');
-  try {
-    const result = await api('/api/admin/streets/refresh', { method: 'POST', body: JSON.stringify({}) });
-    await loadStreets();
-    showMessage(elements.streetAdminMessage, `${result.count} voies de Chalon-sur-Saône ont été chargées.`, 'success');
-  } catch (error) {
-    showMessage(elements.streetAdminMessage, error.message, 'error');
-  } finally {
-    elements.refreshStreets.disabled = false;
-  }
-}
-
-async function addStreet(event) {
-  event.preventDefault();
-  const form = new FormData(elements.addStreetForm);
-  try {
-    const result = await api('/api/admin/streets', { method: 'POST', body: JSON.stringify({ name: form.get('name') }) });
-    elements.addStreetForm.reset();
-    await loadStreets();
-    showMessage(elements.streetAdminMessage, `${displayStreet(result.street)} a été ajoutée.`, 'success');
-  } catch (error) {
-    showMessage(elements.streetAdminMessage, error.message, 'error');
-  }
-}
-
-async function deleteRecord(record) {
-  if (!window.confirm(`Supprimer définitivement l’arrêté n° ${record.number} et son PDF ?`)) return;
-  try {
-    await api(`/api/arretes/${encodeURIComponent(record.id)}`, { method: 'DELETE', body: JSON.stringify({}) });
-    await loadRecords();
-  } catch (error) {
-    window.alert(error.message);
-  }
-}
-
-function showMessage(element, message, type = '') {
-  element.textContent = message;
-  element.className = `message${type ? ` ${type}` : ''}`;
-}
-
-function hideMessage(element) {
-  element.textContent = '';
-  element.className = 'message hidden';
-}
-
-function normalize(value = '') {
-  return String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('fr').trim();
-}
-
-function displayStreet(value = '') {
-  const string = String(value);
-  return string ? string[0].toLocaleUpperCase('fr') + string.slice(1) : '';
-}
-
-function formatDate(value) {
-  if (!value) return '—';
-  return new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long' }).format(new Date(`${value}T12:00:00`));
-}
-
-function formatDateTime(value) {
-  if (!value) return '—';
-  return new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Paris' }).format(new Date(value));
-}
-
-function formatBytes(value) {
-  if (value < 1024 * 1024) return `${Math.max(1, Math.round(value / 1024))} Ko`;
-  return `${(value / (1024 * 1024)).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} Mo`;
-}
-
-function localIsoDate() {
-  const parts = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  return `${values.year}-${values.month}-${values.day}`;
-}
+setInterval(()=>{document.querySelectorAll('.mission-card').forEach(()=>{});renderMissions();renderNext();},1000);
+setInterval(()=>refresh(true),2000);
+refresh();

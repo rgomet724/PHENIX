@@ -1048,6 +1048,15 @@ app.post('/api/admin/lists', needLogin, needAdmin, (req,res)=>{
   res.json({ok:true,callsigns:d.callsigns,interventions:d.interventions});
 });
 
+// ATLAS — gestion de l'attente des interventions, reliée à PHENIX et ARGOS
+const { mountInterventions } = require('./atlas-router');
+mountInterventions(app,{
+  loadPhenix:load,
+  savePhenix:save,
+  sessionSecret:EFFECTIVE_SESSION_SECRET,
+  isProd:IS_PROD
+});
+
 // Portail d'accès professionnel (isolé de PHENIX)
 const { mountPortal } = require('./portal-router');
 mountPortal(app);
