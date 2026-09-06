@@ -157,7 +157,9 @@ function mountInterventions(app, deps = {}) {
   const DATA_DIR = String(process.env.ATLAS_DATA_DIR || process.env.PORTAL_DATA_DIR || '/var/data');
   const DB_FILE = path.join(DATA_DIR, 'atlas.json');
   const PORTAL_FILE = path.join(String(process.env.PORTAL_DATA_DIR || '/var/data'), 'portal.json');
-  const PUBLIC_DIR = path.join(__dirname, 'atlas');
+  // ATLAS est rangé dans portail/atlas. L'ancien dossier racine /atlas reste accepté pour compatibilité.
+  const PUBLIC_DIR_CANDIDATES = [path.join(__dirname, 'portail', 'atlas'), path.join(__dirname, 'atlas')];
+  const PUBLIC_DIR = PUBLIC_DIR_CANDIDATES.find(dir => fs.existsSync(path.join(dir, 'index.html'))) || PUBLIC_DIR_CANDIDATES[0];
 
   function defaultData() {
     return {
@@ -418,6 +420,17 @@ function mountInterventions(app, deps = {}) {
     res.json({ ok: true, streets: data.streets });
   });
 
+  router.get('/healthz', (req, res) => {
+    res.json({
+      ok: true,
+      version: VERSION,
+      app: 'ATLAS',
+      publicDir: PUBLIC_DIR,
+      indexFound: fs.existsSync(path.join(PUBLIC_DIR, 'index.html')),
+      phenixDataAvailable: (() => { try { return !!loadPhenix(); } catch { return false; } })()
+    });
+  });
+
   app.use('/portail/atlas/api', router);
   app.get(/^\/portail\/atlas$/, (req, res) => res.redirect(302, '/portail/atlas/'));
   app.use('/portail/atlas', express.static(PUBLIC_DIR, {
@@ -427,7 +440,16 @@ function mountInterventions(app, deps = {}) {
       if (/\.(?:html|js|css)$/i.test(filePath)) res.setHeader('Cache-Control', 'no-store, max-age=0');
     }
   }));
-  app.get('/portail/atlas/*', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));
+  app.get('/portail/atlas/*', (req, res, next) => {
+    const indexFile = path.join(PUBLIC_DIR, 'index.html');
+    if (!fs.existsSync(indexFile)) {
+      return res.status(503).json({
+        error: 'ATLAS_INTERFACE_MISSING',
+        message: 'Les fichiers ATLAS doivent être placés dans portail/atlas/ (index.html, app.js, styles.css).'
+      });
+    }
+    res.sendFile(indexFile, err => { if (err) next(err); });
+  });
 
   ensurePortalTile(PORTAL_FILE);
   setTimeout(() => ensurePortalTile(PORTAL_FILE), 1500).unref?.();
