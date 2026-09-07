@@ -1,4 +1,6 @@
-const state = { user:null, canManage:false, missions:[], crews:[], natures:[], streets:[], nextMissionId:null, serverTime:Date.now() };
+const state = { user:null, canManage:false, missions:[], crews:[], natures:[], streets:[], nextMissionId:null, serverTime:Date.now(), banResults:[] };
+let banTimer=null;
+let banRequestSeq=0;
 const $ = id => document.getElementById(id);
 
 async function api(url,opt={}){
@@ -15,7 +17,7 @@ function fmtTime(v){if(!v)return '—';return new Date(v).toLocaleTimeString('fr
 function elapsed(from){if(!from)return 'Non démarrée';const ms=Math.max(0,Date.now()-new Date(from).getTime());const h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000),s=Math.floor((ms%60000)/1000);return h?`${h} h ${String(m).padStart(2,'0')} min`:`${m} min ${String(s).padStart(2,'0')} s`;}
 function fullAddress(m){return [m.number,m.street,m.complement].filter(Boolean).join(' ');}
 function statusLabel(s){return ({WAITING:'EN ATTENTE',ASSIGNED:'AFFECTÉE',DEPARTED:'PARTIE',ONSCENE:'SUR PLACE'})[s]||s;}
-function priorityLabel(p){return p==='URGENT'?'URGENTE':'NORMALE';}
+function priorityLabel(p){return p==='URGENT'?'PRIORITAIRE':'NORMALE';}
 function crewById(id){return state.crews.find(c=>String(c.id)===String(id));}
 
 function openModal(id){$(id).classList.remove('hidden');document.body.style.overflow='hidden';}
@@ -24,14 +26,69 @@ function closeModal(id){$(id).classList.add('hidden');if(document.querySelectorA
 document.addEventListener('click',e=>{const b=e.target.closest('[data-close]');if(b)closeModal(b.dataset.close);if(e.target.classList.contains('modal'))closeModal(e.target.id);});
 
 function populateSelects(){
-  const natureOpts=state.natures.map(n=>`<option value="${esc(n.code+'|'+n.label)}">${esc((n.code?n.code+' — ':'')+n.label)}</option>`).join('');
-  $('missionNature').innerHTML=natureOpts||'<option value="">Aucune nature configurée</option>';
   const crewOptions=state.crews.map(c=>`<option value="${esc(c.id)}">${esc(c.callsign)} — ${esc(c.status)}</option>`).join('');
   $('missionCrew').innerHTML='<option value="">À affecter plus tard</option>'+crewOptions;
   $('assignCrew').innerHTML=crewOptions||'<option value="">Aucune patrouille active</option>';
   $('nextCrew').innerHTML='<option value="">Choisir une patrouille</option>'+crewOptions;
-  $('streetSuggestions').innerHTML=state.streets.map(s=>`<option value="${esc(s)}"></option>`).join('');
 }
+
+function hideBanSuggestions(){
+  const box=$('banSuggestions');
+  if(box){box.classList.add('hidden');box.replaceChildren();}
+}
+function setBanStatus(text,kind=''){
+  const el=$('banStatus');if(!el)return;
+  el.textContent=text;el.classList.remove('ok','error');if(kind)el.classList.add(kind);
+}
+function parseBanNumber(r){
+  const direct=String(r.number||r.housenumber||r.houseNumber||'').trim();
+  if(direct)return direct;
+  const full=String(r.fulltext||'').trim();
+  const m=full.match(/^([0-9]+(?:\s*(?:bis|ter|quater|[A-Za-z]))?)\s+/i);
+  return m?m[1].trim():'';
+}
+function renderBanSuggestions(results){
+  const box=$('banSuggestions');if(!box)return;
+  box.replaceChildren();
+  if(!Array.isArray(results)||!results.length){hideBanSuggestions();return;}
+  results.forEach(r=>{
+    const b=document.createElement('button');b.type='button';b.className='ban-suggestion';b.setAttribute('role','option');
+    const label=document.createElement('span');label.textContent=String(r.fulltext||r.street||'Adresse');b.appendChild(label);
+    const meta=document.createElement('small');meta.textContent=[r.zipcode,r.city].filter(Boolean).join(' · ');if(meta.textContent)b.appendChild(meta);
+    b.addEventListener('click',()=>{
+      const street=String(r.street||'').trim();
+      if(street)$('missionStreet').value=street;else $('missionStreet').value=String(r.fulltext||'').split(',')[0].replace(/^\d+\s*(?:bis|ter|quater|[A-Za-z])?\s+/i,'').trim();
+      const n=parseBanNumber(r);if(n)$('missionNumber').value=n;
+      setBanStatus('Adresse sélectionnée dans la Base Adresse Nationale.','ok');
+      hideBanSuggestions();
+    });
+    box.appendChild(b);
+  });
+  box.classList.remove('hidden');
+}
+async function queryBan({opening=false}={}){
+  const number=String($('missionNumber')?.value||'').trim();
+  const street=String($('missionStreet')?.value||'').trim();
+  // Une requête est volontairement envoyée à chaque ouverture, même avant saisie,
+  // afin de vérifier que la Base Adresse Nationale est joignable et à jour.
+  const text=(number||street)?[number,street].filter(Boolean).join(' '):'Chalon-sur-Saône';
+  const seq=++banRequestSeq;
+  if(!opening && text.length<2){hideBanSuggestions();setBanStatus('Saisissez une voie pour rechercher dans la Base Adresse Nationale.');return;}
+  setBanStatus('Recherche dans la Base Adresse Nationale…');
+  try{
+    const d=await api('/portail/atlas/api/address-suggestions?text='+encodeURIComponent(text));
+    if(seq!==banRequestSeq)return;
+    state.banResults=Array.isArray(d.results)?d.results:[];
+    setBanStatus('Base Adresse Nationale connectée — Chalon-sur-Saône.','ok');
+    // Au simple chargement, on teste la BAN mais on n'impose pas une liste de résultats.
+    if(opening && !number && !street){hideBanSuggestions();return;}
+    renderBanSuggestions(state.banResults);
+  }catch(e){
+    if(seq!==banRequestSeq)return;
+    state.banResults=[];hideBanSuggestions();setBanStatus('Base Adresse Nationale momentanément indisponible — saisie manuelle possible.','error');
+  }
+}
+function scheduleBanQuery(){clearTimeout(banTimer);banTimer=setTimeout(()=>queryBan(),350);}
 
 function renderNext(){
   const box=$('nextMissionBox');
@@ -92,12 +149,16 @@ async function refresh(silent=false){
   }catch(e){$('syncState').textContent='Connexion perdue';$('syncState').style.background='rgba(217,35,46,.35)';if(!silent)alert(e.message);}
 }
 
-$('newMissionBtn').addEventListener('click',()=>{$('missionForm').reset();$('missionError').textContent='';populateSelects();openModal('missionModal');});
+$('newMissionBtn').addEventListener('click',()=>{$('missionForm').reset();$('missionError').textContent='';populateSelects();hideBanSuggestions();openModal('missionModal');queryBan({opening:true});setTimeout(()=>$('missionNumber')?.focus(),60);});
+$('missionStreet').addEventListener('input',scheduleBanQuery);
+$('missionNumber').addEventListener('input',scheduleBanQuery);
+$('missionStreet').addEventListener('focus',()=>{if(String($('missionStreet').value||'').trim())scheduleBanQuery();});
+document.addEventListener('click',e=>{if(!e.target.closest('.address-field'))hideBanSuggestions();});
 $('missionForm').addEventListener('submit',async e=>{
   e.preventDefault();$('missionError').textContent='';const submit=$('missionSubmit');submit.disabled=true;
   try{
-    const [natureCode,natureLabel]=String($('missionNature').value||'|').split('|');
-    await api('/portail/atlas/api/missions',{method:'POST',body:JSON.stringify({natureCode,natureLabel,priority:$('missionPriority').value,crewId:$('missionCrew').value,number:$('missionNumber').value,street:$('missionStreet').value,complement:$('missionComplement').value,notes:$('missionNotes').value})});
+    const natureLabel=String($('missionNature').value||'').trim();
+    await api('/portail/atlas/api/missions',{method:'POST',body:JSON.stringify({natureCode:'',natureLabel,priority:$('missionPriority').value,crewId:$('missionCrew').value,number:$('missionNumber').value,street:$('missionStreet').value,complement:$('missionComplement').value,notes:$('missionNotes').value})});
     closeModal('missionModal');await refresh(true);
   }catch(err){$('missionError').textContent=err.message;}finally{submit.disabled=false;}
 });
@@ -112,12 +173,11 @@ $('takeNextBtn').addEventListener('click',async()=>{const crewId=$('nextCrew').v
 
 function editRow(value,type){const row=document.createElement('div');row.className='edit-row';const input=document.createElement('input');input.value=value;input.dataset.type=type;const del=document.createElement('button');del.type='button';del.textContent='×';del.addEventListener('click',()=>row.remove());row.append(input,del);return row;}
 function renderManage(){
-  const n=$('natureRows'),s=$('streetRows');n.replaceChildren();s.replaceChildren();state.natures.forEach(x=>n.appendChild(editRow(x.label,'nature')));state.streets.forEach(x=>s.appendChild(editRow(x,'street')));
+  const n=$('natureRows');n.replaceChildren();state.natures.forEach(x=>n.appendChild(editRow(x.label,'nature')));
 }
 $('manageBtn').addEventListener('click',()=>{renderManage();$('manageError').textContent='';openModal('manageModal');});
 $('addNatureBtn').addEventListener('click',()=>{$('natureRows').appendChild(editRow('','nature'));$('natureRows').lastElementChild.querySelector('input').focus();});
-$('addStreetBtn').addEventListener('click',()=>{$('streetRows').appendChild(editRow('','street'));$('streetRows').lastElementChild.querySelector('input').focus();});
-$('saveCatalogBtn').addEventListener('click',async()=>{$('manageError').textContent='';try{const labels=[...$('natureRows').querySelectorAll('input')].map(i=>i.value.trim()).filter(Boolean);const streets=[...$('streetRows').querySelectorAll('input')].map(i=>i.value.trim()).filter(Boolean);await api('/portail/atlas/api/catalog/natures',{method:'POST',body:JSON.stringify({labels})});await api('/portail/atlas/api/catalog/streets',{method:'POST',body:JSON.stringify({streets})});closeModal('manageModal');await refresh(true);}catch(e){$('manageError').textContent=e.message;}});
+$('saveCatalogBtn').addEventListener('click',async()=>{$('manageError').textContent='';try{const labels=[...$('natureRows').querySelectorAll('input')].map(i=>i.value.trim()).filter(Boolean);await api('/portail/atlas/api/catalog/natures',{method:'POST',body:JSON.stringify({labels})});closeModal('manageModal');await refresh(true);}catch(e){$('manageError').textContent=e.message;}});
 
 setInterval(()=>{document.querySelectorAll('.mission-card').forEach(()=>{});renderMissions();renderNext();},1000);
 setInterval(()=>refresh(true),2000);
