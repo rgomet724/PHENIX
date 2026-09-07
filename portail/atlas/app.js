@@ -32,63 +32,34 @@ function populateSelects(){
   $('nextCrew').innerHTML='<option value="">Choisir une patrouille</option>'+crewOptions;
 }
 
-function hideBanSuggestions(){
-  const box=$('banSuggestions');
-  if(box){box.classList.add('hidden');box.replaceChildren();}
-}
-function setBanStatus(text,kind=''){
-  const el=$('banStatus');if(!el)return;
-  el.textContent=text;el.classList.remove('ok','error');if(kind)el.classList.add(kind);
-}
-function parseBanNumber(r){
-  const direct=String(r.number||r.housenumber||r.houseNumber||'').trim();
-  if(direct)return direct;
-  const full=String(r.fulltext||'').trim();
-  const m=full.match(/^([0-9]+(?:\s*(?:bis|ter|quater|[A-Za-z]))?)\s+/i);
-  return m?m[1].trim():'';
-}
-function renderBanSuggestions(results){
-  const box=$('banSuggestions');if(!box)return;
-  box.replaceChildren();
-  if(!Array.isArray(results)||!results.length){hideBanSuggestions();return;}
-  results.forEach(r=>{
-    const b=document.createElement('button');b.type='button';b.className='ban-suggestion';b.setAttribute('role','option');
-    const label=document.createElement('span');label.textContent=String(r.fulltext||r.street||'Adresse');b.appendChild(label);
-    const meta=document.createElement('small');meta.textContent=[r.zipcode,r.city].filter(Boolean).join(' · ');if(meta.textContent)b.appendChild(meta);
-    b.addEventListener('click',()=>{
-      const street=String(r.street||'').trim();
-      if(street)$('missionStreet').value=street;else $('missionStreet').value=String(r.fulltext||'').split(',')[0].replace(/^\d+\s*(?:bis|ter|quater|[A-Za-z])?\s+/i,'').trim();
-      const n=parseBanNumber(r);if(n)$('missionNumber').value=n;
-      setBanStatus('Adresse sélectionnée dans la Base Adresse Nationale.','ok');
-      hideBanSuggestions();
-    });
-    box.appendChild(b);
-  });
-  box.classList.remove('hidden');
-}
-async function queryBan({opening=false}={}){
-  const number=String($('missionNumber')?.value||'').trim();
-  const street=String($('missionStreet')?.value||'').trim();
-  // Une requête est volontairement envoyée à chaque ouverture, même avant saisie,
-  // afin de vérifier que la Base Adresse Nationale est joignable et à jour.
-  const text=(number||street)?[number,street].filter(Boolean).join(' '):'Chalon-sur-Saône';
-  const seq=++banRequestSeq;
-  if(!opening && text.length<2){hideBanSuggestions();setBanStatus('Saisissez une voie pour rechercher dans la Base Adresse Nationale.');return;}
-  setBanStatus('Recherche dans la Base Adresse Nationale…');
+async function loadBanStreets(){
+  const select=$('missionStreet');
+  const status=$('banStatus');
+  if(!select)return;
+  select.disabled=true;
+  select.innerHTML='<option value="">Chargement des voies de Chalon-sur-Saône…</option>';
+  if(status){status.textContent='Connexion à la Base Adresse Nationale…';status.classList.remove('ok','error');}
   try{
-    const d=await api('/portail/atlas/api/address-suggestions?text='+encodeURIComponent(text));
-    if(seq!==banRequestSeq)return;
-    state.banResults=Array.isArray(d.results)?d.results:[];
-    setBanStatus('Base Adresse Nationale connectée — Chalon-sur-Saône.','ok');
-    // Au simple chargement, on teste la BAN mais on n'impose pas une liste de résultats.
-    if(opening && !number && !street){hideBanSuggestions();return;}
-    renderBanSuggestions(state.banResults);
+    // t=Date.now() empêche tout cache navigateur : chaque ouverture déclenche bien un appel au serveur,
+    // lequel vérifie à son tour la version disponible dans la BAN officielle.
+    const d=await api('/portail/atlas/api/streets?t='+Date.now());
+    const streets=Array.isArray(d.streets)?d.streets:[];
+    state.banStreets=streets;
+    select.replaceChildren();
+    const first=document.createElement('option');first.value='';first.textContent='Choisir une voie';select.appendChild(first);
+    streets.forEach(name=>{const o=document.createElement('option');o.value=name;o.textContent=name;select.appendChild(o);});
+    select.disabled=false;
+    if(status){
+      status.textContent=`${streets.length} voie${streets.length>1?'s':''} chargée${streets.length>1?'s':''} depuis la Base Adresse Nationale${d.stale?' (dernière liste disponible)':''}.`;
+      status.classList.add(d.stale?'error':'ok');
+    }
   }catch(e){
-    if(seq!==banRequestSeq)return;
-    state.banResults=[];hideBanSuggestions();setBanStatus('Base Adresse Nationale momentanément indisponible — saisie manuelle possible.','error');
+    state.banStreets=[];
+    select.replaceChildren();
+    const o=document.createElement('option');o.value='';o.textContent='Liste des voies indisponible';select.appendChild(o);select.disabled=true;
+    if(status){status.textContent='Impossible de charger les voies depuis la Base Adresse Nationale.';status.classList.add('error');}
   }
 }
-function scheduleBanQuery(){clearTimeout(banTimer);banTimer=setTimeout(()=>queryBan(),350);}
 
 function renderNext(){
   const box=$('nextMissionBox');
@@ -149,11 +120,7 @@ async function refresh(silent=false){
   }catch(e){$('syncState').textContent='Connexion perdue';$('syncState').style.background='rgba(217,35,46,.35)';if(!silent)alert(e.message);}
 }
 
-$('newMissionBtn').addEventListener('click',()=>{$('missionForm').reset();$('missionError').textContent='';populateSelects();hideBanSuggestions();openModal('missionModal');queryBan({opening:true});setTimeout(()=>$('missionNumber')?.focus(),60);});
-$('missionStreet').addEventListener('input',scheduleBanQuery);
-$('missionNumber').addEventListener('input',scheduleBanQuery);
-$('missionStreet').addEventListener('focus',()=>{if(String($('missionStreet').value||'').trim())scheduleBanQuery();});
-document.addEventListener('click',e=>{if(!e.target.closest('.address-field'))hideBanSuggestions();});
+$('newMissionBtn').addEventListener('click',()=>{$('missionForm').reset();$('missionError').textContent='';populateSelects();openModal('missionModal');loadBanStreets();setTimeout(()=>$('missionNumber')?.focus(),60);});
 $('missionForm').addEventListener('submit',async e=>{
   e.preventDefault();$('missionError').textContent='';const submit=$('missionSubmit');submit.disabled=true;
   try{

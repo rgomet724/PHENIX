@@ -11,16 +11,11 @@
 @media(max-width:900px){.hero-grid,.board-grid,.manage-grid{grid-template-columns:1fr}.topbar{height:auto;min-height:72px;padding:12px 15px;align-items:flex-start}.top-actions{flex-wrap:wrap;justify-content:flex-end}.page{padding:15px}.mission-meta{grid-template-columns:1fr}.toolbar{align-items:flex-start}.toolbar-actions{flex-direction:column}.form-grid{grid-template-columns:1fr}.span-2{grid-column:auto}}
 @media(max-width:600px){.brand span,.user-pill{display:none}.brand strong{font-size:19px}.topbar .btn{padding:9px 10px}.next-summary{align-items:flex-start;flex-direction:column}.mission-actions .btn{flex:1 1 45%}.toolbar{flex-direction:column}.toolbar-actions{width:100%;flex-direction:row}.toolbar-actions .btn{flex:1}}
 
-
-/* V1.1 - Logo ATLAS + autocomplétion Base Adresse Nationale */
-.address-field{position:relative}
+/* V1.3 - Logo ATLAS + liste déroulante des voies depuis la Base Adresse Nationale */
 .ban-status{display:block;color:var(--muted);font-size:11px;font-weight:600;margin-top:1px}
 .ban-status.ok{color:#16713a}
 .ban-status.error{color:#a51d25}
-.ban-suggestions{position:absolute;left:0;right:0;top:calc(100% - 1px);z-index:80;background:#fff;border:1px solid #b9c9da;border-radius:12px;box-shadow:0 16px 36px rgba(20,42,72,.18);max-height:250px;overflow:auto;padding:5px}
-.ban-suggestion{display:block;width:100%;text-align:left;border:0;background:#fff;color:var(--ink);padding:10px 12px;border-radius:8px;cursor:pointer;font-weight:700;line-height:1.25}
-.ban-suggestion:hover,.ban-suggestion:focus{background:#eaf2ff;outline:none}
-.ban-suggestion small{display:block;margin-top:3px;color:var(--muted);font-size:11px;font-weight:600}
+#missionStreet:disabled{background:#f3f6f9;color:#7b8796;cursor:wait}
 .manage-grid.single-panel{grid-template-columns:1fr}
 .manage-grid.single-panel .manage-panel{max-width:760px}
-@media(max-width:600px){.brand-logo{width:48px;height:48px}.ban-suggestions{position:static;margin-top:5px}}
+@media(max-width:600px){.brand-logo{width:48px;height:48px}}

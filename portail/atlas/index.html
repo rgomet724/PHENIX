@@ -87,10 +87,11 @@
         <label>N° de voirie
           <input id="missionNumber" maxlength="20" placeholder="Ex : 12 bis">
         </label>
-        <label class="span-2 address-field">Voie
-          <input id="missionStreet" maxlength="180" required autocomplete="off" placeholder="Commencez à saisir la voie">
-          <small id="banStatus" class="ban-status">Recherche dans la Base Adresse Nationale…</small>
-          <div id="banSuggestions" class="ban-suggestions hidden" role="listbox" aria-label="Suggestions de la Base Adresse Nationale"></div>
+        <label class="span-2">Voie
+          <select id="missionStreet" required disabled>
+            <option value="">Chargement des voies de Chalon-sur-Saône…</option>
+          </select>
+          <small id="banStatus" class="ban-status">Connexion à la Base Adresse Nationale…</small>
         </label>
         <label class="span-2">Complément
           <input id="missionComplement" maxlength="240" placeholder="Bâtiment, étage, appartement, entrée…">
