@@ -4,8 +4,10 @@ const express = require('express');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');
+const { Readable } = require('stream');
 
-const VERSION = '1.1.0';
+const VERSION = '1.3.0';
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
 
 function safeEqual(a, b) {
@@ -161,6 +163,149 @@ function mountInterventions(app, deps = {}) {
   const PUBLIC_DIR_CANDIDATES = [path.join(__dirname, 'portail', 'atlas'), path.join(__dirname, 'atlas')];
   const PUBLIC_DIR = PUBLIC_DIR_CANDIDATES.find(dir => fs.existsSync(path.join(dir, 'index.html'))) || PUBLIC_DIR_CANDIDATES[0];
 
+  // Liste officielle des voies de Chalon-sur-Saône depuis la Base Adresse Nationale.
+  // À CHAQUE ouverture de la fenêtre « Ajouter une intervention », le navigateur appelle
+  // /portail/atlas/api/streets. Le serveur vérifie alors le fichier BAN officiel du département.
+  // Le fichier complet n'est retéléchargé que s'il a changé ; la liste est conservée sur /var/data.
+  const BAN_CITY_CODE = '71076';
+  const BAN_DEPT_URL = 'https://adresse.data.gouv.fr/data/ban/adresses/latest/csv/adresses-71.csv.gz';
+  const BAN_STREET_CACHE_FILE = path.join(DATA_DIR, 'atlas-ban-streets.json');
+  let banStreetCache = { streets: [], etag: '', lastModified: '', contentLength: '', loadedAt: '' };
+
+  try {
+    if (fs.existsSync(BAN_STREET_CACHE_FILE)) {
+      const cached = JSON.parse(fs.readFileSync(BAN_STREET_CACHE_FILE, 'utf8'));
+      if (Array.isArray(cached.streets) && cached.streets.length) {
+        banStreetCache = {
+          streets: cached.streets.map(x => String(x || '').trim()).filter(Boolean),
+          etag: String(cached.etag || ''),
+          lastModified: String(cached.lastModified || ''),
+          contentLength: String(cached.contentLength || ''),
+          loadedAt: String(cached.loadedAt || '')
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('[ATLAS] Cache BAN illisible:', err.message);
+  }
+
+  function parseBanCsvLine(line) {
+    const out = [];
+    let cur = '', quoted = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (quoted && line[i + 1] === '"') { cur += '"'; i++; }
+        else quoted = !quoted;
+      } else if (ch === ';' && !quoted) {
+        out.push(cur); cur = '';
+      } else cur += ch;
+    }
+    out.push(cur);
+    return out;
+  }
+
+  async function readChalonStreetsFromBan(response) {
+    if (!response.body) throw new Error('Réponse BAN vide.');
+    const input = Readable.fromWeb(response.body);
+    const gunzip = zlib.createGunzip();
+    input.pipe(gunzip);
+    let rest = '', header = null, inseeIndex = -1, streetIndex = -1;
+    const streets = new Set();
+
+    const consumeLine = line => {
+      if (!line) return;
+      const cols = parseBanCsvLine(line.replace(/\r$/, ''));
+      if (!header) {
+        header = cols.map(x => String(x || '').trim().replace(/^\uFEFF/, ''));
+        inseeIndex = header.indexOf('code_insee');
+        streetIndex = header.indexOf('nom_voie');
+        if (inseeIndex < 0 || streetIndex < 0) throw new Error('Colonnes BAN code_insee/nom_voie introuvables.');
+        return;
+      }
+      if (String(cols[inseeIndex] || '').trim() !== BAN_CITY_CODE) return;
+      const street = String(cols[streetIndex] || '').trim().replace(/\s+/g, ' ');
+      if (street) streets.add(street);
+    };
+
+    for await (const chunk of gunzip) {
+      rest += chunk.toString('utf8');
+      let pos;
+      while ((pos = rest.indexOf('\n')) >= 0) {
+        const line = rest.slice(0, pos);
+        rest = rest.slice(pos + 1);
+        consumeLine(line);
+      }
+    }
+    if (rest.trim()) consumeLine(rest);
+    const arr = [...streets].sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base', numeric: true }));
+    if (!arr.length) throw new Error('Aucune voie BAN trouvée pour Chalon-sur-Saône.');
+    return arr;
+  }
+
+  async function refreshBanStreetList() {
+    // Une requête HTTP est volontairement envoyée à la BAN à chaque appel, même si le cache local existe.
+    // HEAD permet de vérifier la version sans retélécharger ~10 Mo à chaque ouverture.
+    let head = null;
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5500);
+      try {
+        head = await fetch(BAN_DEPT_URL, {
+          method: 'HEAD',
+          headers: { 'Accept': 'text/csv,application/gzip,*/*', 'User-Agent': 'ATLAS-PM-Chalon/1.3' },
+          signal: controller.signal
+        });
+      } finally { clearTimeout(timeout); }
+    } catch (err) {
+      if (banStreetCache.streets.length) {
+        return { ...banStreetCache, stale: true, checkedAt: new Date().toISOString() };
+      }
+    }
+
+    const meta = {
+      etag: head && head.ok ? String(head.headers.get('etag') || '') : '',
+      lastModified: head && head.ok ? String(head.headers.get('last-modified') || '') : '',
+      contentLength: head && head.ok ? String(head.headers.get('content-length') || '') : ''
+    };
+    const unchanged = banStreetCache.streets.length && head && head.ok && (
+      (meta.etag && banStreetCache.etag && meta.etag === banStreetCache.etag) ||
+      (meta.lastModified && banStreetCache.lastModified && meta.lastModified === banStreetCache.lastModified && (!meta.contentLength || !banStreetCache.contentLength || meta.contentLength === banStreetCache.contentLength))
+    );
+    if (unchanged) return { ...banStreetCache, stale: false, checkedAt: new Date().toISOString() };
+
+    // Si le serveur ne fournit aucun marqueur de version mais qu'un cache existe, le HEAD a tout de même
+    // vérifié la disponibilité de la BAN. On garde la liste locale pour éviter un téléchargement massif répétitif.
+    if (banStreetCache.streets.length && head && head.ok && !meta.etag && !meta.lastModified && !meta.contentLength) {
+      return { ...banStreetCache, stale: false, checkedAt: new Date().toISOString() };
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20000);
+    let remote;
+    try {
+      remote = await fetch(BAN_DEPT_URL, {
+        method: 'GET',
+        headers: { 'Accept': 'application/gzip,*/*', 'User-Agent': 'ATLAS-PM-Chalon/1.3' },
+        signal: controller.signal
+      });
+      if (!remote.ok) throw new Error(`BAN HTTP ${remote.status}`);
+      const streets = await readChalonStreetsFromBan(remote);
+      banStreetCache = {
+        streets,
+        etag: String(remote.headers.get('etag') || meta.etag || ''),
+        lastModified: String(remote.headers.get('last-modified') || meta.lastModified || ''),
+        contentLength: String(remote.headers.get('content-length') || meta.contentLength || ''),
+        loadedAt: new Date().toISOString()
+      };
+      try { atomicWriteJson(BAN_STREET_CACHE_FILE, banStreetCache); } catch (err) { console.warn('[ATLAS] Cache BAN non enregistré:', err.message); }
+      return { ...banStreetCache, stale: false, checkedAt: new Date().toISOString() };
+    } catch (err) {
+      if (banStreetCache.streets.length) return { ...banStreetCache, stale: true, checkedAt: new Date().toISOString() };
+      throw err;
+    } finally { clearTimeout(timeout); }
+  }
+
   function defaultData() {
     return {
       schemaVersion: 1,
@@ -274,6 +419,28 @@ function mountInterventions(app, deps = {}) {
   router.use((req, res, next) => { res.set('Cache-Control', 'no-store, max-age=0'); next(); });
 
   router.get('/healthz', (req, res) => res.json({ ok: true, version: VERSION, dataFile: DB_FILE }));
+
+  // Liste déroulante complète des voies de Chalon-sur-Saône.
+  // Cette route vérifie la BAN officielle à chaque appel, puis renvoie les noms de voies dédupliqués.
+  router.get('/streets', requireUser, async (req, res) => {
+    try {
+      const data = await refreshBanStreetList();
+      res.json({
+        ok: true,
+        source: 'BASE_ADRESSE_NATIONALE',
+        city: 'Chalon-sur-Saône',
+        cityCode: BAN_CITY_CODE,
+        streets: data.streets,
+        count: data.streets.length,
+        stale: !!data.stale,
+        checkedAt: data.checkedAt,
+        loadedAt: data.loadedAt || ''
+      });
+    } catch (err) {
+      console.error('[ATLAS] Chargement des voies BAN impossible:', err.message);
+      res.status(502).json({ error: 'BAN_UNAVAILABLE', message: 'Impossible de charger la liste des voies de Chalon-sur-Saône depuis la Base Adresse Nationale.' });
+    }
+  });
 
   // Recherche d'adresses : proxy vers le service officiel Géoplateforme alimenté par la BAN.
   // Filtrage volontaire sur Chalon-sur-Saône (code INSEE 71076).
