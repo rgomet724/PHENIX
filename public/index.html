@@ -3999,10 +3999,20 @@ document.addEventListener('click',e=>{
 });
 
 function baseCrewCallsign(value){
-  return String(value||'').replace(/\s+(JOUR|NUIT)\s*$/i,'').trim();
+  let base=String(value||'').trim();
+  // Compatibilité avec l'ancien format : "TVPS BRAVO NUIT" / "... JOUR".
+  base=base.replace(/\s+(JOUR|NUIT)\s*$/i,'').trim();
+  // Nouveau format nuit : "TVPS N BRAVO" -> indicatif de base "TVPS BRAVO".
+  const parts=base.split(/\s+/).filter(Boolean);
+  if(parts.length>=2 && /^N$/i.test(parts[1])) parts.splice(1,1);
+  return parts.join(' ').trim();
 }
 function crewServiceFromCallsign(value){
-  return /\s+NUIT\s*$/i.test(String(value||''))?'NUIT':'JOUR';
+  const raw=String(value||'').trim();
+  // Reconnaît aussi bien l'ancien "... NUIT" que le nouveau "PREFIXE N ...".
+  if(/\s+NUIT\s*$/i.test(raw)) return 'NUIT';
+  const parts=raw.replace(/\s+(JOUR|NUIT)\s*$/i,'').trim().split(/\s+/).filter(Boolean);
+  return parts.length>=2 && /^N$/i.test(parts[1]) ? 'NUIT' : 'JOUR';
 }
 function setCrewService(service){
   const input=document.querySelector('input[name="crewService"][value="'+(service==='NUIT'?'NUIT':'JOUR')+'"]');
@@ -4013,7 +4023,12 @@ function getCrewService(){
 }
 function buildCrewCallsign(value,service){
   const base=baseCrewCallsign(value);
-  return base+(service==='NUIT'?' NUIT':' JOUR');
+  if(service!=='NUIT') return base;
+  const parts=base.split(/\s+/).filter(Boolean);
+  if(!parts.length) return '';
+  if(parts.length===1) return parts[0]+' N';
+  parts.splice(1,0,'N');
+  return parts.join(' ');
 }
 
 function openCrew(id=''){
