@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
 
 function safeEqual(a, b) {
@@ -274,6 +274,47 @@ function mountInterventions(app, deps = {}) {
   router.use((req, res, next) => { res.set('Cache-Control', 'no-store, max-age=0'); next(); });
 
   router.get('/healthz', (req, res) => res.json({ ok: true, version: VERSION, dataFile: DB_FILE }));
+
+  // Recherche d'adresses : proxy vers le service officiel Géoplateforme alimenté par la BAN.
+  // Filtrage volontaire sur Chalon-sur-Saône (code INSEE 71076).
+  router.get('/address-suggestions', requireUser, async (req, res) => {
+    const text = String(req.query.text || '').trim().slice(0, 180) || 'Chalon-sur-Saône';
+    const params = new URLSearchParams({
+      text,
+      citycode: '71076',
+      type: 'StreetAddress',
+      maximumResponses: '12'
+    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5500);
+    try {
+      const remote = await fetch(`https://data.geopf.fr/geocodage/completion/?${params.toString()}`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json', 'User-Agent': 'ATLAS-PM-Chalon/1.1' },
+        signal: controller.signal
+      });
+      if (!remote.ok) {
+        return res.status(502).json({ error: 'BAN_UNAVAILABLE', message: 'La Base Adresse Nationale est momentanément indisponible.' });
+      }
+      const payload = await remote.json();
+      const raw = Array.isArray(payload?.results) ? payload.results : [];
+      const results = raw.slice(0, 12).map(r => ({
+        fulltext: String(r?.fulltext || '').trim(),
+        street: String(r?.street || '').trim(),
+        number: String(r?.number || r?.housenumber || r?.houseNumber || '').trim(),
+        city: String(r?.city || '').trim(),
+        zipcode: String(r?.zipcode || '').trim(),
+        x: Number.isFinite(Number(r?.x)) ? Number(r.x) : null,
+        y: Number.isFinite(Number(r?.y)) ? Number(r.y) : null
+      })).filter(r => r.fulltext || r.street);
+      res.json({ ok: true, source: 'BAN-GEOPLATEFORME', cityCode: '71076', results });
+    } catch (err) {
+      const timedOut = err && err.name === 'AbortError';
+      res.status(502).json({ error: 'BAN_UNAVAILABLE', message: timedOut ? 'La Base Adresse Nationale ne répond pas assez rapidement.' : 'Impossible de joindre la Base Adresse Nationale.' });
+    } finally {
+      clearTimeout(timeout);
+    }
+  });
 
   router.get('/state', requireUser, (req, res) => {
     const data = loadDispatch();
