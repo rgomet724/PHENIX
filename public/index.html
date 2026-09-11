@@ -861,8 +861,8 @@ body:not(.dashboardMode) #dashZoomTools{display:none!important}
 #indispoCode{font-size:22px;font-weight:800;letter-spacing:1px;text-transform:uppercase;border-color:#3b82f6}
 #indispoPreview{min-height:42px}
 body:not(.dashboardMode) #dashZoomTools{display:none!important}
-body.dashboardMode #createCrewBtn,body.consultationMode #createCrewBtn{display:none!important}
-body:not(.dashboardMode):not(.consultationMode) #createCrewBtn{display:inline-block!important}
+body.dashboardMode #createCrewBtn{display:none!important}
+body:not(.dashboardMode) #createCrewBtn{display:inline-block!important}
 
 
 /* V51.1 - Affichage simplifié INDISPO */
@@ -3266,7 +3266,7 @@ body.lightMode .wallPanel,body.lightMode .wallStat{background:#fff!important}bod
       <div class="field"><input id="uName" placeholder="Nom affiché"></div>
       <div class="field"><input id="uLogin" placeholder="Identifiant"></div>
       <div id="uPassField" class="field"><input id="uPass" type="password" placeholder="Mot de passe temporaire (12 caractères minimum)"><small class="mut">À la création, l’utilisateur devra obligatoirement le changer à sa première connexion.</small></div>
-      <div class="field"><select id="uRole"><option value="operateur">Opérateur</option><option value="consultation">Consultation</option><option value="superviseur">Superviseur</option><option value="admin">Admin</option><option value="dashboard">Dashboard</option></select></div>
+      <div class="field"><select id="uRole"><option value="operateur">Opérateur</option><option value="superviseur">Superviseur</option><option value="admin">Admin</option><option value="dashboard">Dashboard</option></select></div>
       <div class="field"><label>Brigades autorisées</label><label><input id="uBrigadeJour" type="checkbox" style="width:auto"> Brigade de jour</label><label><input id="uBrigadeNuit" type="checkbox" style="width:auto"> Brigade de nuit</label></div>
       <div class="row"><button class="primary" onclick="saveUser()">Enregistrer utilisateur</button><button id="cancelUserEditBtn" class="hidden" onclick="clearUserForm()">Annuler la modification</button></div>
     </div>
@@ -3733,9 +3733,9 @@ async function manualRefresh(){
 }
 
 async function refresh(){return refreshSafe(true)}
-async function refreshSafe(force=false){if(!force && shouldPauseRefresh()) return; let next;try{next=await api('/api/data')}catch(e){if(e.code==='PASSWORD_CHANGE_REQUIRED'){showForcedPasswordChange();return}throw e}S=next;$('agentName').textContent=S.user.displayName;const roleNow=phenixRole();const dash=roleNow==='dashboard';const consultation=roleNow==='consultation';
+async function refreshSafe(force=false){if(!force && shouldPauseRefresh()) return; let next;try{next=await api('/api/data')}catch(e){if(e.code==='PASSWORD_CHANGE_REQUIRED'){showForcedPasswordChange();return}throw e}S=next;$('agentName').textContent=S.user.displayName;const dash=S.user.role==='dashboard';
 document.body.classList.toggle('dashboardMode',dash);
-if($('dashZoomTools'))$('dashZoomTools').classList.toggle('hidden',!dash);applyRoleNavigation();$('createCrewBtn').classList.toggle('hidden',dash||consultation);if((dash||phenixRole()==='operateur')&&!['dash','notes','consignes','events','settings'].includes(activeSection))activeSection='dash';syncActiveNav();checkCrewChanges(S.crews);renderAll(force);updateNotifButton();startRealtime();syncPhenixSounds(false);updateAdminResetBadge();}
+if($('dashZoomTools'))$('dashZoomTools').classList.toggle('hidden',!dash);applyRoleNavigation();$('createCrewBtn').classList.toggle('hidden',dash);if((dash||phenixRole()==='operateur')&&!['dash','notes','consignes','events','settings'].includes(activeSection))activeSection='dash';syncActiveNav();checkCrewChanges(S.crews);renderAll(force);updateNotifButton();startRealtime();syncPhenixSounds(false);updateAdminResetBadge();}
 function shouldPauseRefresh(){const el=document.activeElement; if(el && ['INPUT','TEXTAREA','SELECT'].includes(el.tagName)) return true; return ['personnel','admin','notes'].includes(activeSection)}
 function syncActiveNav(){
   document.querySelectorAll('.nav button').forEach(b=>{
@@ -3771,13 +3771,11 @@ function phenixRole(){
 function applyRoleNavigation(){
   const role=phenixRole();
   const isOperator=role==='operateur';
-  const isConsultation=role==='consultation';
   const isDashboard=role==='dashboard';
   const isSupervisor=role==='superviseur';
   const isAdmin=role==='admin';
 
   document.body.classList.toggle('operatorMode',isOperator);
-  document.body.classList.toggle('consultationMode',isConsultation);
   document.body.classList.toggle('supervisorMode',isSupervisor);
   document.body.classList.toggle('adminMode',isAdmin);
 
@@ -3808,7 +3806,7 @@ function applyRoleNavigation(){
   }
 }
 
-function canOperate(){const role=phenixRole();return !!S.user && role!=='dashboard' && role!=='consultation'}
+function canOperate(){return S.user && S.user.role!=='dashboard'}
 
 function renderWallDashboard(){
   const dash=phenixRole()==='dashboard';$('wallDashboard')?.classList.toggle('hidden',!dash);$('standardDashboard')?.classList.toggle('hidden',dash);if(!dash)return;
@@ -3923,7 +3921,7 @@ function normalizeTimeValue(v){
   return String(Math.min(23,Number(m[1]))).padStart(2,'0')+':'+m[2];
 }
 function openJTManager(){
-  if(['dashboard','consultation'].includes(phenixRole()))return;
+  if(phenixRole()==='dashboard')return;
   $('jtManagerModal').style.display='grid';
   $('jtId').value='';$('jtName').value='';$('jtStart').value='08:00';$('jtEnd').value='16:00';
   renderJTManager();
@@ -4095,7 +4093,7 @@ async function saveCrew(){
 }
 async function deleteCrew(){if(confirm('Supprimer cet équipage ?')){await api('/api/crew/'+$('crewId').value,{method:'DELETE'});closeModal('crewModal');refresh()}}
 async function statusCrew(id,status){
-  if(!canOperate()){alert('Accès équipages en lecture seule');return}
+  if(!canOperate()){alert('Accès ');return}
   try{
     await api('/api/crew/'+id+'/status',{method:'POST',body:JSON.stringify({status:'DISPO'})});
     await refresh();
@@ -4119,7 +4117,7 @@ function updateIndispoPreview(){
     :'<span class="mut">Saisissez un code ou choisissez une nature d’intervention.</span>';
 }
 function openIndispo(id){
-  if(!canOperate()){alert('Accès équipages en lecture seule');return}
+  if(!canOperate()){alert('Accès ');return}
   fillIndispoChoices();
   $('indispoId').value=id;
   $('indispoCode').value='';

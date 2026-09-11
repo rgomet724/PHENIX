@@ -213,18 +213,11 @@ function normalizedRole(role){
     .normalize('NFD').replace(/[\u0300-\u036f]/g,'');
   if(r==='administrateur') return 'admin';
   if(r==='operateur') return 'operateur';
-  if(r==='consultations') return 'consultation';
   return r;
 }
 function needOperational(req,res,next){
   const u=current(req);
   if(!u || normalizedRole(u.role)==='dashboard') return res.status(403).json({error:'Accès lecture seule'});
-  next();
-}
-function needCrewOperator(req,res,next){
-  const u=current(req);
-  const role=normalizedRole(u&&u.role);
-  if(!u || role==='dashboard' || role==='consultation') return res.status(403).json({error:'Accès équipages en lecture seule'});
   next();
 }
 function needConsigneManager(req,res,next){ const u=current(req); if(!u || !['admin','superviseur'].includes(u.role)) return res.status(403).json({error:'Réservé superviseur/admin'}); next(); }
@@ -762,7 +755,7 @@ app.post('/api/agents', needLogin, needAdmin, (req,res)=>{
   res.json({ok:true});
 });
 
-app.post('/api/crew', needLogin, needCrewOperator, (req,res)=>{
+app.post('/api/crew', needLogin, needOperational, (req,res)=>{
   const d=load(); const c=req.body.crew||{};
   if(!c.callsign) return res.status(400).json({error:'Indicatif obligatoire'});
 
@@ -780,7 +773,7 @@ app.post('/api/crew', needLogin, needCrewOperator, (req,res)=>{
   res.json({ok:true});
 });
 
-app.delete('/api/crew/:id', needLogin, needCrewOperator, (req,res)=>{
+app.delete('/api/crew/:id', needLogin, needOperational, (req,res)=>{
   const d=load();
   const c=d.crews.find(x=>x.id===req.params.id);
   d.crews=d.crews.filter(x=>x.id!==req.params.id);
@@ -789,7 +782,7 @@ app.delete('/api/crew/:id', needLogin, needCrewOperator, (req,res)=>{
   res.json({ok:true});
 });
 
-app.post('/api/crew/:id/status', needLogin, needCrewOperator, (req,res)=>{
+app.post('/api/crew/:id/status', needLogin, needOperational, (req,res)=>{
   const d=load();
   const c=d.crews.find(x=>x.id===req.params.id);
   if(!c) return res.status(404).json({error:'Équipage introuvable'});
@@ -1007,7 +1000,7 @@ app.post('/api/admin/users', needLogin, needAdmin, (req,res)=>{
   if(!r.displayName||!r.login||!r.role) return res.status(400).json({error:'Nom, identifiant et rôle obligatoires'});
   r.login=normalizeLogin(r.login);
   r.displayName=String(r.displayName).trim().slice(0,120);
-  if(!['admin','superviseur','operateur','consultation','dashboard'].includes(r.role)) return res.status(400).json({error:'Rôle invalide'});
+  if(!['admin','superviseur','operateur','dashboard'].includes(r.role)) return res.status(400).json({error:'Rôle invalide'});
 
   const brigades={jour:!!(r.brigades&&r.brigades.jour), nuit:!!(r.brigades&&r.brigades.nuit)};
   if(['admin','superviseur'].includes(r.role)){ brigades.jour=true; brigades.nuit=true; }
@@ -1054,41 +1047,6 @@ app.post('/api/admin/lists', needLogin, needAdmin, (req,res)=>{
   save(d);
   res.json({ok:true,callsigns:d.callsigns,interventions:d.interventions});
 });
-
-// Arrêtés municipaux — conserve l'application existante et son routage.
-// Ce chargeur accepte les différentes formes d'export du module arretes-router.js
-// afin de ne pas écraser son fonctionnement historique.
-try {
-  const arretesModule = require('./arretes-router');
-  const arretesOptions = {
-    loadPhenix: load,
-    savePhenix: save,
-    sessionSecret: EFFECTIVE_SESSION_SECRET,
-    isProd: IS_PROD
-  };
-
-  if (typeof arretesModule === 'function') {
-    arretesModule(app, arretesOptions);
-  } else if (arretesModule && typeof arretesModule.mountArretes === 'function') {
-    arretesModule.mountArretes(app, arretesOptions);
-  } else if (arretesModule && typeof arretesModule.mountArretesMunicipaux === 'function') {
-    arretesModule.mountArretesMunicipaux(app, arretesOptions);
-  } else if (arretesModule && typeof arretesModule.mountRouter === 'function') {
-    arretesModule.mountRouter(app, arretesOptions);
-  } else if (arretesModule && arretesModule.router && typeof arretesModule.router === 'function') {
-    // Compatibilité avec un module qui exporte directement un Router Express.
-    app.use('/arretes', arretesModule.router);
-    app.use('/portail/arretes', arretesModule.router);
-  } else if (arretesModule && typeof arretesModule.handle === 'function') {
-    // Compatibilité avec module.exports = express.Router().
-    app.use('/arretes', arretesModule);
-    app.use('/portail/arretes', arretesModule);
-  } else {
-    console.warn('[PHENIX] arretes-router.js chargé mais aucun point de montage reconnu.');
-  }
-} catch (err) {
-  console.error('[PHENIX] Impossible de charger Arrêtés municipaux :', err && err.stack ? err.stack : err);
-}
 
 // ATLAS — gestion de l'attente des interventions, reliée à PHENIX et ARGOS
 const { mountInterventions } = require('./atlas-router');

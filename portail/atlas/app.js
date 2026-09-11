@@ -1,4 +1,4 @@
-const state = { user:null, canManage:false, canOperate:true, missions:[], crews:[], natures:[], streets:[], nextMissionId:null, serverTime:Date.now(), banResults:[] };
+const state = { user:null, canManage:false, missions:[], crews:[], natures:[], streets:[], nextMissionId:null, serverTime:Date.now(), banResults:[] };
 let banTimer=null;
 let banRequestSeq=0;
 const $ = id => document.getElementById(id);
@@ -84,21 +84,17 @@ function missionCard(m){
   t.querySelector('.elapsed').textContent=elapsed(m.departedAt);
   const actions=t.querySelector('.mission-actions');
 
-  if(state.canOperate){
-    if(!m.crewId){
-      actions.append(button('Affecter une patrouille','secondary',()=>openAssign(m.id)));
-    }else if(m.status==='ASSIGNED'){
-      actions.append(button('PARTIE','departed',()=>setStatus(m.id,'DEPARTED')));
-    }else if(m.status==='DEPARTED'){
-      actions.append(button('SUR PLACE','onscene',()=>setStatus(m.id,'ONSCENE')));
-      actions.append(button('TERMINÉ','done',()=>setStatus(m.id,'DONE')));
-    }else if(m.status==='ONSCENE'){
-      actions.append(button('TERMINÉ','done',()=>setStatus(m.id,'DONE')));
-    }
-    if(state.canManage)actions.append(button('Supprimer','danger',()=>deleteMission(m.id)));
-  }else{
-    const ro=document.createElement('span');ro.className='muted';ro.textContent='Lecture seule';actions.append(ro);
+  if(!m.crewId){
+    actions.append(button('Affecter une patrouille','secondary',()=>openAssign(m.id)));
+  }else if(m.status==='ASSIGNED'){
+    actions.append(button('PARTIE','departed',()=>setStatus(m.id,'DEPARTED')));
+  }else if(m.status==='DEPARTED'){
+    actions.append(button('SUR PLACE','onscene',()=>setStatus(m.id,'ONSCENE')));
+    actions.append(button('TERMINÉ','done',()=>setStatus(m.id,'DONE')));
+  }else if(m.status==='ONSCENE'){
+    actions.append(button('TERMINÉ','done',()=>setStatus(m.id,'DONE')));
   }
+  if(state.canManage)actions.append(button('Supprimer','danger',()=>deleteMission(m.id)));
   return t;
 }
 function button(label,kind,fn){const b=document.createElement('button');b.type='button';b.className='btn '+kind;b.textContent=label;b.addEventListener('click',fn);return b;}
@@ -115,9 +111,6 @@ function renderMissions(){
 function renderAll(){
   $('currentUser').textContent=state.user?`${state.user.name} · ${state.user.role}`:'—';
   $('manageBtn').classList.toggle('hidden',!state.canManage);
-  $('newMissionBtn').classList.toggle('hidden',!state.canOperate);
-  $('takeNextBtn').classList.toggle('hidden',!state.canOperate);
-  $('nextCrew').disabled=!state.canOperate;
   populateSelects();renderNext();renderMissions();
 }
 
@@ -127,7 +120,7 @@ async function refresh(silent=false){
   }catch(e){$('syncState').textContent='Connexion perdue';$('syncState').style.background='rgba(217,35,46,.35)';if(!silent)alert(e.message);}
 }
 
-$('newMissionBtn').addEventListener('click',()=>{if(!state.canOperate)return;$('missionForm').reset();$('missionError').textContent='';populateSelects();openModal('missionModal');loadBanStreets();setTimeout(()=>$('missionNumber')?.focus(),60);});
+$('newMissionBtn').addEventListener('click',()=>{$('missionForm').reset();$('missionError').textContent='';populateSelects();openModal('missionModal');loadBanStreets();setTimeout(()=>$('missionNumber')?.focus(),60);});
 $('missionForm').addEventListener('submit',async e=>{
   e.preventDefault();$('missionError').textContent='';const submit=$('missionSubmit');submit.disabled=true;
   try{
@@ -137,13 +130,13 @@ $('missionForm').addEventListener('submit',async e=>{
   }catch(err){$('missionError').textContent=err.message;}finally{submit.disabled=false;}
 });
 
-function openAssign(id){if(!state.canOperate)return;$('assignMissionId').value=id;$('assignError').textContent='';populateSelects();openModal('assignModal');}
+function openAssign(id){$('assignMissionId').value=id;$('assignError').textContent='';populateSelects();openModal('assignModal');}
 $('assignSubmit').addEventListener('click',async()=>{const id=$('assignMissionId').value,crewId=$('assignCrew').value;$('assignError').textContent='';try{await api(`/portail/atlas/api/missions/${encodeURIComponent(id)}/assign`,{method:'POST',body:JSON.stringify({crewId})});closeModal('assignModal');await refresh(true);}catch(e){$('assignError').textContent=e.message;}});
 
-async function setStatus(id,status){if(!state.canOperate){alert('Compte Consultation : accès en lecture seule.');return;}try{await api(`/portail/atlas/api/missions/${encodeURIComponent(id)}/status`,{method:'POST',body:JSON.stringify({status})});await refresh(true);}catch(e){alert(e.message);}}
+async function setStatus(id,status){try{await api(`/portail/atlas/api/missions/${encodeURIComponent(id)}/status`,{method:'POST',body:JSON.stringify({status})});await refresh(true);}catch(e){alert(e.message);}}
 async function deleteMission(id){if(!confirm('Supprimer cette intervention ?'))return;try{await api(`/portail/atlas/api/missions/${encodeURIComponent(id)}`,{method:'DELETE'});await refresh(true);}catch(e){alert(e.message);}}
 
-$('takeNextBtn').addEventListener('click',async()=>{if(!state.canOperate)return;const crewId=$('nextCrew').value;if(!crewId){alert('Choisissez une patrouille.');return;}try{const d=await api('/portail/atlas/api/next',{method:'POST',body:JSON.stringify({crewId})});if(!d.mission)alert('Aucune mission à venir.');await refresh(true);}catch(e){alert(e.message);}});
+$('takeNextBtn').addEventListener('click',async()=>{const crewId=$('nextCrew').value;if(!crewId){alert('Choisissez une patrouille.');return;}try{const d=await api('/portail/atlas/api/next',{method:'POST',body:JSON.stringify({crewId})});if(!d.mission)alert('Aucune mission à venir.');await refresh(true);}catch(e){alert(e.message);}});
 
 function editRow(value,type){const row=document.createElement('div');row.className='edit-row';const input=document.createElement('input');input.value=value;input.dataset.type=type;const del=document.createElement('button');del.type='button';del.textContent='×';del.addEventListener('click',()=>row.remove());row.append(input,del);return row;}
 function renderManage(){
