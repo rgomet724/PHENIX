@@ -44,6 +44,7 @@ function argosRoleFromPhenix(role) {
   if (r === 'admin' || r === 'administrateur') return 'admin';
   if (r === 'superviseur') return 'superviseur';
   if (r === 'operateur') return 'operateur';
+  if (r === 'consultation' || r === 'consultations') return 'consultation';
   return null;
 }
 
@@ -360,6 +361,14 @@ function mountInterventions(app, deps = {}) {
     next();
   }
 
+  function requireOperator(req, res, next) {
+    const user = resolveUser(req);
+    if (!user) return res.status(401).json({ error: 'AUTH_REQUIRED', message: 'Connexion requise.' });
+    if (user.role === 'consultation') return res.status(403).json({ error: 'READ_ONLY', message: 'Compte Consultation : accès en lecture seule.' });
+    req.regulationUser = user;
+    next();
+  }
+
   function requireManager(req, res, next) {
     const user = resolveUser(req);
     if (!user) return res.status(401).json({ error: 'AUTH_REQUIRED', message: 'Connexion requise.' });
@@ -492,6 +501,7 @@ function mountInterventions(app, deps = {}) {
     res.json({
       user: req.regulationUser,
       canManage: ['admin', 'superviseur'].includes(req.regulationUser.role),
+      canOperate: req.regulationUser.role !== 'consultation',
       missions,
       nextMissionId: nextMission ? nextMission.id : null,
       crews: activeCrews(),
@@ -501,7 +511,7 @@ function mountInterventions(app, deps = {}) {
     });
   });
 
-  router.post('/missions', requireUser, (req, res) => {
+  router.post('/missions', requireOperator, (req, res) => {
     const b = req.body || {};
     const natureLabel = String(b.natureLabel || '').trim();
     const natureCode = String(b.natureCode || '').trim();
@@ -538,7 +548,7 @@ function mountInterventions(app, deps = {}) {
     res.json({ ok: true, mission });
   });
 
-  router.post('/missions/:id/assign', requireUser, (req, res) => {
+  router.post('/missions/:id/assign', requireOperator, (req, res) => {
     const data = loadDispatch();
     const mission = data.missions.find(m => m.id === req.params.id);
     if (!mission) return res.status(404).json({ error: 'NOT_FOUND', message: 'Intervention introuvable.' });
@@ -555,7 +565,7 @@ function mountInterventions(app, deps = {}) {
     res.json({ ok: true, mission });
   });
 
-  router.post('/next', requireUser, (req, res) => {
+  router.post('/next', requireOperator, (req, res) => {
     const crewId = String(req.body?.crewId || '').trim();
     if (!crewId) return res.status(400).json({ error: 'CREW_REQUIRED', message: 'Choisissez une patrouille.' });
     const data = loadDispatch();
@@ -572,7 +582,7 @@ function mountInterventions(app, deps = {}) {
     res.json({ ok: true, mission: next });
   });
 
-  router.post('/missions/:id/status', requireUser, (req, res) => {
+  router.post('/missions/:id/status', requireOperator, (req, res) => {
     const requested = String(req.body?.status || '').toUpperCase();
     if (!['DEPARTED', 'ONSCENE', 'DONE'].includes(requested)) return res.status(400).json({ error: 'BAD_STATUS', message: 'État invalide.' });
     const data = loadDispatch();
