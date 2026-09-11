@@ -116,12 +116,42 @@ function mountPortal(app) {
     };
   }
 
+  function repairKnownAppUrls(data) {
+    if (!data || !Array.isArray(data.apps)) return false;
+    let changed = false;
+    const normalize = value => String(value || '')
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+
+    for (const appItem of data.apps) {
+      const key = `${normalize(appItem.id)} ${normalize(appItem.name)}`;
+
+      // Les Arrêtés municipaux et ATLAS ont chacun leur route propre.
+      // Cela corrige aussi un ancien portal.json si le lien d'une tuile a été
+      // accidentellement remplacé par celui d'une autre application.
+      if (key.includes('arrete')) {
+        if (appItem.url !== '/arretes/') {
+          appItem.url = '/arretes/';
+          changed = true;
+        }
+      } else if (key.includes('atlas')) {
+        if (appItem.url !== '/portail/atlas/') {
+          appItem.url = '/portail/atlas/';
+          changed = true;
+        }
+      }
+    }
+    return changed;
+  }
+
   function loadData() {
     const base = defaultData();
     try {
       if (!fs.existsSync(DB_FILE)) return base;
       const parsed = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-      return {
+      const data = {
         schemaVersion: 3,
         categories: Array.isArray(parsed.categories) ? parsed.categories : base.categories,
         apps: Array.isArray(parsed.apps) ? parsed.apps : base.apps,
@@ -130,6 +160,12 @@ function mountPortal(app) {
           ...(parsed.appearance && typeof parsed.appearance === 'object' ? parsed.appearance : {})
         }
       };
+      if (repairKnownAppUrls(data)) {
+        try { saveData(data); } catch (saveErr) {
+          console.warn('[ARGOS] Correction des liens non persistée:', saveErr.message);
+        }
+      }
+      return data;
     } catch (err) {
       console.error('[ARGOS] Lecture portal.json impossible:', err.message);
       return base;
