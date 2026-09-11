@@ -1055,6 +1055,41 @@ app.post('/api/admin/lists', needLogin, needAdmin, (req,res)=>{
   res.json({ok:true,callsigns:d.callsigns,interventions:d.interventions});
 });
 
+// Arrêtés municipaux — conserve l'application existante et son routage.
+// Ce chargeur accepte les différentes formes d'export du module arretes-router.js
+// afin de ne pas écraser son fonctionnement historique.
+try {
+  const arretesModule = require('./arretes-router');
+  const arretesOptions = {
+    loadPhenix: load,
+    savePhenix: save,
+    sessionSecret: EFFECTIVE_SESSION_SECRET,
+    isProd: IS_PROD
+  };
+
+  if (typeof arretesModule === 'function') {
+    arretesModule(app, arretesOptions);
+  } else if (arretesModule && typeof arretesModule.mountArretes === 'function') {
+    arretesModule.mountArretes(app, arretesOptions);
+  } else if (arretesModule && typeof arretesModule.mountArretesMunicipaux === 'function') {
+    arretesModule.mountArretesMunicipaux(app, arretesOptions);
+  } else if (arretesModule && typeof arretesModule.mountRouter === 'function') {
+    arretesModule.mountRouter(app, arretesOptions);
+  } else if (arretesModule && arretesModule.router && typeof arretesModule.router === 'function') {
+    // Compatibilité avec un module qui exporte directement un Router Express.
+    app.use('/arretes', arretesModule.router);
+    app.use('/portail/arretes', arretesModule.router);
+  } else if (arretesModule && typeof arretesModule.handle === 'function') {
+    // Compatibilité avec module.exports = express.Router().
+    app.use('/arretes', arretesModule);
+    app.use('/portail/arretes', arretesModule);
+  } else {
+    console.warn('[PHENIX] arretes-router.js chargé mais aucun point de montage reconnu.');
+  }
+} catch (err) {
+  console.error('[PHENIX] Impossible de charger Arrêtés municipaux :', err && err.stack ? err.stack : err);
+}
+
 // ATLAS — gestion de l'attente des interventions, reliée à PHENIX et ARGOS
 const { mountInterventions } = require('./atlas-router');
 mountInterventions(app,{
