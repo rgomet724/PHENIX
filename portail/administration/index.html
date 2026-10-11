@@ -27,6 +27,7 @@
       <nav id="navigation">
         <button class="nav-item active" data-view="dashboard"><span>⌂</span>Tableau de bord</button>
         <button class="nav-item" data-view="users"><span>👤</span>Utilisateurs</button>
+        <button class="nav-item" data-view="password-resets"><span>↻</span>Mots de passe <b id="passwordResetNavCount" class="nav-count hidden">0</b></button>
         <button class="nav-item" data-view="access"><span>🔐</span>Accès et rôles</button>
         <button class="nav-item" data-view="apps"><span>▦</span>Applications</button>
         <button class="nav-item" data-view="appearance"><span>◉</span>Apparence</button>
@@ -81,6 +82,21 @@
         <div class="table-card"><div class="table-scroll"><table>
           <thead><tr><th>Utilisateur</th><th>Rôle PHENIX</th><th>Accès actifs</th><th>Mot de passe</th><th class="actions-cell">Actions</th></tr></thead>
           <tbody id="userRows"></tbody>
+        </table></div></div>
+      </section>
+
+      <section class="view hidden" data-view-panel="password-resets">
+        <div class="page-heading">
+          <div><p class="eyebrow">ASSISTANCE AUX AGENTS</p><h1>Demandes de mot de passe oublié</h1><p>Définissez un mot de passe temporaire ou classez les demandes reçues depuis PHENIX.</p></div>
+          <button class="button secondary" data-reload type="button">Actualiser</button>
+        </div>
+        <div class="toolbar">
+          <strong id="passwordResetCount">0 demande en attente</strong>
+          <span class="toolbar-help">Le nouveau mot de passe devra être changé lors de la prochaine connexion de l’agent.</span>
+        </div>
+        <div class="table-card"><div class="table-scroll"><table>
+          <thead><tr><th>Agent</th><th>Demande reçue</th><th>Poste</th><th>Adresse IP</th><th class="actions-cell">Actions</th></tr></thead>
+          <tbody id="passwordResetRows"></tbody>
         </table></div></div>
       </section>
 

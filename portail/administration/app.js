@@ -2,7 +2,7 @@
 
 const API = '/portail/administration/api';
 const state = {
-  csrfToken: '', user: null, dashboard: null, users: [], applications: [], categories: [], apps: [], appearance: {}, security: null,
+  csrfToken: '', user: null, dashboard: null, users: [], passwordResets: [], applications: [], categories: [], apps: [], appearance: {}, security: null,
   view: 'dashboard', accessUserId: '', appearanceApp: 'phenix'
 };
 
@@ -84,11 +84,12 @@ async function initialize() {
 }
 
 async function loadEverything() {
-  const [dashboard, users, catalog, appearance, security] = await Promise.all([
-    api('/dashboard'), api('/users'), api('/catalog'), api('/appearance'), api('/security')
+  const [dashboard, users, passwordResets, catalog, appearance, security] = await Promise.all([
+    api('/dashboard'), api('/users'), api('/password-resets'), api('/catalog'), api('/appearance'), api('/security')
   ]);
   state.dashboard = dashboard;
   state.users = users.users || [];
+  state.passwordResets = passwordResets.requests || [];
   state.applications = catalog.applications || [];
   state.categories = catalog.categories || [];
   state.apps = catalog.apps || [];
@@ -99,13 +100,14 @@ async function loadEverything() {
 }
 
 function renderAll() {
-  renderDashboard(); renderUsers(); renderAccess(); renderApps(); renderAppearance(); renderSecurity();
+  renderDashboard(); renderUsers(); renderPasswordResets(); renderAccess(); renderApps(); renderAppearance(); renderSecurity();
 }
 
 function renderDashboard() {
   const data = state.dashboard || {};
   const cards = [
     [data.users || 0, 'Utilisateurs'], [data.administrators || 0, 'Administrateurs'],
+    [data.passwordResetPending || 0, 'Mots de passe oubliés'],
     [data.enabledArgos || 0, 'Accès ARGOS actifs'], [data.applications || 0, 'Tuiles du portail'],
     [formatBytes(data.diskBytes), 'Données sur le disque']
   ];
@@ -132,6 +134,53 @@ function renderUsers() {
         <button class="link-button danger" data-action="delete-user" data-id="${escapeHtml(user.id)}">Supprimer</button>
       </div></td>
     </tr>`).join('') : '<tr><td class="empty-row" colspan="5">Aucun utilisateur correspondant.</td></tr>';
+}
+
+function renderPasswordResets() {
+  const requests = state.passwordResets || [];
+  const count = requests.length;
+  $('passwordResetCount').textContent = `${count} demande${count > 1 ? 's' : ''} en attente`;
+  const badge = $('passwordResetNavCount');
+  badge.textContent = String(count);
+  badge.classList.toggle('hidden', count === 0);
+  $('passwordResetRows').innerHTML = count ? requests.map(request => `
+    <tr>
+      <td class="user-cell"><strong>${escapeHtml(request.displayName)}</strong><small>${escapeHtml(request.login)}</small></td>
+      <td>${escapeHtml(formatDate(request.createdAt))}</td>
+      <td>${escapeHtml(request.deviceName || request.deviceId || 'Non identifié')}</td>
+      <td>${escapeHtml(request.requestIp || '—')}</td>
+      <td class="actions-cell"><div class="actions">
+        <button class="link-button" data-action="complete-password-request" data-id="${escapeHtml(request.id)}">Réinitialiser</button>
+        <button class="link-button danger" data-action="dismiss-password-request" data-id="${escapeHtml(request.id)}">Classer</button>
+      </div></td>
+    </tr>`).join('') : '<tr><td class="empty-row" colspan="5">Aucune demande de mot de passe en attente.</td></tr>';
+}
+
+function completePasswordRequest(request) {
+  const min = state.security?.passwordMinLength || 6;
+  openModal('Traiter la demande de mot de passe', `
+    <form id="forgotPasswordForm" class="modal-form">
+      <p>Agent : <strong>${escapeHtml(request.displayName)}</strong> (${escapeHtml(request.login)})</p>
+      <label class="field"><span>Mot de passe temporaire *</span><input id="temporaryPassword" type="password" minlength="${min}" maxlength="72" required autocomplete="new-password"><small>${min} caractères minimum. L’agent devra le modifier à sa prochaine connexion.</small></label>
+      <p id="modalError" class="form-error"></p>
+      <div class="form-footer"><button class="button secondary" type="button" data-close-modal>Annuler</button><button class="button primary" type="submit">Réinitialiser le mot de passe</button></div>
+    </form>`, () => {
+      document.querySelector('[data-close-modal]').addEventListener('click', closeModal);
+      $('forgotPasswordForm').addEventListener('submit', async event => {
+        event.preventDefault();
+        try {
+          await api(`/password-resets/${encodeURIComponent(request.id)}/complete`, { method: 'POST', body: JSON.stringify({ password: $('temporaryPassword').value }) });
+          closeModal(); await loadEverything(); toast('Demande traitée et mot de passe temporaire défini.');
+        } catch (error) { $('modalError').textContent = error.message; }
+      });
+      $('temporaryPassword').focus();
+    });
+}
+
+async function dismissPasswordRequest(request) {
+  if (!confirm(`Classer la demande de « ${request.displayName} » sans modifier son mot de passe ?`)) return;
+  await api(`/password-resets/${encodeURIComponent(request.id)}/dismiss`, { method: 'POST', body: '{}' });
+  await loadEverything(); toast('Demande classée.');
 }
 
 function userForm(user = null) {
@@ -401,6 +450,8 @@ async function handleAction(event) {
   const actions = {
     'edit-user': () => userForm(state.users.find(item => item.id === id)),
     'reset-password': () => resetPassword(state.users.find(item => item.id === id)),
+    'complete-password-request': () => completePasswordRequest(state.passwordResets.find(item => item.id === id)),
+    'dismiss-password-request': () => dismissPasswordRequest(state.passwordResets.find(item => item.id === id)),
     'delete-user': () => deleteUser(state.users.find(item => item.id === id)),
     'edit-app': () => appForm(state.apps.find(item => item.id === id)),
     'delete-app': () => deleteApp(state.apps.find(item => item.id === id)),
@@ -422,6 +473,7 @@ function bindEvents() {
   $('newUserBtn').addEventListener('click', () => userForm());
   $('userSearch').addEventListener('input', renderUsers);
   $('userRows').addEventListener('click', handleAction);
+  $('passwordResetRows').addEventListener('click', handleAction);
   $('accessUser').addEventListener('change', event => { state.accessUserId = event.target.value; renderAccess(); });
   $('accessForm').addEventListener('submit', saveAccess);
   $('newAppBtn').addEventListener('click', () => appForm());
