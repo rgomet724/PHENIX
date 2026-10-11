@@ -28,8 +28,13 @@
     const background = appearance.backgroundColor || '#07111f';
     style.textContent = `
       .top,body.lightMode .top{background:${primary}!important}
-      body.lightMode aside{background:${primary}!important}
-      .primary,.nav button.activeNav,body.lightMode .nav button.activeNav{border-color:${accent}!important}
+      body.lightMode aside{background:#fff!important;border-right:1px solid #dbe2ec!important;box-shadow:2px 0 14px rgba(15,23,42,.06)!important}
+      body.lightMode .nav button{background:#fff!important;color:#10243e!important;border:1px solid #d4dce7!important;box-shadow:0 4px 12px rgba(25,48,79,.08)!important}
+      body.lightMode .nav button:hover{background:#f3f7fc!important;color:${primary}!important;border-color:#a9c7e8!important}
+      body.lightMode .nav button.activeNav{background:${primary}!important;color:#fff!important;border-color:${primary}!important;box-shadow:0 5px 15px rgba(7,88,182,.22)!important}
+      body.lightMode .nav button.activeNav .navIcon{background:rgba(255,255,255,.18)!important;color:#fff!important;border-color:rgba(255,255,255,.45)!important}
+      body.lightMode .nav button.activeNav .navIcon svg,body.lightMode .nav button.activeNav .navIcon svg *{color:#fff!important;stroke:#fff!important}
+      .primary{border-color:${accent}!important}
       html,body{background-color:${background}}
       ${appearance.backgroundData ? `.login::before{background-image:linear-gradient(rgba(5,15,28,.62),rgba(5,15,28,.72)),url(${JSON.stringify(appearance.backgroundData)})!important;background-position:center!important;background-size:cover!important}` : ''}
     `;
