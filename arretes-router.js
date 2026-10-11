@@ -394,6 +394,50 @@ function mountArretes(app, auth) {
   const streets = new StreetsRepository(dataDir, embedded.streetsSeed);
   const router = express.Router();
 
+  function currentAppearance() {
+    if (typeof auth.getAppearance !== 'function') return null;
+    try { return auth.getAppearance() || null; }
+    catch { return null; }
+  }
+
+  function safeColor(value, fallback) {
+    return /^#[0-9a-f]{6}$/i.test(String(value || '')) ? String(value) : fallback;
+  }
+
+  function escapeHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
+  }
+
+  function imageFromDataUrl(value) {
+    const match = String(value || '').match(/^data:(image\/(?:png|jpeg|webp|gif|svg\+xml));base64,([a-z0-9+/=]+)$/i);
+    if (!match) return null;
+    try { return { type: match[1], buffer: Buffer.from(match[2], 'base64') }; }
+    catch { return null; }
+  }
+
+  function appearanceCss() {
+    const appearance = currentAppearance();
+    if (!appearance) return '';
+    const primary = safeColor(appearance.primaryColor, '#076bc1');
+    const accent = safeColor(appearance.accentColor, '#e3062c');
+    const page = safeColor(appearance.backgroundColor, '#f7f9fc');
+    const background = String(appearance.backgroundData || '');
+    return `\n/* Personnalisation Administration centrale */\n:root{--navy:${primary};--navy-deep:${primary};--blue:${primary};--red:${accent};--page:${page}}\nbody{background-color:${page};${background ? `background-image:url(${JSON.stringify(background)});background-size:cover;background-position:center;background-attachment:fixed;` : ''}}\n`;
+  }
+
+  function appearanceHtml() {
+    const appearance = currentAppearance();
+    if (!appearance) return embedded.indexHtml;
+    const title = escapeHtml(appearance.title || 'Arrêtés municipaux');
+    const subtitle = escapeHtml(appearance.subtitle || 'Police Municipale · Chalon-sur-Saône');
+    let html = embedded.indexHtml
+      .replace('<title>Arrêtés municipaux — ARGOS</title>', `<title>${title} — ARGOS</title>`)
+      .replace('<h1>Arrêtés municipaux</h1>', `<h1>${title}</h1>`)
+      .replace('<p>Police Municipale · Chalon-sur-Saône</p>', `<p>${subtitle}</p>`);
+    if (appearance.faviconData) html = html.replace('</head>', '    <link rel="icon" href="/arretes/assets/favicon">\n  </head>');
+    return html;
+  }
+
   const upload = multer({
     storage: multer.diskStorage({
       destination: (_req, _file, callback) => callback(null, store.uploadsDir),
@@ -443,12 +487,19 @@ function mountArretes(app, auth) {
     res.redirect(303, '/portail/');
   });
 
-  router.get('/assets/styles.css', (_req, res) => res.type('css').set('Cache-Control', 'public, max-age=3600').send(embedded.stylesCss));
+  router.get('/assets/styles.css', (_req, res) => res.type('css').set('Cache-Control', 'no-store').send(embedded.stylesCss + appearanceCss()));
   router.get('/assets/app.js', (_req, res) => res.type('js').set('Cache-Control', 'public, max-age=3600').send(embedded.appJs));
   router.get('/assets/logo-arretes.png', (_req, res) => {
-    res.type('png').set('Cache-Control', 'public, max-age=86400').send(Buffer.from(embedded.logoBase64, 'base64'));
+    const custom = imageFromDataUrl(currentAppearance()?.logoData);
+    if (custom) return res.type(custom.type).set('Cache-Control', 'no-store').send(custom.buffer);
+    res.type('png').set('Cache-Control', 'no-store').send(Buffer.from(embedded.logoBase64, 'base64'));
   });
-  router.get('/', requireAuth, (_req, res) => res.type('html').send(embedded.indexHtml));
+  router.get('/assets/favicon', (_req, res) => {
+    const custom = imageFromDataUrl(currentAppearance()?.faviconData);
+    if (!custom) return res.status(404).end();
+    res.type(custom.type).set('Cache-Control', 'no-store').send(custom.buffer);
+  });
+  router.get('/', requireAuth, (_req, res) => res.type('html').send(appearanceHtml()));
 
   router.use('/api', requireAuth, requireCsrf);
 

@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
+const { appAccess, appearanceFor, loadAdminConfig, policyForUser, portalAppAllowed } = require('./central-config');
 
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
 const MAX_LOGO_SIZE = 400 * 1024;
@@ -177,6 +178,7 @@ function mountPortal(app) {
     const payload = Buffer.from(JSON.stringify({
       sub: user.id, login: user.login, name: user.name, role: user.role,
       source: user.source || 'ARGOS', phenixRole: user.phenixRole || '',
+      app: user.app || 'argos',
       iat: now, exp: now + TOKEN_TTL_MS
     }), 'utf8').toString('base64url');
     const sig = crypto.createHmac('sha256', TOKEN_SECRET).update(payload).digest('base64url');
@@ -197,7 +199,8 @@ function mountPortal(app) {
         name: parsed.name || parsed.login,
         role: parsed.role === 'admin' ? 'admin' : 'user',
         source: parsed.source || 'ARGOS',
-        phenixRole: parsed.phenixRole || ''
+        phenixRole: parsed.phenixRole || '',
+        app: parsed.app || 'argos'
       };
     } catch {
       return null;
@@ -235,14 +238,14 @@ function mountPortal(app) {
       const stored = phenix.users.find(u => String(u.id) === rawId);
       if (!stored) return null;
 
-      const role = argosRoleFromPhenix(stored.role);
-      if (!role || phenixPasswordExpired(stored)) return null;
+      const access = appAccess(stored, user.app || 'argos');
+      if (!access.enabled || phenixPasswordExpired(stored)) return null;
 
       return {
         ...user,
         login: stored.login,
         name: stored.displayName || stored.login,
-        role,
+        role: access.role,
         phenixRole: normalizePhenixRole(stored.role)
       };
     }
@@ -290,7 +293,8 @@ function mountPortal(app) {
         name: parsed.name,
         role: parsed.role,
         source: parsed.source,
-        phenixRole: parsed.phenixRole
+        phenixRole: parsed.phenixRole,
+        app: 'arretes'
       }));
     } catch {
       return null;
@@ -383,8 +387,8 @@ function mountPortal(app) {
           || phenix.users.find(u => String(u.login || '').toLocaleLowerCase('fr-FR') === loginNorm);
 
         if (stored && stored.passwordHash && bcrypt.compareSync(password, stored.passwordHash)) {
-          const role = argosRoleFromPhenix(stored.role);
-          if (!role) {
+          const access = appAccess(stored, 'argos');
+          if (!access.enabled) {
             return res.status(403).json({
               error: 'ARGOS_ACCESS_DISABLED',
               message: 'Ce type de compte PHENIX n’est pas autorisé à accéder à ARGOS.'
@@ -401,9 +405,10 @@ function mountPortal(app) {
             id: `phenix:${stored.id}`,
             login: stored.login,
             name: stored.displayName || stored.login,
-            role,
+            role: access.role,
             source: 'PHENIX',
-            phenixRole: normalizePhenixRole(stored.role)
+            phenixRole: normalizePhenixRole(stored.role),
+            app: 'argos'
           };
         }
       }
@@ -423,9 +428,26 @@ function mountPortal(app) {
 
   router.get('/portal', requireLogin, (req, res) => {
     const data = loadData();
+    const config = loadAdminConfig();
     const categories = [...data.categories].sort((a, b) => Number(a.order || 0) - Number(b.order || 0) || String(a.name).localeCompare(String(b.name), 'fr'));
-    const apps = [...data.apps].sort((a, b) => Number(a.order || 0) - Number(b.order || 0) || String(a.name).localeCompare(String(b.name), 'fr'));
-    res.json({ categories, apps, user: req.portalUser });
+    let apps = [...data.apps];
+    if (req.portalUser.source === 'PHENIX') {
+      const phenix = loadPhenixUsers();
+      const rawId = String(req.portalUser.id || '').replace(/^phenix:/, '');
+      const stored = phenix.users.find(user => String(user.id) === rawId);
+      if (stored) {
+        apps = apps.filter(item => {
+          if (!portalAppAllowed(stored, item.id, config)) return false;
+          const url = String(item.url || '');
+          if ((item.id === 'app-phenix' || url === '/') && !appAccess(stored, 'phenix', config).enabled) return false;
+          if ((item.id === 'app-atlas' || url.startsWith('/portail/atlas')) && !appAccess(stored, 'atlas', config).enabled) return false;
+          if ((item.id === 'app-arretes' || url.startsWith('/arretes') || url.includes('arretes-municipaux')) && !appAccess(stored, 'arretes', config).enabled) return false;
+          return true;
+        });
+      }
+    }
+    apps.sort((a, b) => Number(a.order || 0) - Number(b.order || 0) || String(a.name).localeCompare(String(b.name), 'fr'));
+    res.json({ categories, apps, user: req.portalUser, appearance: appearanceFor('argos', config) });
   });
 
   router.get('/admin/users', requireAdmin, (req, res) => {
@@ -445,17 +467,18 @@ function mountPortal(app) {
 
     if (phenix.ok) {
       for (const u of phenix.users) {
-        const argosRole = argosRoleFromPhenix(u.role);
+        const access = appAccess(u, 'argos');
         users.push({
           id: `phenix:${u.id}`,
           login: u.login,
           name: u.displayName || u.login,
-          role: argosRole || 'user',
+          role: access.role || 'user',
           protected: true,
           source: 'PHENIX',
           phenixRole: normalizePhenixRole(u.role),
-          accessEnabled: Boolean(argosRole),
-          passwordChangeRequired: argosRole ? phenixPasswordExpired(u) : false
+          accessEnabled: Boolean(access.enabled),
+          passwordChangeRequired: access.enabled ? phenixPasswordExpired(u) : false,
+          access: policyForUser(u)
         });
       }
     }
@@ -511,6 +534,7 @@ function mountPortal(app) {
     const url = String(req.body?.url || '').trim();
     const categoryId = String(req.body?.categoryId || '').trim();
     const order = Number.isFinite(Number(req.body?.order)) ? Number(req.body.order) : 10;
+    const accentColor = /^#[0-9a-f]{6}$/i.test(String(req.body?.accentColor || '')) ? String(req.body.accentColor).toLowerCase() : '#0878df';
     if (!name || !url || !categoryId) return res.status(400).json({ error: 'MISSING_FIELDS', message: 'Nom, lien et catégorie requis.' });
     if (!validAppUrl(url)) return res.status(400).json({ error: 'INVALID_URL', message: 'Lien invalide.' });
     if (!data.categories.some(c => c.id === categoryId)) return res.status(400).json({ error: 'INVALID_CATEGORY', message: 'Catégorie invalide.' });
@@ -523,10 +547,10 @@ function mountPortal(app) {
     if (id) {
       const target = data.apps.find(a => a.id === id);
       if (!target) return res.status(404).json({ error: 'NOT_FOUND', message: 'Application introuvable.' });
-      Object.assign(target, { name, description, url, categoryId, order });
+      Object.assign(target, { name, description, url, categoryId, order, accentColor });
       if (logoData) target.logoData = logoData;
       if (req.body?.removeLogo === true) target.logoData = '';
-    } else data.apps.push({ id: crypto.randomUUID(), categoryId, name, description, url, logoData: logoData || '', order });
+    } else data.apps.push({ id: crypto.randomUUID(), categoryId, name, description, url, logoData: logoData || '', accentColor, order });
     saveData(data); res.json({ ok: true });
   });
 
@@ -548,7 +572,8 @@ function mountPortal(app) {
   mountArretes(app, {
     consumeSsoToken: consumeArretesSsoToken,
     issueSessionToken: signToken,
-    verifySessionToken: resolveTokenUser
+    verifySessionToken: resolveTokenUser,
+    getAppearance: () => appearanceFor('arretes')
   });
 
   // Regex stricte : /portail uniquement. Une route Express en chaîne accepte aussi

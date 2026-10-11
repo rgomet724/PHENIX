@@ -1,4 +1,4 @@
-const state = { user:null, canManage:false, missions:[], crews:[], natures:[], streets:[], nextMissionId:null, serverTime:Date.now(), banResults:[] };
+const state = { user:null, canManage:false, missions:[], crews:[], natures:[], streets:[], nextMissionId:null, serverTime:Date.now(), banResults:[], appearance:null };
 let banTimer=null;
 let banRequestSeq=0;
 const $ = id => document.getElementById(id);
@@ -109,9 +109,24 @@ function renderMissions(){
 }
 
 function renderAll(){
+  applyAppearance();
   $('currentUser').textContent=state.user?`${state.user.name} · ${state.user.role}`:'—';
   $('manageBtn').classList.toggle('hidden',!state.canManage);
   populateSelects();renderNext();renderMissions();
+}
+
+function applyAppearance(){
+  const a=state.appearance;if(!a)return;
+  document.documentElement.style.setProperty('--blue',a.primaryColor||'#0018a8');
+  document.documentElement.style.setProperty('--blue2',a.accentColor||'#0758b6');
+  document.documentElement.style.setProperty('--bg',a.backgroundColor||'#edf3f8');
+  const title=document.querySelector('.brand strong'),subtitle=document.querySelector('.brand span'),logo=document.querySelector('.brand-logo');
+  if(title)title.textContent=a.title||'ATLAS';
+  if(subtitle)subtitle.textContent=a.subtitle||'Gestion de l’attente des interventions';
+  if(logo&&a.logoData)logo.src=a.logoData;
+  if(a.faviconData){let icon=document.querySelector('link[rel="icon"]');if(!icon){icon=document.createElement('link');icon.rel='icon';document.head.appendChild(icon)}icon.href=a.faviconData;}
+  if(a.backgroundData){document.body.style.backgroundImage=`linear-gradient(rgba(237,243,248,.88),rgba(237,243,248,.94)),url(${JSON.stringify(a.backgroundData)})`;document.body.style.backgroundSize='cover';document.body.style.backgroundAttachment='fixed';}
+  else document.body.style.backgroundImage='';
 }
 
 async function refresh(silent=false){

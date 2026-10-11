@@ -8,14 +8,16 @@ const FileStore = require('session-file-store')(session);
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const { appAccess, passwordMinLength } = require('./central-config');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DB = "/var/data/data.json";
-const DB_BACKUP = "/var/data/data.backup.json";
-const DB_BACKUP_2 = "/var/data/data.backup2.json";
-const DB_BACKUP_3 = "/var/data/data.backup3.json";
-const DB_TMP = "/var/data/data.tmp.json";
+const DB = path.resolve(String(process.env.PHENIX_DATA_FILE || '/var/data/data.json'));
+const DB_DIR = path.dirname(DB);
+const DB_BACKUP = path.join(DB_DIR, 'data.backup.json');
+const DB_BACKUP_2 = path.join(DB_DIR, 'data.backup2.json');
+const DB_BACKUP_3 = path.join(DB_DIR, 'data.backup3.json');
+const DB_TMP = path.join(DB_DIR, 'data.tmp.json');
 const IS_PROD = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 // Session persistante longue durée : plus de déconnexion quotidienne.
 const SESSION_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 365; // 1 an
@@ -34,7 +36,7 @@ const EFFECTIVE_SESSION_SECRET = SESSION_SECRET || crypto.randomBytes(48).toStri
 function normalizeLogin(v){ return String(v||'').trim().slice(0,80); }
 function validPassword(v){
   const s=String(v||'');
-  return s.length >= 12 && s.length <= 72 && Buffer.byteLength(s,'utf8') <= 72;
+  return s.length >= passwordMinLength() && s.length <= 72 && Buffer.byteLength(s,'utf8') <= 72;
 }
 function newCsrfToken(){ return crypto.randomBytes(32).toString('hex'); }
 function safeEqual(a,b){
@@ -202,6 +204,7 @@ function needLogin(req,res,next){
   if(!req.session || !req.session.userId) return res.status(401).json({error:'Session expirée ou non connecté'});
   const u=current(req);
   if(!u) return res.status(401).json({error:'Compte introuvable'});
+  if(!appAccess(u,'phenix').enabled) return res.status(403).json({error:'Votre accès à PHENIX a été désactivé par un administrateur'});
   if(passwordExpired(u) && req.path!=='/api/password'){
     return res.status(428).json({error:'Votre mot de passe doit être changé avant de continuer.',code:'PASSWORD_CHANGE_REQUIRED'});
   }
@@ -471,7 +474,7 @@ app.post('/api/setup', authLimiter, (req,res)=>{
   if(d.users.length>0) return res.status(403).json({error:'Le premier compte admin existe déjà'});
   const {displayName,login,password}=req.body||{};
   if(!displayName || !login || !password) return res.status(400).json({error:'Nom, identifiant et mot de passe obligatoires'});
-  if(!validPassword(password)) return res.status(400).json({error:'Mot de passe requis : 12 à 72 caractères'});
+  if(!validPassword(password)) return res.status(400).json({error:`Mot de passe requis : ${passwordMinLength()} à 72 caractères`});
   const cleanLogin=normalizeLogin(login);
   const u={id:Date.now().toString(), displayName:String(displayName).trim().slice(0,120), login:cleanLogin, role:'admin', brigades:{jour:true,nuit:true}, passwordHash:bcrypt.hashSync(String(password),BCRYPT_ROUNDS), passwordChangedAt:new Date().toISOString(), mustChangePassword:false};
   d.users.push(u); audit(d,req,'Création du premier admin'); save(d);
@@ -510,7 +513,7 @@ app.post('/api/admin/password-resets/:id/complete', needLogin, needAdmin, (req,r
   const d=load(); const r=(d.passwordResetRequests||[]).find(x=>x.id===req.params.id&&x.status==='pending');
   if(!r) return res.status(404).json({error:'Demande introuvable'});
   const u=d.users.find(x=>x.id===r.userId); if(!u) return res.status(404).json({error:'Utilisateur introuvable'});
-  const pwd=String(req.body&&req.body.temporaryPassword||''); if(!validPassword(pwd)) return res.status(400).json({error:'Mot de passe temporaire requis : 12 à 72 caractères'});
+  const pwd=String(req.body&&req.body.temporaryPassword||''); if(!validPassword(pwd)) return res.status(400).json({error:`Mot de passe temporaire requis : ${passwordMinLength()} à 72 caractères`});
   u.passwordHash=bcrypt.hashSync(pwd,BCRYPT_ROUNDS); u.mustChangePassword=true; u.passwordChangedAt=null;
   r.status='completed'; r.completedAt=new Date().toISOString(); r.completedBy=current(req).id;
   audit(d,req,'Réinitialisation temporaire du mot de passe de '+u.login,'Sécurité / comptes'); save(d);
@@ -535,6 +538,7 @@ app.post('/api/login', authLimiter, (req,res)=>{
     // Petit délai uniforme pour rendre le brute-force moins rentable.
     return setTimeout(()=>res.status(401).json({error:'Identifiant ou mot de passe incorrect'}), 300);
   }
+  if(!appAccess(u,'phenix').enabled) return res.status(403).json({error:'Votre accès à PHENIX a été désactivé par un administrateur'});
   req.session.regenerate(err=>{
     if(err) return res.status(500).json({error:'Impossible de créer la session'});
     req.session.userId=u.id;
@@ -558,7 +562,7 @@ app.post('/api/logout', (req,res)=>{
 app.post('/api/password', needLogin, (req,res)=>{
   const d=load(); const u=d.users.find(x=>x.id===req.session.userId);
   if(!bcrypt.compareSync(String(req.body.oldPassword||''), u.passwordHash)) return res.status(400).json({error:'Ancien mot de passe incorrect'});
-  if(!validPassword(req.body.newPassword)) return res.status(400).json({error:'Nouveau mot de passe requis : 12 à 72 caractères'});
+  if(!validPassword(req.body.newPassword)) return res.status(400).json({error:`Nouveau mot de passe requis : ${passwordMinLength()} à 72 caractères`});
   if(String(req.body.oldPassword||'')===String(req.body.newPassword||'')) return res.status(400).json({error:'Le nouveau mot de passe doit être différent'});
   u.passwordHash=bcrypt.hashSync(String(req.body.newPassword),BCRYPT_ROUNDS);
   u.passwordChangedAt=new Date().toISOString();
@@ -1013,10 +1017,10 @@ app.post('/api/admin/users', needLogin, needAdmin, (req,res)=>{
     u.login=r.login;
     u.role=r.role;
     u.brigades=brigades;
-    if(r.password){ if(!validPassword(r.password)) return res.status(400).json({error:'Mot de passe requis : 12 à 72 caractères'}); u.passwordHash=bcrypt.hashSync(String(r.password),BCRYPT_ROUNDS); u.mustChangePassword=true; u.passwordChangedAt=null; }
+    if(r.password){ if(!validPassword(r.password)) return res.status(400).json({error:`Mot de passe requis : ${passwordMinLength()} à 72 caractères`}); u.passwordHash=bcrypt.hashSync(String(r.password),BCRYPT_ROUNDS); u.mustChangePassword=true; u.passwordChangedAt=null; }
   } else {
     if(!r.password) return res.status(400).json({error:'Mot de passe obligatoire pour créer'});
-    if(!validPassword(r.password)) return res.status(400).json({error:'Mot de passe requis : 12 à 72 caractères'});
+    if(!validPassword(r.password)) return res.status(400).json({error:`Mot de passe requis : ${passwordMinLength()} à 72 caractères`});
     if(d.users.some(u=>u.id!==r.id && String(u.login||'').toLowerCase()===r.login.toLowerCase())) return res.status(400).json({error:'Identifiant déjà utilisé'});
     d.users.push({id:Date.now().toString(), displayName:r.displayName, login:r.login, role:r.role, brigades, passwordHash:bcrypt.hashSync(String(r.password),BCRYPT_ROUNDS), mustChangePassword:r.role!=='dashboard', passwordChangedAt:r.role==='dashboard'?new Date().toISOString():null});
   }
@@ -1051,6 +1055,16 @@ app.post('/api/admin/lists', needLogin, needAdmin, (req,res)=>{
 // ATLAS — gestion de l'attente des interventions, reliée à PHENIX et ARGOS
 const { mountInterventions } = require('./atlas-router');
 mountInterventions(app,{
+  loadPhenix:load,
+  savePhenix:save,
+  sessionSecret:EFFECTIVE_SESSION_SECRET,
+  isProd:IS_PROD
+});
+
+// Centre d’administration commun à PHENIX, ARGOS, ATLAS et aux Arrêtés.
+// Il doit être monté avant le portail, dont la route de secours accepte /portail/*.
+const { mountCentralAdmin } = require('./admin-router');
+mountCentralAdmin(app,{
   loadPhenix:load,
   savePhenix:save,
   sessionSecret:EFFECTIVE_SESSION_SECRET,

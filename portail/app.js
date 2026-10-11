@@ -5,7 +5,8 @@ const state = {
   user: null,
   categories: [],
   apps: [],
-  users: []
+  users: [],
+  appearance: null
 };
 
 const el = id => document.getElementById(id);
@@ -67,15 +68,17 @@ function showPortal() {
   el('userDisplayName').textContent = state.user.name;
   el('welcomeName').textContent = state.user.name;
   el('userRoleBadge').textContent = state.user.role === 'admin' ? 'Administrateur' : 'Utilisateur';
-  el('adminOpenBtn').classList.toggle('hidden', state.user.role !== 'admin');
+  const centralAdmin = state.user.source === 'Render' || state.user.phenixRole === 'admin';
+  el('adminOpenBtn').classList.toggle('hidden', !centralAdmin);
 }
 
 function appCard(app) {
   const link = document.createElement('a');
   link.className = 'application-card';
   link.href = app.url;
-  link.target = '_blank';
-  link.rel = 'noopener noreferrer';
+  // Navigation dans la même Web App : évite d’ouvrir une nouvelle fenêtre PWA à chaque tuile.
+  link.target = '_self';
+  if (app.accentColor) link.style.borderLeft = `5px solid ${app.accentColor}`;
 
   const icon = document.createElement('div');
   icon.className = 'app-icon';
@@ -143,7 +146,32 @@ async function loadPortal() {
   state.user = data.user;
   state.categories = data.categories || [];
   state.apps = data.apps || [];
+  state.appearance = data.appearance || null;
+  applyAppearance();
   renderPortal();
+}
+
+function applyAppearance() {
+  const appearance = state.appearance;
+  if (!appearance) return;
+  document.documentElement.style.setProperty('--navy', appearance.primaryColor || '#071827');
+  document.documentElement.style.setProperty('--blue', appearance.accentColor || '#1683c5');
+  document.documentElement.style.setProperty('--blue-deep', appearance.primaryColor || '#0d6597');
+  document.documentElement.style.setProperty('--bg', appearance.backgroundColor || '#edf1f3');
+  document.querySelectorAll('.login-brand h1,.portal-identity h1').forEach(node => { node.textContent = appearance.title || 'Portail ARGOS'; });
+  document.querySelectorAll('.brand-subtitle,.portal-identity>div>p:last-child').forEach(node => { node.textContent = appearance.subtitle || 'Police Municipale · Chalon-sur-Saône'; });
+  if (appearance.logoData) document.querySelectorAll('.login-brand img,.portal-identity img').forEach(image => { image.src = appearance.logoData; });
+  if (appearance.faviconData) {
+    let icon = document.querySelector('link[rel="icon"]');
+    if (!icon) { icon = document.createElement('link'); icon.rel = 'icon'; document.head.appendChild(icon); }
+    icon.href = appearance.faviconData;
+  }
+  if (appearance.backgroundData) {
+    document.body.style.backgroundImage = `linear-gradient(rgba(248,250,251,.86),rgba(237,241,243,.91)),url(${JSON.stringify(appearance.backgroundData)})`;
+    document.body.style.backgroundSize = 'cover';
+    document.body.style.backgroundPosition = 'center';
+    document.body.style.backgroundAttachment = 'fixed';
+  } else document.body.style.backgroundImage = '';
 }
 
 async function initialize() {
@@ -196,10 +224,7 @@ async function logout() {
 }
 
 function openAdmin() {
-  el('adminModal').classList.remove('hidden');
-  document.body.style.overflow = 'hidden';
-  switchAdminTab('apps');
-  loadAdmin().catch(err => alert(err.message));
+  window.location.href = '/portail/administration/';
 }
 
 function closeAdmin() {
@@ -447,9 +472,8 @@ async function createUser(event) {
 async function resetUserPassword(id) {
   const user = state.users.find(item => item.id === id);
   if (!user) return;
-  const password = prompt(`Nouveau mot de passe pour ${user.login} (12 caractères minimum) :`);
+  const password = prompt(`Nouveau mot de passe pour ${user.login} :`);
   if (password === null) return;
-  if (password.length < 12) return alert('Le mot de passe doit contenir au moins 12 caractères.');
   await api(`/portail/api/admin/users/${encodeURIComponent(id)}/password`, {
     method: 'POST',
     body: JSON.stringify({ password })

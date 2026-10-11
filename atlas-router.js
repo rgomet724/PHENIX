@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
 const { Readable } = require('stream');
+const { appAccess, appearanceFor } = require('./central-config');
 
 const VERSION = '1.3.0';
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
@@ -349,9 +350,9 @@ function mountInterventions(app, deps = {}) {
     const stored = (phenix.users || []).find(u => String(u.id) === byId)
       || (phenix.users || []).find(u => String(u.login || '').toLocaleLowerCase('fr-FR') === String(token.login || '').toLocaleLowerCase('fr-FR'));
     if (!stored) return null;
-    const role = argosRoleFromPhenix(stored.role);
-    if (!role) return null;
-    return { id: stored.id, login: stored.login, name: stored.displayName || stored.login, role, source: 'PHENIX' };
+    const access = appAccess(stored, 'atlas');
+    if (!access.enabled) return null;
+    return { id: stored.id, login: stored.login, name: stored.displayName || stored.login, role: access.role, source: 'PHENIX' };
   }
 
   function requireUser(req, res, next) {
@@ -500,6 +501,7 @@ function mountInterventions(app, deps = {}) {
     const nextMission = missions.find(m => m.status === 'WAITING' && !m.crewId) || null;
     res.json({
       user: req.regulationUser,
+      appearance: appearanceFor('atlas'),
       canManage: ['admin', 'superviseur'].includes(req.regulationUser.role),
       canOperate: req.regulationUser.role !== 'consultation',
       missions,
