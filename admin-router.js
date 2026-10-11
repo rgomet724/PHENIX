@@ -275,6 +275,7 @@ function mountCentralAdmin(app, deps = {}) {
     res.json({
       users: (phenix.users || []).length,
       administrators: (phenix.users || []).filter(user => normalizedRole(user.role) === 'admin').length,
+      passwordResetPending: (phenix.passwordResetRequests || []).filter(request => request.status === 'pending').length,
       enabledArgos: (phenix.users || []).filter(user => policyForUser(user, config).argos.enabled).length,
       applications: portal.apps.length,
       auditEntries: (phenix.logs || []).length + config.audit.length + operationalAuditEntries().length,
@@ -287,6 +288,61 @@ function mountCentralAdmin(app, deps = {}) {
     const phenix = loadPhenix();
     const config = loadAdminConfig();
     res.json({ users: (phenix.users || []).map(user => publicUser(user, config)) });
+  });
+
+  router.get('/password-resets', (req, res) => {
+    const phenix = loadPhenix();
+    const requests = (phenix.passwordResetRequests || [])
+      .filter(request => request && request.status === 'pending')
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+      .slice(0, 200)
+      .map(request => ({
+        id: String(request.id || ''),
+        userId: String(request.userId || ''),
+        login: String(request.login || ''),
+        displayName: String(request.displayName || request.login || ''),
+        createdAt: request.createdAt || null,
+        requestIp: String(request.requestIp || ''),
+        deviceName: String(request.deviceName || ''),
+        deviceId: String(request.deviceId || '')
+      }));
+    res.json({ requests });
+  });
+
+  router.post('/password-resets/:id/complete', (req, res) => {
+    const phenix = loadPhenix();
+    const config = loadAdminConfig(true);
+    const request = (phenix.passwordResetRequests || []).find(item => String(item.id) === String(req.params.id) && item.status === 'pending');
+    if (!request) return res.status(404).json({ error: 'Demande introuvable ou déjà traitée.' });
+    const user = (phenix.users || []).find(item => String(item.id) === String(request.userId));
+    if (!user) return res.status(404).json({ error: 'Le compte lié à cette demande est introuvable.' });
+    const password = String(req.body && req.body.password || '');
+    const min = config.security.passwordMinLength;
+    if (password.length < min || Buffer.byteLength(password, 'utf8') > 72) {
+      return res.status(400).json({ error: `Le mot de passe doit contenir ${min} à 72 caractères.` });
+    }
+    user.passwordHash = bcrypt.hashSync(password, BCRYPT_ROUNDS);
+    user.mustChangePassword = true;
+    user.passwordChangedAt = null;
+    request.status = 'completed';
+    request.completedAt = new Date().toISOString();
+    request.completedBy = String(req.centralAdmin.id || '');
+    savePhenix(phenix);
+    auditAndSave(config, req, 'Traitement mot de passe oublié', `${user.displayName} (${user.login}) · mot de passe temporaire défini`);
+    res.json({ ok: true });
+  });
+
+  router.post('/password-resets/:id/dismiss', (req, res) => {
+    const phenix = loadPhenix();
+    const config = loadAdminConfig(true);
+    const request = (phenix.passwordResetRequests || []).find(item => String(item.id) === String(req.params.id) && item.status === 'pending');
+    if (!request) return res.status(404).json({ error: 'Demande introuvable ou déjà traitée.' });
+    request.status = 'dismissed';
+    request.completedAt = new Date().toISOString();
+    request.completedBy = String(req.centralAdmin.id || '');
+    savePhenix(phenix);
+    auditAndSave(config, req, 'Classement mot de passe oublié', `${request.displayName || request.login} (${request.login})`);
+    res.json({ ok: true });
   });
 
   router.post('/users', (req, res) => {
