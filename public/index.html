@@ -3407,6 +3407,15 @@ body.lightMode .wallPanel,body.lightMode .wallStat{background:#fff!important}bod
 
 <script>
 let S={user:null,agents:[],callsigns:[],interventions:[],crews:[],logs:[],users:[],note:'',consignes:[],links:[],events:[],flash:{enabled:false,title:'INFO',text:''}}; let activeSection='dash'; let calendarView='month'; let calendarDate=new Date(); let noteDirty=false; let notificationsEnabled=localStorage.getItem('notificationsEnabled')!=='false'; let previousCrews=[];
+let desktopNotificationsEnabled=localStorage.getItem('phenixDesktopNotifications')!=='false';
+let phenixNotificationSettings={events:{}};
+const phenixNotificationDedup=new Map();
+const phenixCrewNotificationStates=new Map();
+let phenixContentNotificationsReady=false;
+let phenixConsigneVersions=new Map();
+let phenixFlashVersion='';
+let phenixCrewEventSequence=0;
+let phenixNotificationUserId='';
 const phenixSounds={
   crew:new Audio('/api/sounds/crew?v=boot'),
   urgent:new Audio('/api/sounds/urgent?v=boot'),
@@ -3601,6 +3610,100 @@ async function playPhenixSound(kind){
 }
 function updateAudioPermission(ok){const el=$('audioPermissionStatus');if(!el)return;if(ok===true){el.textContent='État audio : autorisé sur ce poste';el.className='audioPermissionStatus audioOk'}else if(ok===false){el.textContent='État audio : BLOQUÉ par le navigateur';el.className='audioPermissionStatus audioBlocked'}else{el.textContent='État audio : non testé';el.className='audioPermissionStatus'}}
 
+function applyPhenixNotificationSettings(settings){
+  if(settings&&settings.events)phenixNotificationSettings=settings;
+}
+function preparePhenixNotificationSession(){
+  const id=String(S.user?.id||S.user?.login||'');
+  if(phenixNotificationUserId===id)return;
+  phenixNotificationUserId=id;previousCrews=[];phenixCrewNotificationStates.clear();
+  phenixContentNotificationsReady=false;phenixConsigneVersions.clear();phenixNotificationDedup.clear();
+}
+function phenixNotificationRule(id){return phenixNotificationSettings.events[id]||{soundEnabled:true,desktopEnabled:true}}
+function ensureDesktopNotificationSetting(){
+  const list=document.querySelector('#settings .settingsList');
+  if(!list||$('settingsDesktopBtn'))return;
+  const item=document.createElement('div');item.className='settingsItem';
+  const description=document.createElement('div');
+  description.innerHTML='<b>Notifications de bureau</b><div class="mut">Afficher les changements DISPONIBLE / INDISPONIBLE et leur motif, les consignes et les textes flash. Gardez PHENIX ouvert, même en arrière-plan.</div><div id="settingsDesktopPermission" class="mut"></div>';
+  const button=document.createElement('button');button.id='settingsDesktopBtn';button.className='settingsSwitch';button.type='button';
+  button.innerHTML='<span class="settingsSwitchKnob"></span><span id="settingsDesktopText">Autoriser</span>';
+  button.addEventListener('click',toggleDesktopNotifications);
+  item.append(description,button);list.insertBefore(item,list.children[1]||null);
+}
+async function showPhenixDesktopNotification(title,body,tag){
+  if(!desktopNotificationsEnabled||!('Notification' in window)||Notification.permission!=='granted')return false;
+  const options={body:String(body||'').slice(0,500),tag,icon:'/icon-192.png',silent:true};
+  try{
+    const registration='serviceWorker' in navigator?await navigator.serviceWorker.getRegistration():null;
+    if(registration&&registration.active&&typeof registration.showNotification==='function'){
+      await registration.showNotification(title,options);
+    }else{
+      const notification=new Notification(title,options);
+      notification.onclick=()=>{window.focus();notification.close()};
+    }
+    return true;
+  }catch(e){console.warn('[PHENIX] Notification de bureau indisponible',e);return false}
+}
+async function toggleDesktopNotifications(){
+  if(!('Notification' in window)){alert('Ce navigateur ne propose pas les notifications de bureau.');return}
+  if(Notification.permission==='denied'){
+    alert('Les notifications sont bloquées dans les autorisations du site. Autorisez-les dans les paramètres du navigateur.');return;
+  }
+  if(Notification.permission!=='granted'){
+    const permission=await Notification.requestPermission();
+    desktopNotificationsEnabled=permission==='granted';
+  }else desktopNotificationsEnabled=!desktopNotificationsEnabled;
+  localStorage.setItem('phenixDesktopNotifications',String(desktopNotificationsEnabled));
+  updateSettingsUI();
+  if(desktopNotificationsEnabled)await showPhenixDesktopNotification('PHENIX — Notifications activées','Les alertes autorisées par l’administrateur seront affichées sur ce poste.','phenix-notifications-test');
+}
+async function announcePhenixEvent(eventId,soundKind,title,body,tag,dedupKey=tag){
+  const now=Date.now(),last=phenixNotificationDedup.get(dedupKey)||0;
+  if(now-last<10000)return;
+  phenixNotificationDedup.set(dedupKey,now);
+  for(const [key,time] of phenixNotificationDedup)if(now-time>60000)phenixNotificationDedup.delete(key);
+  const rule=phenixNotificationRule(eventId);
+  const tasks=[];
+  if(rule.soundEnabled!==false)tasks.push(playPhenixSound(soundKind));
+  if(rule.desktopEnabled!==false)tasks.push(showPhenixDesktopNotification(title,body,tag));
+  await Promise.allSettled(tasks);
+}
+function crewNotificationSignature(crew){return `${crew.status||''}|${crew.intervention||''}`}
+async function announceCrewStatus(crew){
+  const id=String(crew.id||crew.crewId||''),signature=crewNotificationSignature(crew);
+  if(phenixCrewNotificationStates.get(id)===signature)return;
+  phenixCrewNotificationStates.set(id,signature);
+  const unavailable=String(crew.status).toUpperCase()==='INDISPO';
+  const callsign=crew.callsign||S.crews.find(item=>String(item.id)===id)?.callsign||'Équipage';
+  const body=`${callsign} — ${unavailable?'INDISPONIBLE':'DISPONIBLE'}${unavailable&&crew.intervention?' · Motif : '+crew.intervention:''}`;
+  await announcePhenixEvent('phenix-crew-status','crew','PHENIX — Statut équipage',body,`phenix-crew-${id}`,`crew-${id}-${++phenixCrewEventSequence}`);
+}
+function consigneNotificationVersion(consigne){return String(consigne.updatedAt||consigne.createdAt||'')+'|'+String(consigne.title||'')+'|'+String(consigne.body||consigne.text||'')}
+async function announceConsigne(consigne){
+  const id=String(consigne.id||''),version=consigneNotificationVersion(consigne);
+  if(phenixConsigneVersions.get(id)===version)return;
+  phenixConsigneVersions.set(id,version);
+  const body=[consigne.title,consigne.body||consigne.text].filter(Boolean).join(' — ');
+  await announcePhenixEvent('phenix-consigne','urgent','PHENIX — Nouvelle consigne',body,`phenix-consigne-${id}`,`consigne-${id}-${version}`);
+}
+async function announceFlash(flash){
+  const version=[flash.enabled!==false,flash.title||'',flash.text||''].join('|');
+  if(phenixFlashVersion===version)return;
+  phenixFlashVersion=version;
+  if(flash.enabled===false||!flash.text)return;
+  await announcePhenixEvent('phenix-flash','system','PHENIX — Texte flash',[flash.title,flash.text].filter(Boolean).join(' — '),'phenix-flash',`flash-${version}`);
+}
+function checkPhenixContentChanges(next){
+  if(!phenixContentNotificationsReady){
+    phenixConsigneVersions=new Map((next.consignes||[]).map(item=>[String(item.id),consigneNotificationVersion(item)]));
+    const flash=next.flash||{};phenixFlashVersion=[flash.enabled!==false,flash.title||'',flash.text||''].join('|');
+    phenixContentNotificationsReady=true;return;
+  }
+  for(const consigne of next.consignes||[])announceConsigne(consigne).catch(()=>{});
+  announceFlash(next.flash||{enabled:false}).catch(()=>{});
+}
+
 
 let dashZoom=Number(localStorage.getItem('dashZoom')||100);
 let dashCompact=localStorage.getItem('dashCompact')==='true';
@@ -3644,9 +3747,16 @@ function autoCompactDashboard(){
 
 function tick(){const now=new Date();$('clock')&&($('clock').textContent=now.toLocaleString('fr-FR'));if($('wallClock'))$('wallClock').textContent=now.toLocaleString('fr-FR',{weekday:'long',day:'2-digit',month:'long',hour:'2-digit',minute:'2-digit',second:'2-digit'})}function err(e){$('msg').textContent=e.message||e;setTimeout(()=>{$('msg').textContent=''},7000)}
 function updateSettingsUI(){
+  ensureDesktopNotificationSetting();
   const soundBtn=$('settingsSoundBtn'), soundText=$('settingsSoundText');
   if(soundBtn){soundBtn.classList.toggle('off',!notificationsEnabled);soundBtn.setAttribute('aria-pressed',String(notificationsEnabled))}
   if(soundText)soundText.textContent=notificationsEnabled?'Activées':'Désactivées';
+  const permission='Notification' in window?Notification.permission:'unavailable';
+  const desktopOn=desktopNotificationsEnabled&&permission==='granted';
+  const desktopBtn=$('settingsDesktopBtn');
+  if(desktopBtn){desktopBtn.classList.toggle('off',!desktopOn);desktopBtn.setAttribute('aria-pressed',String(desktopOn))}
+  if($('settingsDesktopText'))$('settingsDesktopText').textContent=permission==='unavailable'?'Indisponibles':permission==='denied'?'Bloquées':permission==='default'?'Autoriser':desktopOn?'Activées':'Désactivées';
+  if($('settingsDesktopPermission'))$('settingsDesktopPermission').textContent=permission==='granted'?'Autorisation du navigateur accordée sur ce poste.':permission==='denied'?'Autorisez les notifications dans les paramètres du navigateur.':'Autorisation nécessaire sur chaque poste.';
   const light=document.body.classList.contains('lightMode');
   $('settingsThemeDark')?.classList.toggle('active',!light);
   $('settingsThemeLight')?.classList.toggle('active',light);
@@ -3670,7 +3780,15 @@ async function toggleNotifications(){
     await unlockPhenixAudio();
   }
 }
-function checkCrewChanges(newCrews){if(!Array.isArray(newCrews))return;if(previousCrews.length===0){previousCrews=JSON.parse(JSON.stringify(newCrews));return}let changed=false;for(const crew of newCrews){const old=previousCrews.find(c=>c.id===crew.id);if(old&&old.status!==crew.status){changed=true;break}}previousCrews=JSON.parse(JSON.stringify(newCrews));if(changed)playPhenixSound('crew')}
+function checkCrewChanges(newCrews){
+  if(!Array.isArray(newCrews))return;
+  for(const crew of newCrews){
+    const old=previousCrews.find(item=>item.id===crew.id);
+    if(old&&old.status!==crew.status)announceCrewStatus(crew).catch(()=>{});
+    else if(!phenixCrewNotificationStates.has(String(crew.id)))phenixCrewNotificationStates.set(String(crew.id),crewNotificationSignature(crew));
+  }
+  previousCrews=JSON.parse(JSON.stringify(newCrews));
+}
 
 
 async function requestForgotPassword(){const login=prompt('Indiquez votre identifiant PHENIX :',$('loginId')?.value||'');if(login===null||!String(login).trim())return;try{const r=await api('/api/password-reset/request',{method:'POST',body:JSON.stringify({login:String(login).trim()})});alert(r.message||'Demande transmise.') }catch(e){alert(e.message)}}
@@ -3733,7 +3851,7 @@ async function manualRefresh(){
 }
 
 async function refresh(){return refreshSafe(true)}
-async function refreshSafe(force=false){if(!force && shouldPauseRefresh()) return; let next;try{next=await api('/api/data')}catch(e){if(e.code==='PASSWORD_CHANGE_REQUIRED'){showForcedPasswordChange();return}throw e}S=next;$('agentName').textContent=S.user.displayName;const dash=S.user.role==='dashboard';
+async function refreshSafe(force=false){if(!force && shouldPauseRefresh()) return; let next;try{next=await api('/api/data')}catch(e){if(e.code==='PASSWORD_CHANGE_REQUIRED'){showForcedPasswordChange();return}throw e}S=next;preparePhenixNotificationSession();applyPhenixNotificationSettings(S.notificationSettings);checkPhenixContentChanges(S);$('agentName').textContent=S.user.displayName;const dash=S.user.role==='dashboard';
 document.body.classList.toggle('dashboardMode',dash);
 if($('dashZoomTools'))$('dashZoomTools').classList.toggle('hidden',!dash);applyRoleNavigation();$('createCrewBtn').classList.toggle('hidden',dash);if((dash||phenixRole()==='operateur')&&!['dash','notes','consignes','events','settings'].includes(activeSection))activeSection='dash';syncActiveNav();checkCrewChanges(S.crews);renderAll(force);updateNotifButton();startRealtime();syncPhenixSounds(false);updateAdminResetBadge();}
 function shouldPauseRefresh(){const el=document.activeElement; if(el && ['INPUT','TEXTAREA','SELECT'].includes(el.tagName)) return true; return ['personnel','admin','notes'].includes(activeSection)}
@@ -4705,6 +4823,7 @@ async function pollRealtimeSnapshot(){
     const r=await fetch('/api/realtime/snapshot?t='+Date.now(),{credentials:'same-origin',cache:'no-store'});
     if(!r.ok)return;
     const snap=await r.json();
+    applyPhenixNotificationSettings(snap.notifications);
 
     // Configuration sonore : rattrape immédiatement un événement SSE manqué.
     if(Array.isArray(snap.sounds)){
@@ -4718,19 +4837,18 @@ async function pollRealtimeSnapshot(){
 
     // Etats équipages : fallback très léger, délai maximum ~1 seconde.
     if(Array.isArray(snap.crews) && Array.isArray(S.crews)){
-      let changed=null;
+      const changed=[];
       for(const rc of snap.crews){
         const local=S.crews.find(c=>c.id===rc.id);
         if(local && local.status!==rc.status){
-          changed=rc;
+          changed.push(rc);
           local.status=rc.status;
-          local.intervention=rc.intervention||local.intervention||'';
-          break;
+          local.intervention=rc.intervention||'';
         }
       }
-      if(changed){
+      if(changed.length){
         previousCrews=JSON.parse(JSON.stringify(S.crews||[]));
-        await playPhenixSound('crew');
+        await Promise.allSettled(changed.map(announceCrewStatus));
         refreshSafe(true).catch(()=>{});
       }
     }
@@ -4764,12 +4882,12 @@ function startRealtime(){
     es.onmessage=async ev=>{
       let data={};try{data=JSON.parse(ev.data||'{}')}catch(e){return}
       if(data.type==='crew-status'){
-        await playPhenixSound('crew');
+        await announceCrewStatus(data);
         try{const local=S.crews&&S.crews.find(c=>c.id===data.crewId);if(local)local.status=data.status;previousCrews=JSON.parse(JSON.stringify(S.crews||[]));await refreshSafe(true)}catch(e){}
         return;
       }
-      if(data.type==='urgent-consigne'){await playPhenixSound('urgent');try{await refreshSafe(true)}catch(e){}return}
-      if(data.type==='system-alert'){await playPhenixSound('system');try{await refreshSafe(true)}catch(e){}return}
+      if(data.type==='consigne'||data.type==='urgent-consigne'){await announceConsigne(data);try{await refreshSafe(true)}catch(e){}return}
+      if(data.type==='system-alert'){await announceFlash(data);try{await refreshSafe(true)}catch(e){}return}
       if(data.type==='sound-config'&&phenixSounds[data.kind]){
         const v=String(data.updatedAt||Date.now());
         setPhenixSoundVersion(data.kind,v,true);
