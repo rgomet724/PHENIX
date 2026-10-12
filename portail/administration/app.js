@@ -2,7 +2,7 @@
 
 const API = '/portail/administration/api';
 const state = {
-  csrfToken: '', user: null, dashboard: null, users: [], passwordResets: [], applications: [], categories: [], apps: [], appearance: {}, security: null,
+  csrfToken: '', user: null, dashboard: null, users: [], passwordResets: [], notificationEvents: [], applications: [], categories: [], apps: [], appearance: {}, security: null,
   view: 'dashboard', accessUserId: '', appearanceApp: 'phenix'
 };
 
@@ -84,12 +84,13 @@ async function initialize() {
 }
 
 async function loadEverything() {
-  const [dashboard, users, passwordResets, catalog, appearance, security] = await Promise.all([
-    api('/dashboard'), api('/users'), api('/password-resets'), api('/catalog'), api('/appearance'), api('/security')
+  const [dashboard, users, passwordResets, notifications, catalog, appearance, security] = await Promise.all([
+    api('/dashboard'), api('/users'), api('/password-resets'), api('/notifications'), api('/catalog'), api('/appearance'), api('/security')
   ]);
   state.dashboard = dashboard;
   state.users = users.users || [];
   state.passwordResets = passwordResets.requests || [];
+  state.notificationEvents = notifications.events || [];
   state.applications = catalog.applications || [];
   state.categories = catalog.categories || [];
   state.apps = catalog.apps || [];
@@ -100,7 +101,7 @@ async function loadEverything() {
 }
 
 function renderAll() {
-  renderDashboard(); renderUsers(); renderPasswordResets(); renderAccess(); renderApps(); renderAppearance(); renderSecurity();
+  renderDashboard(); renderUsers(); renderPasswordResets(); renderNotifications(); renderAccess(); renderApps(); renderAppearance(); renderSecurity();
 }
 
 function renderDashboard() {
@@ -181,6 +182,111 @@ async function dismissPasswordRequest(request) {
   if (!confirm(`Classer la demande de « ${request.displayName} » sans modifier son mot de passe ?`)) return;
   await api(`/password-resets/${encodeURIComponent(request.id)}/dismiss`, { method: 'POST', body: '{}' });
   await loadEverything(); toast('Demande classée.');
+}
+
+function notificationIcon(event) {
+  if (event.id === 'phenix-crew-status') return '🚓';
+  if (event.id === 'phenix-consigne') return '📋';
+  if (event.id === 'phenix-flash') return '⚡';
+  return '📡';
+}
+
+function renderNotifications() {
+  $('notificationCards').innerHTML = state.notificationEvents.map(event => `
+    <article class="notification-card" style="--event-color:${event.appId === 'atlas' ? '#0018a8' : '#0878df'}">
+      <div class="notification-card-head">
+        <div class="notification-card-title"><span class="notification-card-icon">${notificationIcon(event)}</span><div><span class="notification-app">${escapeHtml(event.appId.toUpperCase())}</span><h2>${escapeHtml(event.label)}</h2><p>${escapeHtml(event.description)}</p></div></div>
+      </div>
+      <div class="notification-options">
+        <label class="notification-option"><span><b>Son</b><small>Jouer l’alerte audio</small></span><input type="checkbox" data-notification-sound="${escapeHtml(event.id)}" ${event.soundEnabled ? 'checked' : ''}></label>
+        <label class="notification-option"><span><b>Bureau</b><small>Afficher une notification Windows</small></span><input type="checkbox" data-notification-desktop="${escapeHtml(event.id)}" ${event.desktopEnabled ? 'checked' : ''}></label>
+      </div>
+      <div class="notification-sound">
+        <label class="field"><span>Son personnalisé · MP3 ou WAV · 2 Mo maximum</span><input type="file" accept=".mp3,.wav,.wave,audio/mpeg,audio/wav" data-notification-file="${escapeHtml(event.id)}"></label>
+        <div class="notification-current">${event.custom ? `Son actuel : ${escapeHtml(event.filename || 'personnalisé')}` : 'Son par défaut intégré'}</div>
+        <div class="notification-actions">
+          <button class="button small primary" data-action="upload-notification-sound" data-id="${escapeHtml(event.id)}">Enregistrer le son</button>
+          <button class="button small secondary" data-action="test-notification-sound" data-id="${escapeHtml(event.id)}">Tester</button>
+          <button class="button small danger" data-action="reset-notification-sound" data-id="${escapeHtml(event.id)}">Son par défaut</button>
+        </div>
+      </div>
+    </article>`).join('');
+}
+
+async function saveNotificationSettings() {
+  const events = {};
+  for (const event of state.notificationEvents) {
+    const sound = [...document.querySelectorAll('[data-notification-sound]')].find(input => input.dataset.notificationSound === event.id);
+    const desktop = [...document.querySelectorAll('[data-notification-desktop]')].find(input => input.dataset.notificationDesktop === event.id);
+    events[event.id] = { soundEnabled: Boolean(sound?.checked), desktopEnabled: Boolean(desktop?.checked) };
+  }
+  try {
+    await api('/notifications', { method: 'PUT', body: JSON.stringify({ events }) });
+    await loadEverything(); toast('Réglages des notifications enregistrés.');
+  } catch (error) { toast(error.message, true); }
+}
+
+function notificationDraftOptions() {
+  const options = new Map();
+  for (const event of state.notificationEvents) {
+    const sound = [...document.querySelectorAll('[data-notification-sound]')].find(input => input.dataset.notificationSound === event.id);
+    const desktop = [...document.querySelectorAll('[data-notification-desktop]')].find(input => input.dataset.notificationDesktop === event.id);
+    options.set(event.id, { soundEnabled: Boolean(sound?.checked), desktopEnabled: Boolean(desktop?.checked) });
+  }
+  return options;
+}
+
+async function reloadNotificationSounds(draft) {
+  const result = await api('/notifications');
+  state.notificationEvents = (result.events || []).map(event => ({ ...event, ...draft.get(event.id) }));
+  renderNotifications();
+}
+
+function notificationEventById(id) { return state.notificationEvents.find(event => event.id === id); }
+
+async function uploadNotificationSound(event) {
+  if (!event) return;
+  const input = [...document.querySelectorAll('[data-notification-file]')].find(item => item.dataset.notificationFile === event.id);
+  const file = input?.files?.[0];
+  if (!file) return toast('Choisissez d’abord un fichier MP3 ou WAV.', true);
+  if (file.size > 2 * 1024 * 1024) return toast('Le son doit faire moins de 2 Mo.', true);
+  const extension = (file.name.split('.').pop() || '').toLowerCase();
+  if (!['mp3', 'wav', 'wave'].includes(extension)) return toast('Format accepté : MP3 ou WAV.', true);
+  try {
+    const draft = notificationDraftOptions();
+    const data = await readDataUrl(file);
+    await api(`/notifications/${encodeURIComponent(event.id)}/sound`, { method: 'POST', body: JSON.stringify({ filename: file.name, data }) });
+    await reloadNotificationSounds(draft); toast('Son enregistré pour cet événement.');
+  } catch (error) { toast(error.message, true); }
+}
+
+async function testNotificationSound(event) {
+  if (!event) return;
+  try {
+    const audio = new Audio(`${event.soundUrl}?v=${encodeURIComponent(event.updatedAt || Date.now())}&t=${Date.now()}`);
+    audio.volume = 1;
+    await audio.play();
+    toast('Lecture du son sur ce poste.');
+  } catch { toast('Le son est illisible ou sa lecture est bloquée par le navigateur.', true); }
+}
+
+async function resetNotificationSound(event) {
+  if (!event || !confirm(`Restaurer le son par défaut pour « ${event.label} » ?`)) return;
+  try {
+    const draft = notificationDraftOptions();
+    await api(`/notifications/${encodeURIComponent(event.id)}/sound`, { method: 'DELETE' });
+    await reloadNotificationSounds(draft); toast('Son par défaut restauré.');
+  } catch (error) { toast(error.message, true); }
+}
+
+async function testDesktopNotification() {
+  if (!('Notification' in window)) return toast('Les notifications de bureau ne sont pas disponibles sur ce navigateur.', true);
+  try {
+    const permission = Notification.permission === 'default' ? await Notification.requestPermission() : Notification.permission;
+    if (permission !== 'granted') return toast('Autorisation refusée dans le navigateur.', true);
+    new Notification('ARGOS — Test de notification', { body: 'Les notifications de bureau sont autorisées sur ce poste.', tag: 'argos-admin-test' });
+    toast('Notification de test envoyée.');
+  } catch (error) { toast(error.message, true); }
 }
 
 function userForm(user = null) {
@@ -452,6 +558,9 @@ async function handleAction(event) {
     'reset-password': () => resetPassword(state.users.find(item => item.id === id)),
     'complete-password-request': () => completePasswordRequest(state.passwordResets.find(item => item.id === id)),
     'dismiss-password-request': () => dismissPasswordRequest(state.passwordResets.find(item => item.id === id)),
+    'upload-notification-sound': () => uploadNotificationSound(notificationEventById(id)),
+    'test-notification-sound': () => testNotificationSound(notificationEventById(id)),
+    'reset-notification-sound': () => resetNotificationSound(notificationEventById(id)),
     'delete-user': () => deleteUser(state.users.find(item => item.id === id)),
     'edit-app': () => appForm(state.apps.find(item => item.id === id)),
     'delete-app': () => deleteApp(state.apps.find(item => item.id === id)),
@@ -474,6 +583,9 @@ function bindEvents() {
   $('userSearch').addEventListener('input', renderUsers);
   $('userRows').addEventListener('click', handleAction);
   $('passwordResetRows').addEventListener('click', handleAction);
+  $('notificationCards').addEventListener('click', handleAction);
+  $('saveNotificationsBtn').addEventListener('click', saveNotificationSettings);
+  $('testDesktopNotificationBtn').addEventListener('click', testDesktopNotification);
   $('accessUser').addEventListener('change', event => { state.accessUserId = event.target.value; renderAccess(); });
   $('accessForm').addEventListener('submit', saveAccess);
   $('newAppBtn').addEventListener('click', () => appForm());

@@ -28,6 +28,7 @@
         <button class="nav-item active" data-view="dashboard"><span>⌂</span>Tableau de bord</button>
         <button class="nav-item" data-view="users"><span>👤</span>Utilisateurs</button>
         <button class="nav-item" data-view="password-resets"><span>↻</span>Mots de passe <b id="passwordResetNavCount" class="nav-count hidden">0</b></button>
+        <button class="nav-item" data-view="notifications"><span>🔔</span>Sons et notifications</button>
         <button class="nav-item" data-view="access"><span>🔐</span>Accès et rôles</button>
         <button class="nav-item" data-view="apps"><span>▦</span>Applications</button>
         <button class="nav-item" data-view="appearance"><span>◉</span>Apparence</button>
@@ -98,6 +99,19 @@
           <thead><tr><th>Agent</th><th>Demande reçue</th><th>Poste</th><th>Adresse IP</th><th class="actions-cell">Actions</th></tr></thead>
           <tbody id="passwordResetRows"></tbody>
         </table></div></div>
+      </section>
+
+      <section class="view hidden" data-view-panel="notifications">
+        <div class="page-heading">
+          <div><p class="eyebrow">ALERTES CENTRALISÉES</p><h1>Sons et notifications</h1><p>Pilotez séparément les alertes de PHENIX et d’ATLAS.</p></div>
+          <button class="button secondary" data-reload type="button">Actualiser</button>
+        </div>
+        <div class="notification-help">
+          <div><strong>Notifications de bureau</strong><span>Vous choisissez ici les événements autorisés. Chaque poste doit ensuite accepter les notifications dans PHENIX ou ATLAS.</span></div>
+          <button id="testDesktopNotificationBtn" class="button secondary" type="button">Tester sur ce poste</button>
+        </div>
+        <div id="notificationCards" class="notification-grid"></div>
+        <div class="notification-savebar"><button id="saveNotificationsBtn" class="button primary" type="button">Enregistrer les réglages</button></div>
       </section>
 
       <section class="view hidden" data-view-panel="access">
