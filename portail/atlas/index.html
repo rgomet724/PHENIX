@@ -19,6 +19,7 @@
     <div class="top-actions">
       <span id="syncState" class="sync-pill">PHENIX connecté</span>
       <span id="currentUser" class="user-pill">—</span>
+      <button id="atlasNotificationsBtn" class="btn ghost" type="button">🔔 Notifications</button>
       <a class="btn ghost" href="/portail/">← ARGOS</a>
     </div>
   </header>
@@ -64,6 +65,25 @@
       </div>
     </section>
   </main>
+
+  <div id="notificationsModal" class="modal hidden">
+    <div class="modal-card notification-preferences">
+      <div class="modal-head">
+        <div><span class="eyebrow">CE POSTE</span><h2>Sons et notifications</h2></div>
+        <button class="icon-btn" data-close="notificationsModal" type="button" aria-label="Fermer">×</button>
+      </div>
+      <p>L’administrateur choisit les sons et les événements dans l’administration ARGOS. Ces options activent leur réception sur cet appareil.</p>
+      <label class="notification-preference"><span>Alertes sonores</span><input id="atlasSoundEnabled" type="checkbox"></label>
+      <label class="notification-preference"><span>Notifications de bureau</span><input id="atlasDesktopEnabled" type="checkbox"></label>
+      <p id="atlasNotificationPermission" class="notification-permission"></p>
+      <p class="notification-permission">Gardez ATLAS ouvert, même en arrière-plan, pour recevoir les nouvelles interventions.</p>
+      <div class="notification-preference-actions">
+        <button id="atlasAuthorizeNotifications" class="btn primary" type="button">Autoriser sur ce poste</button>
+        <button id="atlasTestNotifications" class="btn secondary" type="button">Tester l’alerte</button>
+      </div>
+      <p id="atlasNotificationFeedback" role="status" class="notification-permission"></p>
+    </div>
+  </div>
 
   <div id="missionModal" class="modal hidden">
     <div class="modal-card">

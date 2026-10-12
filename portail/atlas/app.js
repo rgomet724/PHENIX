@@ -1,6 +1,15 @@
-const state = { user:null, canManage:false, missions:[], crews:[], natures:[], streets:[], nextMissionId:null, serverTime:Date.now(), banResults:[], appearance:null };
+const state = { user:null, canManage:false, missions:[], crews:[], natures:[], streets:[], nextMissionId:null, serverTime:Date.now(), banResults:[], appearance:null, notifications:{events:{}} };
 let banTimer=null;
 let banRequestSeq=0;
+let atlasSoundEnabled=localStorage.getItem('atlasSoundEnabled')!=='false';
+let atlasDesktopEnabled=localStorage.getItem('atlasDesktopNotifications')!=='false';
+let atlasAudioContext=null;
+let atlasAudioBuffer=null;
+let atlasAudioBufferVersion='';
+let atlasAudioLoading=null;
+let atlasRefreshPending=null;
+let atlasSeenMissions=null;
+let atlasNotificationUserId='';
 const $ = id => document.getElementById(id);
 
 async function api(url,opt={}){
@@ -19,6 +28,74 @@ function fullAddress(m){return [m.number,m.street,m.complement].filter(Boolean).
 function statusLabel(s){return ({WAITING:'EN ATTENTE',ASSIGNED:'AFFECTÉE',DEPARTED:'PARTIE',ONSCENE:'SUR PLACE'})[s]||s;}
 function priorityLabel(p){return p==='URGENT'?'PRIORITAIRE':'NORMALE';}
 function crewById(id){return state.crews.find(c=>String(c.id)===String(id));}
+
+function atlasNotificationRule(){
+  return state.notifications?.events?.['atlas-new-intervention']||{soundEnabled:true,desktopEnabled:true,soundUrl:'/portail/administration/api/public/notification-sounds/atlas-new-intervention',updatedAt:''};
+}
+function getAtlasAudioContext(){
+  if(!atlasAudioContext){const AC=window.AudioContext||window.webkitAudioContext;if(AC)atlasAudioContext=new AC()}
+  return atlasAudioContext;
+}
+async function unlockAtlasAudio(){
+  const context=getAtlasAudioContext();
+  if(!context)return false;
+  try{if(context.state==='suspended')await context.resume();return context.state==='running'}catch{return false}
+}
+async function loadAtlasAudio(){
+  const rule=atlasNotificationRule(),version=String(rule.updatedAt||'default'),context=getAtlasAudioContext();
+  if(!context)return false;
+  if(atlasAudioBuffer&&atlasAudioBufferVersion===version)return true;
+  if(atlasAudioLoading){await atlasAudioLoading;if(atlasAudioBufferVersion===version&&atlasAudioBuffer)return true;}
+  const task=(async()=>{
+    try{
+      const response=await fetch(`${rule.soundUrl}?v=${encodeURIComponent(version)}`,{credentials:'same-origin',cache:'no-store'});
+      if(!response.ok)throw new Error('Son indisponible');
+      atlasAudioBuffer=await context.decodeAudioData(await response.arrayBuffer());atlasAudioBufferVersion=version;
+      return true;
+    }catch{atlasAudioBuffer=null;return false;}
+  })();
+  atlasAudioLoading=task;
+  try{return await task}finally{if(atlasAudioLoading===task)atlasAudioLoading=null;}
+}
+async function playAtlasSound(){
+  if(!atlasSoundEnabled||atlasNotificationRule().soundEnabled===false)return false;
+  if(!await unlockAtlasAudio()||!await loadAtlasAudio())return false;
+  try{
+    const source=atlasAudioContext.createBufferSource();source.buffer=atlasAudioBuffer;source.connect(atlasAudioContext.destination);source.start(0);return true;
+  }catch{return false;}
+}
+async function showAtlasDesktopNotification(title,body,tag){
+  if(!atlasDesktopEnabled||atlasNotificationRule().desktopEnabled===false||!('Notification' in window)||Notification.permission!=='granted')return false;
+  const options={body:String(body||'').slice(0,500),tag,icon:'/portail/atlas/logo-atlas.png',silent:true};
+  try{
+    const registration='serviceWorker' in navigator?await navigator.serviceWorker.getRegistration():null;
+    if(registration?.active&&typeof registration.showNotification==='function')await registration.showNotification(title,options);
+    else{const notification=new Notification(title,options);notification.onclick=()=>{window.focus();notification.close()};}
+    return true;
+  }catch{return false;}
+}
+async function announceAtlasMission(mission){
+  await Promise.allSettled([
+    playAtlasSound(),
+    showAtlasDesktopNotification('ATLAS — Nouvelle intervention',[priorityLabel(mission.priority),mission.natureLabel,fullAddress(mission)].filter(Boolean).join(' · '),`atlas-mission-${mission.id}`)
+  ]);
+}
+function updateAtlasNotificationControls(){
+  $('atlasSoundEnabled').checked=atlasSoundEnabled;$('atlasDesktopEnabled').checked=atlasDesktopEnabled;
+  const permission='Notification' in window?Notification.permission:'unavailable';
+  $('atlasNotificationPermission').textContent=permission==='granted'?'Notifications de bureau autorisées sur ce poste.':permission==='denied'?'Notifications bloquées : autorisez-les dans les paramètres du navigateur.':permission==='unavailable'?'Ce navigateur ne propose pas les notifications de bureau.':'Cliquez sur « Autoriser sur ce poste » puis acceptez la demande du navigateur.';
+  $('atlasAuthorizeNotifications').disabled=permission==='unavailable';
+  $('atlasNotificationsBtn').textContent=atlasDesktopEnabled&&permission==='granted'?'🔔 Notifications activées':'🔔 Notifications';
+}
+async function authorizeAtlasNotifications(){
+  const audioPermission=unlockAtlasAudio();
+  let permission='unavailable';
+  if('Notification' in window)permission=Notification.permission==='default'?await Notification.requestPermission():Notification.permission;
+  const unlocked=await audioPermission;
+  if(permission==='granted'){atlasDesktopEnabled=true;localStorage.setItem('atlasDesktopNotifications','true');}
+  updateAtlasNotificationControls();
+  $('atlasNotificationFeedback').textContent=permission==='granted'?'Autorisation enregistrée sur ce poste.':permission==='denied'?'Autorisez les notifications dans les paramètres du navigateur.':unlocked?'Audio autorisé. Les notifications de bureau ne sont pas disponibles.':'L’audio ou les notifications ne sont pas autorisés.';
+}
 
 function openModal(id){$(id).classList.remove('hidden');document.body.style.overflow='hidden';}
 function closeModal(id){$(id).classList.add('hidden');if(document.querySelectorAll('.modal:not(.hidden)').length===0)document.body.style.overflow='';}
@@ -113,6 +190,7 @@ function renderAll(){
   $('currentUser').textContent=state.user?`${state.user.name} · ${state.user.role}`:'—';
   $('manageBtn').classList.toggle('hidden',!state.canManage);
   populateSelects();renderNext();renderMissions();
+  updateAtlasNotificationControls();
 }
 
 function applyAppearance(){
@@ -130,10 +208,38 @@ function applyAppearance(){
 }
 
 async function refresh(silent=false){
-  try{
-    const d=await api('/portail/atlas/api/state');Object.assign(state,d);$('syncState').textContent='PHENIX connecté';$('syncState').style.background='rgba(255,255,255,.13)';renderAll();
-  }catch(e){$('syncState').textContent='Connexion perdue';$('syncState').style.background='rgba(217,35,46,.35)';if(!silent)alert(e.message);}
+  if(atlasRefreshPending)return atlasRefreshPending;
+  const task=(async()=>{
+    try{
+      const d=await api('/portail/atlas/api/state');
+      const userId=String(d.user?.id||d.user?.login||'');
+      if(atlasNotificationUserId!==userId){atlasSeenMissions=null;atlasNotificationUserId=userId;}
+      const current=Array.isArray(d.missions)?d.missions:[];
+      const arrived=atlasSeenMissions===null?[]:current.filter(mission=>!atlasSeenMissions.has(String(mission.id)));
+      atlasSeenMissions=new Set(current.map(mission=>String(mission.id)));
+      Object.assign(state,d);$('syncState').textContent='PHENIX connecté';$('syncState').style.background='rgba(255,255,255,.13)';renderAll();
+      if(atlasSoundEnabled&&atlasNotificationRule().soundEnabled!==false)loadAtlasAudio().catch(()=>{});
+      await Promise.allSettled(arrived.map(announceAtlasMission));
+    }catch(e){$('syncState').textContent='Connexion perdue';$('syncState').style.background='rgba(217,35,46,.35)';if(!silent)alert(e.message);}
+  })();
+  atlasRefreshPending=task;
+  try{return await task}finally{if(atlasRefreshPending===task)atlasRefreshPending=null;}
 }
+
+$('atlasNotificationsBtn').addEventListener('click',()=>{updateAtlasNotificationControls();$('atlasNotificationFeedback').textContent='';openModal('notificationsModal');});
+$('atlasSoundEnabled').addEventListener('change',async event=>{atlasSoundEnabled=event.target.checked;localStorage.setItem('atlasSoundEnabled',String(atlasSoundEnabled));if(atlasSoundEnabled)await unlockAtlasAudio();});
+$('atlasDesktopEnabled').addEventListener('change',async event=>{atlasDesktopEnabled=event.target.checked;localStorage.setItem('atlasDesktopNotifications',String(atlasDesktopEnabled));if(atlasDesktopEnabled)await authorizeAtlasNotifications();updateAtlasNotificationControls();});
+$('atlasAuthorizeNotifications').addEventListener('click',authorizeAtlasNotifications);
+$('atlasTestNotifications').addEventListener('click',async()=>{
+  await unlockAtlasAudio();
+  const [sound,desktop]=await Promise.all([playAtlasSound(),showAtlasDesktopNotification('ATLAS — Test de notification','Les nouvelles interventions apparaîtront sur ce poste.','atlas-notification-test')]);
+  $('atlasNotificationFeedback').textContent=sound||desktop?'Test envoyé selon les réglages activés.':'Aucune alerte active ou autorisée. Vérifiez les options du poste et de l’administration ARGOS.';
+});
+function installAtlasAudioUnlock(){
+  const handler=async()=>{if(!atlasSoundEnabled)return;if(await unlockAtlasAudio()){document.removeEventListener('pointerdown',handler,true);document.removeEventListener('keydown',handler,true);loadAtlasAudio().catch(()=>{});}};
+  document.addEventListener('pointerdown',handler,true);document.addEventListener('keydown',handler,true);
+}
+installAtlasAudioUnlock();
 
 $('newMissionBtn').addEventListener('click',()=>{$('missionForm').reset();$('missionError').textContent='';populateSelects();openModal('missionModal');loadBanStreets();setTimeout(()=>$('missionNumber')?.focus(),60);});
 $('missionForm').addEventListener('submit',async e=>{

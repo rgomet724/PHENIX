@@ -1,3 +1,4 @@
+.notification-preferences{max-width:600px}.notification-preferences>p{line-height:1.6;color:var(--muted)}.notification-preference{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 0;border-bottom:1px solid var(--line);font-weight:700}.notification-preference input{width:21px;height:21px;accent-color:var(--blue)}.notification-permission{font-size:13px;line-height:1.5;color:var(--muted)}.notification-preference-actions{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0 10px}
 :root{
   --blue:#0018a8;--blue2:#0758b6;--ink:#172033;--muted:#64748b;--line:#d8e1eb;--bg:#edf3f8;--white:#fff;
   --red:#d9232e;--red-soft:#ffe7e8;--orange:#f28c18;--orange-soft:#fff0db;--green:#159447;--shadow:0 9px 24px rgba(17,38,70,.08)
