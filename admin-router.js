@@ -7,9 +7,11 @@ const fs = require('fs');
 const path = require('path');
 const {
   APPLICATIONS,
+  NOTIFICATION_EVENTS,
   addAudit,
   appearanceFor,
   loadAdminConfig,
+  notificationSetting,
   normalizedRole,
   policyForUser,
   saveAdminConfig,
@@ -18,6 +20,7 @@ const {
 
 const MAX_LOGO_SIZE = 400 * 1024;
 const MAX_BACKGROUND_SIZE = 2 * 1024 * 1024;
+const MAX_SOUND_SIZE = 2 * 1024 * 1024;
 const BCRYPT_ROUNDS = 12;
 
 function safeEqual(a, b) {
@@ -64,6 +67,36 @@ function validateImageData(value, maxBytes, label) {
   const decoded = Buffer.from(match[2], 'base64');
   if (decoded.length > maxBytes) throw new Error(`${label} trop volumineux.`);
   return String(value);
+}
+
+function validateAudioData(value) {
+  const match = /^data:audio\/(?:mpeg|mp3|wav|wave|x-wav);base64,([A-Za-z0-9+/=]+)$/.exec(String(value || ''));
+  if (!match) throw new Error('Fichier audio invalide. Formats acceptés : MP3 ou WAV.');
+  const decoded = Buffer.from(match[1], 'base64');
+  if (!decoded.length || decoded.length > MAX_SOUND_SIZE) throw new Error('Le son doit faire moins de 2 Mo.');
+  return decoded;
+}
+
+function makeFallbackWav(eventId = '') {
+  const sampleRate = 22050;
+  const duration = eventId.includes('consigne') ? 0.72 : eventId.includes('atlas') ? 0.62 : 0.55;
+  const count = Math.floor(sampleRate * duration);
+  const data = Buffer.alloc(count * 2);
+  const frequency = eventId.includes('crew') ? 880 : eventId.includes('consigne') ? 1040 : eventId.includes('atlas') ? 760 : 660;
+  for (let i = 0; i < count; i++) {
+    const t = i / sampleRate;
+    const pulse = eventId.includes('consigne') ? ((t < .18 || (t > .25 && t < .43) || t > .50) ? 1 : 0) : eventId.includes('crew') ? ((t < .22 || t > .31) ? 1 : 0) : 1;
+    const envelope = Math.min(1, t * 35) * Math.min(1, (duration - t) * 18);
+    const value = Math.sin(2 * Math.PI * frequency * t) * .38 * pulse * envelope;
+    data.writeInt16LE(Math.max(-32767, Math.min(32767, Math.round(value * 32767))), i * 2);
+  }
+  const output = Buffer.alloc(44 + data.length);
+  output.write('RIFF', 0); output.writeUInt32LE(36 + data.length, 4); output.write('WAVE', 8);
+  output.write('fmt ', 12); output.writeUInt32LE(16, 16); output.writeUInt16LE(1, 20);
+  output.writeUInt16LE(1, 22); output.writeUInt32LE(sampleRate, 24); output.writeUInt32LE(sampleRate * 2, 28);
+  output.writeUInt16LE(2, 32); output.writeUInt16LE(16, 34); output.write('data', 36);
+  output.writeUInt32LE(data.length, 40); data.copy(output, 44);
+  return output;
 }
 
 function validUrl(value) {
@@ -124,6 +157,49 @@ function mountCentralAdmin(app, deps = {}) {
     const tmp = `${portalFile}.${process.pid}.tmp`;
     fs.writeFileSync(tmp, JSON.stringify(data, null, 2), { encoding: 'utf8', mode: 0o600 });
     fs.renameSync(tmp, portalFile);
+  }
+
+  function notificationState(definition, config = loadAdminConfig(), phenix = loadPhenix()) {
+    const central = notificationSetting(definition.id, config);
+    const legacy = definition.legacyKind && phenix.notificationSounds && phenix.notificationSounds[definition.legacyKind] || {};
+    const centralPath = central && central.custom && central.path && fs.existsSync(central.path) ? central.path : '';
+    const legacyPath = legacy.custom && legacy.path && fs.existsSync(legacy.path) ? legacy.path : '';
+    const selectedPath = centralPath || legacyPath;
+    return {
+      id: definition.id,
+      appId: definition.appId,
+      label: definition.label,
+      description: definition.description,
+      soundEnabled: central.soundEnabled,
+      desktopEnabled: central.desktopEnabled,
+      custom: Boolean(selectedPath),
+      filename: centralPath ? central.filename : legacyPath ? String(legacy.filename || '') : '',
+      updatedAt: centralPath ? central.updatedAt : legacyPath ? String(legacy.updatedAt || '') : '',
+      path: selectedPath,
+      soundUrl: `/portail/administration/api/public/notification-sounds/${encodeURIComponent(definition.id)}`
+    };
+  }
+
+  function publicNotificationSettings(appId = '') {
+    const selected = String(appId || '').toLowerCase();
+    const config = loadAdminConfig();
+    const phenix = loadPhenix();
+    const events = {};
+    for (const definition of NOTIFICATION_EVENTS) {
+      if (selected && definition.appId !== selected) continue;
+      const state = notificationState(definition, config, phenix);
+      delete state.path;
+      events[definition.id] = state;
+    }
+    return { events };
+  }
+
+  function removeManagedSound(file) {
+    if (!file) return;
+    const root = path.resolve(dataDir);
+    const target = path.resolve(String(file));
+    if (target !== root && !target.startsWith(`${root}${path.sep}`)) return;
+    if (fs.existsSync(target)) { try { fs.unlinkSync(target); } catch { /* fichier déjà absent ou verrouillé */ } }
   }
 
   function readJson(file, fallback = {}) {
@@ -202,6 +278,21 @@ function mountCentralAdmin(app, deps = {}) {
     next();
   }
 
+  function canReadNotificationSound(req, appId) {
+    if (resolveAdmin(req)) return true;
+    const phenix = loadPhenix();
+    let stored = req.session && req.session.userId
+      ? (phenix.users || []).find(user => String(user.id) === String(req.session.userId))
+      : null;
+    if (!stored) {
+      const decoded = verifyPortalToken(portalToken(req), secret);
+      if (!decoded) return false;
+      const id = String(decoded.id || '').replace(/^phenix:/, '');
+      stored = (phenix.users || []).find(user => String(user.id) === id && String(user.login).toLowerCase() === String(decoded.login).toLowerCase());
+    }
+    return Boolean(stored && policyForUser(stored)?.[appId]?.enabled);
+  }
+
   function requireCsrf(req, res, next) {
     if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
     if (!safeEqual(req.get('x-admin-csrf'), req.centralCsrf)) {
@@ -246,6 +337,22 @@ function mountCentralAdmin(app, deps = {}) {
     res.json({ appearance: appearanceFor(appId) });
   });
 
+  router.get('/public/notifications', (req, res) => {
+    res.json(publicNotificationSettings(req.query.appId));
+  });
+
+  router.get('/public/notification-sounds/:eventId', (req, res) => {
+    const definition = NOTIFICATION_EVENTS.find(item => item.id === String(req.params.eventId || ''));
+    if (!definition) return res.status(404).end();
+    if (!canReadNotificationSound(req, definition.appId)) return res.status(401).json({ error: 'AUTH_REQUIRED', message: 'Connexion à l’application requise.' });
+    const state = notificationState(definition);
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    if (state.path && fs.existsSync(state.path)) {
+      return res.type(path.extname(state.path).toLowerCase() === '.mp3' ? 'audio/mpeg' : 'audio/wav').sendFile(path.resolve(state.path));
+    }
+    return res.type('audio/wav').send(makeFallbackWav(definition.id));
+  });
+
   router.use(requireAdmin, requireCsrf);
 
   router.get('/session', (req, res) => {
@@ -255,6 +362,93 @@ function mountCentralAdmin(app, deps = {}) {
       csrfToken: req.centralCsrf,
       passwordMinLength: config.security.passwordMinLength
     });
+  });
+
+  router.get('/notifications', (req, res) => {
+    const config = loadAdminConfig();
+    const phenix = loadPhenix();
+    res.json({ events: NOTIFICATION_EVENTS.map(definition => {
+      const state = notificationState(definition, config, phenix);
+      delete state.path;
+      return state;
+    }) });
+  });
+
+  router.put('/notifications', (req, res) => {
+    const config = loadAdminConfig(true);
+    const input = req.body && req.body.events && typeof req.body.events === 'object' ? req.body.events : {};
+    for (const definition of NOTIFICATION_EVENTS) {
+      const next = input[definition.id];
+      if (!next || typeof next !== 'object') continue;
+      const current = config.notifications.events[definition.id];
+      if (typeof next.soundEnabled === 'boolean') current.soundEnabled = next.soundEnabled;
+      if (typeof next.desktopEnabled === 'boolean') current.desktopEnabled = next.desktopEnabled;
+    }
+    auditAndSave(config, req, 'Modification sons et notifications', 'Réglages des événements PHENIX et ATLAS');
+    res.json({ ok: true, ...publicNotificationSettings() });
+  });
+
+  router.post('/notifications/:eventId/sound', (req, res) => {
+    try {
+      const definition = NOTIFICATION_EVENTS.find(item => item.id === String(req.params.eventId || ''));
+      if (!definition) return res.status(404).json({ error: 'Événement de notification inconnu.' });
+      const filename = String(req.body && req.body.filename || '').trim().slice(0, 180);
+      const extension = path.extname(filename).toLowerCase();
+      if (!['.mp3', '.wav', '.wave'].includes(extension)) return res.status(400).json({ error: 'Format accepté : MP3 ou WAV.' });
+      const buffer = validateAudioData(req.body && req.body.data);
+      const realExtension = extension === '.mp3' ? '.mp3' : '.wav';
+      const directory = path.join(dataDir, 'notification-sounds');
+      fs.mkdirSync(directory, { recursive: true });
+      const destination = path.join(directory, `${definition.id}${realExtension}`);
+      const config = loadAdminConfig(true);
+      const current = config.notifications.events[definition.id];
+      removeManagedSound(current.path);
+      let phenix = null;
+      if (definition.legacyKind) {
+        phenix = loadPhenix();
+        phenix.notificationSounds = phenix.notificationSounds && typeof phenix.notificationSounds === 'object' ? phenix.notificationSounds : {};
+        removeManagedSound((phenix.notificationSounds[definition.legacyKind] || {}).path);
+      }
+      for (const oldExtension of ['.mp3', '.wav']) {
+        const old = path.join(directory, `${definition.id}${oldExtension}`);
+        if (old !== destination) removeManagedSound(old);
+      }
+      fs.writeFileSync(destination, buffer, { mode: 0o600 });
+      current.custom = true;
+      current.filename = filename || `notification${realExtension}`;
+      current.path = destination;
+      current.updatedAt = new Date().toISOString();
+
+      if (definition.legacyKind) {
+        phenix.notificationSounds[definition.legacyKind] = {
+          custom: true, filename: current.filename, path: destination, updatedAt: current.updatedAt
+        };
+        savePhenix(phenix);
+      }
+
+      auditAndSave(config, req, 'Modification son de notification', definition.label);
+      const state = notificationState(definition, config, loadPhenix()); delete state.path;
+      res.json({ ok: true, event: state });
+    } catch (error) { res.status(400).json({ error: error.message }); }
+  });
+
+  router.delete('/notifications/:eventId/sound', (req, res) => {
+    const definition = NOTIFICATION_EVENTS.find(item => item.id === String(req.params.eventId || ''));
+    if (!definition) return res.status(404).json({ error: 'Événement de notification inconnu.' });
+    const config = loadAdminConfig(true);
+    const current = config.notifications.events[definition.id];
+    removeManagedSound(current.path);
+    Object.assign(current, { custom: false, filename: '', path: '', updatedAt: new Date().toISOString() });
+    if (definition.legacyKind) {
+      const phenix = loadPhenix();
+      phenix.notificationSounds = phenix.notificationSounds && typeof phenix.notificationSounds === 'object' ? phenix.notificationSounds : {};
+      const legacy = phenix.notificationSounds[definition.legacyKind] || {};
+      if (legacy.path !== current.path) removeManagedSound(legacy.path);
+      phenix.notificationSounds[definition.legacyKind] = { custom: false, filename: '', path: '', updatedAt: current.updatedAt };
+      savePhenix(phenix);
+    }
+    auditAndSave(config, req, 'Restauration son par défaut', definition.label);
+    res.json({ ok: true });
   });
 
   router.get('/dashboard', (req, res) => {

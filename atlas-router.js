@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
 const { Readable } = require('stream');
-const { appAccess, appearanceFor } = require('./central-config');
+const { appAccess, appearanceFor, notificationSettingsForApp } = require('./central-config');
 
 const VERSION = '1.3.0';
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
@@ -502,6 +502,7 @@ function mountInterventions(app, deps = {}) {
     res.json({
       user: req.regulationUser,
       appearance: appearanceFor('atlas'),
+      notifications: notificationSettingsForApp('atlas'),
       canManage: ['admin', 'superviseur'].includes(req.regulationUser.role),
       canOperate: req.regulationUser.role !== 'consultation',
       missions,

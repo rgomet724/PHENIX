@@ -8,7 +8,14 @@ const FileStore = require('session-file-store')(session);
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const { appAccess, passwordMinLength } = require('./central-config');
+const {
+  appAccess,
+  loadAdminConfig,
+  notificationSetting,
+  notificationSettingsForApp,
+  passwordMinLength,
+  saveAdminConfig
+} = require('./central-config');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -26,6 +33,7 @@ const BCRYPT_ROUNDS = 12;
 const PASSWORD_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000; // 90 jours
 const PASSWORD_POLICY_START = '2026-08-28T00:00:00.000Z';
 const SOUND_KINDS = ['crew','urgent','system'];
+const PHENIX_SOUND_EVENTS = { crew:'phenix-crew-status', urgent:'phenix-consigne', system:'phenix-flash' };
 
 const SESSION_SECRET = String(process.env.SESSION_SECRET || '');
 if (IS_PROD && Buffer.byteLength(SESSION_SECRET, 'utf8') < 32) {
@@ -590,6 +598,7 @@ app.get('/api/data', needLogin, (req,res)=>{
     links:linksForUser(d,u),
     events:d.events||[],
     flash:d.flash||{enabled:false,title:'INFO',text:''},
+    notificationSettings:notificationSettingsForApp('phenix'),
     users:['admin','superviseur'].includes(u.role)?d.users.map(safe):undefined,
     adminPasswordResets:u.role==='admin'?(d.passwordResetRequests||[]).filter(x=>x.status==='pending').slice(0,50):undefined,
     adminAlerts:u.role==='admin'?{passwordResetPending:(d.passwordResetRequests||[]).filter(x=>x.status==='pending').length}:undefined
@@ -655,12 +664,16 @@ app.get('/api/realtime/stream', needLogin, (req,res)=>{
 
 
 function soundMeta(d,kind){
-  const n=(d.notificationSounds||{})[kind]||{};
-  return {kind,custom:!!n.custom,filename:String(n.filename||''),updatedAt:String(n.updatedAt||'')};
+  const central=notificationSetting(PHENIX_SOUND_EVENTS[kind]);
+  const legacy=(d.notificationSounds||{})[kind]||{};
+  const n=central&&central.custom&&central.path&&fs.existsSync(central.path)?central:legacy;
+  return {kind,custom:!!(n.custom&&n.path&&fs.existsSync(n.path)),filename:String(n.filename||''),updatedAt:String(n.updatedAt||''),eventId:PHENIX_SOUND_EVENTS[kind]};
 }
 function soundPath(d,kind){
+  const central=notificationSetting(PHENIX_SOUND_EVENTS[kind]);
+  if(central&&central.custom&&central.path&&fs.existsSync(central.path)) return central.path;
   const n=(d.notificationSounds||{})[kind]||{};
-  if(n.custom && n.path && fs.existsSync(n.path)) return n.path;
+  if(n.custom&&n.path&&fs.existsSync(n.path)) return n.path;
   return '';
 }
 function makeFallbackWav(kind='crew'){
@@ -707,7 +720,8 @@ app.get('/api/realtime/snapshot', needLogin, (req,res)=>{
   res.json({
     serverTime:Date.now(),
     crews:(d.crews||[]).map(c=>({id:c.id,status:c.status,callsign:c.callsign,intervention:c.intervention||''})),
-    sounds:SOUND_KINDS.map(k=>soundMeta(d,k))
+    sounds:SOUND_KINDS.map(k=>soundMeta(d,k)),
+    notifications:notificationSettingsForApp('phenix')
   });
 });
 
@@ -729,6 +743,11 @@ app.post('/api/admin/sounds/:kind', needLogin, needAdmin, express.json({limit:'1
   for(const oldExt of ['.mp3','.wav']){ const old=path.join(dir,'phenix-sound-'+kind+oldExt); if(old!==dest&&fs.existsSync(old)){try{fs.unlinkSync(old)}catch(e){}} }
   fs.writeFileSync(dest,buf); d.notificationSounds=d.notificationSounds||{};
   d.notificationSounds[kind]={custom:true,filename:filename.slice(0,180),path:dest,updatedAt:new Date().toISOString()};
+  const centralConfig=loadAdminConfig(true),eventId=PHENIX_SOUND_EVENTS[kind];
+  if(centralConfig.notifications&&centralConfig.notifications.events&&centralConfig.notifications.events[eventId]){
+    Object.assign(centralConfig.notifications.events[eventId],d.notificationSounds[kind]);
+    saveAdminConfig(centralConfig);
+  }
   audit(d,req,'Modification du son '+kind,'Administration'); save(d);
   pushRealtimeEvent(d.users.map(x=>x.id),{type:'sound-config',kind,updatedAt:d.notificationSounds[kind].updatedAt});
   res.json({ok:true,...soundMeta(d,kind)});
@@ -738,6 +757,11 @@ app.delete('/api/admin/sounds/:kind', needLogin, needAdmin, (req,res)=>{
   const d=load(); const n=(d.notificationSounds||{})[kind]||{};
   if(n.path&&fs.existsSync(n.path)){try{fs.unlinkSync(n.path)}catch(e){}}
   d.notificationSounds=d.notificationSounds||{}; d.notificationSounds[kind]={custom:false,filename:'',path:'',updatedAt:new Date().toISOString()};
+  const centralConfig=loadAdminConfig(true),eventId=PHENIX_SOUND_EVENTS[kind];
+  if(centralConfig.notifications&&centralConfig.notifications.events&&centralConfig.notifications.events[eventId]){
+    Object.assign(centralConfig.notifications.events[eventId],d.notificationSounds[kind]);
+    saveAdminConfig(centralConfig);
+  }
   audit(d,req,'Restauration du son '+kind,'Administration'); save(d);
   pushRealtimeEvent(d.users.map(x=>x.id),{type:'sound-config',kind,updatedAt:d.notificationSounds[kind].updatedAt});
   res.json({ok:true,...soundMeta(d,kind)});
@@ -846,9 +870,9 @@ app.post('/api/consignes', needLogin, needConsigneManager, (req,res)=>{
 
   save(d);
   const currentConsigne=r.id?d.consignes.find(x=>x.id===r.id):d.consignes[0];
-  if(currentConsigne && currentConsigne.priority==='urgent'){
+  if(currentConsigne){
     const recipients=d.users.filter(x=>visibleConsigne(currentConsigne,x)).map(x=>x.id);
-    pushRealtimeEvent(recipients,{type:'urgent-consigne',id:currentConsigne.id,title:currentConsigne.title,updatedAt:new Date().toISOString()});
+    pushRealtimeEvent(recipients,{type:'consigne',id:currentConsigne.id,title:currentConsigne.title,text:currentConsigne.body,priority:currentConsigne.priority,updatedAt:currentConsigne.updatedAt});
   }
   res.json({ok:true});
 });

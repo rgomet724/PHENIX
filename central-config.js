@@ -41,6 +41,29 @@ const DEFAULT_APPEARANCE = Object.freeze({
   }
 });
 
+const NOTIFICATION_EVENTS = Object.freeze([
+  {
+    id: 'phenix-crew-status', appId: 'phenix', legacyKind: 'crew',
+    label: 'Changement disponible / indisponible',
+    description: 'Alerte lorsqu’un équipage passe DISPONIBLE ou INDISPONIBLE, avec le motif.'
+  },
+  {
+    id: 'phenix-consigne', appId: 'phenix', legacyKind: 'urgent',
+    label: 'Nouvelle consigne PHENIX',
+    description: 'Alerte lors de la création ou de la modification d’une consigne destinée au poste.'
+  },
+  {
+    id: 'phenix-flash', appId: 'phenix', legacyKind: 'system',
+    label: 'Nouveau texte flash PHENIX',
+    description: 'Alerte lors de la diffusion d’un nouveau texte flash.'
+  },
+  {
+    id: 'atlas-new-intervention', appId: 'atlas', legacyKind: '',
+    label: 'Nouvelle intervention ATLAS',
+    description: 'Alerte lors de l’arrivée d’une nouvelle intervention dans ATLAS.'
+  }
+]);
+
 function normalizedRole(role) {
   const value = String(role || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   if (value === 'administrateur') return 'admin';
@@ -60,11 +83,23 @@ function cleanText(value, max, fallback = '') {
 }
 
 function defaultData() {
+  const events = {};
+  for (const event of NOTIFICATION_EVENTS) {
+    events[event.id] = {
+      soundEnabled: true,
+      desktopEnabled: true,
+      custom: false,
+      filename: '',
+      path: '',
+      updatedAt: ''
+    };
+  }
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     security: { passwordMinLength: 6 },
     userPolicies: {},
     appearance: JSON.parse(JSON.stringify(DEFAULT_APPEARANCE)),
+    notifications: { events },
     audit: []
   };
 }
@@ -72,7 +107,7 @@ function defaultData() {
 function migrate(value) {
   const base = defaultData();
   const data = value && typeof value === 'object' ? value : {};
-  data.schemaVersion = 1;
+  data.schemaVersion = 2;
   data.security = data.security && typeof data.security === 'object' ? data.security : base.security;
   data.security.passwordMinLength = Math.min(32, Math.max(4, Number(data.security.passwordMinLength) || 6));
   data.userPolicies = data.userPolicies && typeof data.userPolicies === 'object' ? data.userPolicies : {};
@@ -89,6 +124,22 @@ function migrate(value) {
       logoData: String(current.logoData || ''),
       faviconData: String(current.faviconData || ''),
       backgroundData: String(current.backgroundData || '')
+    };
+  }
+  data.notifications = data.notifications && typeof data.notifications === 'object' ? data.notifications : {};
+  data.notifications.events = data.notifications.events && typeof data.notifications.events === 'object' ? data.notifications.events : {};
+  for (const definition of NOTIFICATION_EVENTS) {
+    const defaults = base.notifications.events[definition.id];
+    const current = data.notifications.events[definition.id] && typeof data.notifications.events[definition.id] === 'object'
+      ? data.notifications.events[definition.id]
+      : {};
+    data.notifications.events[definition.id] = {
+      soundEnabled: typeof current.soundEnabled === 'boolean' ? current.soundEnabled : defaults.soundEnabled,
+      desktopEnabled: typeof current.desktopEnabled === 'boolean' ? current.desktopEnabled : defaults.desktopEnabled,
+      custom: Boolean(current.custom),
+      filename: cleanText(current.filename, 180),
+      path: String(current.path || ''),
+      updatedAt: String(current.updatedAt || '')
     };
   }
   data.audit = Array.isArray(data.audit) ? data.audit.slice(0, MAX_AUDIT) : [];
@@ -193,6 +244,51 @@ function appearanceFor(appId, config = loadAdminConfig()) {
   return { ...fallback, ...(config.appearance[appId] || {}) };
 }
 
+function notificationDefinition(eventId) {
+  return NOTIFICATION_EVENTS.find(item => item.id === String(eventId || '')) || null;
+}
+
+function notificationSetting(eventId, config = loadAdminConfig()) {
+  const definition = notificationDefinition(eventId);
+  if (!definition) return null;
+  const current = config.notifications && config.notifications.events && config.notifications.events[definition.id] || {};
+  return {
+    id: definition.id,
+    appId: definition.appId,
+    legacyKind: definition.legacyKind,
+    label: definition.label,
+    description: definition.description,
+    soundEnabled: current.soundEnabled !== false,
+    desktopEnabled: current.desktopEnabled !== false,
+    custom: Boolean(current.custom),
+    filename: String(current.filename || ''),
+    path: String(current.path || ''),
+    updatedAt: String(current.updatedAt || '')
+  };
+}
+
+function notificationSettingsForApp(appId = '', config = loadAdminConfig()) {
+  const selected = String(appId || '').toLowerCase();
+  const events = {};
+  for (const definition of NOTIFICATION_EVENTS) {
+    if (selected && definition.appId !== selected) continue;
+    const setting = notificationSetting(definition.id, config);
+    events[definition.id] = {
+      id: setting.id,
+      appId: setting.appId,
+      label: setting.label,
+      description: setting.description,
+      soundEnabled: setting.soundEnabled,
+      desktopEnabled: setting.desktopEnabled,
+      custom: setting.custom,
+      filename: setting.filename,
+      updatedAt: setting.updatedAt,
+      soundUrl: `/portail/administration/api/public/notification-sounds/${encodeURIComponent(setting.id)}`
+    };
+  }
+  return { events };
+}
+
 function addAudit(config, actor, action, details, req) {
   const forwarded = String(req && req.headers && req.headers['x-forwarded-for'] || '').split(',')[0].trim();
   config.audit.unshift({
@@ -213,12 +309,16 @@ module.exports = {
   APPLICATIONS,
   DATA_FILE,
   MAX_AUDIT,
+  NOTIFICATION_EVENTS,
   addAudit,
   appAccess,
   appearanceFor,
   defaultAccessForUser,
   hexColor,
   loadAdminConfig,
+  notificationDefinition,
+  notificationSetting,
+  notificationSettingsForApp,
   normalizedRole,
   passwordMinLength,
   policyForUser,
