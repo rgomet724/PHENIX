@@ -33,10 +33,16 @@
         </div>
       </div>
       <div class="next-action-card">
-        <label for="nextCrew">Patrouille</label>
-        <select id="nextCrew"></select>
-        <button id="takeNextBtn" class="btn primary large" type="button">Nouvelle mission</button>
-        <small>Le système affecte automatiquement la mission en attente la plus prioritaire.</small>
+        <fieldset class="assignment-mode">
+          <legend>Affectation de la patrouille</legend>
+          <label><input type="radio" name="nextAssignmentMode" value="auto"> Automatique</label>
+          <label><input type="radio" name="nextAssignmentMode" value="manual" checked> Manuelle</label>
+        </fieldset>
+        <label id="nextCrewField" for="nextCrew">Patrouille disponible<select id="nextCrew"></select></label>
+        <small id="nextAssignmentHelp">Choisissez la patrouille pour l’intervention prioritaire.</small>
+        <button id="takeNextBtn" class="btn primary large" type="button" disabled>Affecter</button>
+        <small>L’intervention passe immédiatement en cours et la patrouille devient indisponible dans PHENIX.</small>
+        <p id="nextError" class="error" role="alert"></p>
       </div>
     </section>
 
@@ -47,7 +53,7 @@
       </div>
       <div class="toolbar-actions">
         <button id="manageBtn" class="btn secondary hidden" type="button">⚙ Paramètres</button>
-        <button id="newMissionBtn" class="btn primary" type="button">＋ Ajouter une intervention</button>
+        <button id="newMissionBtn" class="btn primary hidden" type="button">＋ Ajouter une intervention</button>
       </div>
     </section>
 
@@ -101,18 +107,25 @@
             <option value="URGENT">Prioritaire</option>
           </select>
         </label>
-        <label>Intervenant / patrouille
+        <fieldset class="assignment-mode span-2">
+          <legend>Affectation de la patrouille</legend>
+          <label><input type="radio" name="missionAssignmentMode" value="auto"> Automatique</label>
+          <label><input type="radio" name="missionAssignmentMode" value="manual" checked> Manuelle</label>
+          <small>En automatique, ATLAS choisit une patrouille disponible au moment de l’enregistrement.</small>
+        </fieldset>
+        <label id="missionCrewField">Patrouille disponible
           <select id="missionCrew"><option value="">À affecter plus tard</option></select>
+          <small>Sans patrouille sélectionnée, l’intervention reste en attente.</small>
         </label>
         <label>N° de voirie
           <input id="missionNumber" maxlength="20" placeholder="Ex : 12 bis">
         </label>
-        <label class="span-2">Voie
-          <select id="missionStreet" required disabled>
-            <option value="">Chargement des voies de Chalon-sur-Saône…</option>
-          </select>
+        <div class="field span-2 street-field">
+          <label for="missionStreet">Voie à Chalon-sur-Saône</label>
+          <input id="missionStreet" type="text" role="combobox" aria-autocomplete="list" aria-controls="missionStreetSuggestions" aria-expanded="false" autocomplete="off" maxlength="180" placeholder="Tapez un nom de rue, boulevard, impasse…" required>
+          <div id="missionStreetSuggestions" class="street-suggestions hidden" role="listbox" aria-label="Voies correspondantes"></div>
           <small id="banStatus" class="ban-status">Connexion à la Base Adresse Nationale…</small>
-        </label>
+        </div>
         <label class="span-2">Complément
           <input id="missionComplement" maxlength="240" placeholder="Bâtiment, étage, appartement, entrée…">
         </label>
@@ -125,16 +138,6 @@
           <button id="missionSubmit" class="btn primary" type="submit">Créer l’intervention</button>
         </div>
       </form>
-    </div>
-  </div>
-
-  <div id="assignModal" class="modal hidden">
-    <div class="modal-card small-card">
-      <div class="modal-head"><div><span class="eyebrow">AFFECTATION</span><h2>Choisir une patrouille</h2></div><button class="icon-btn" data-close="assignModal" type="button">×</button></div>
-      <input id="assignMissionId" type="hidden">
-      <label>Patrouille active dans PHENIX<select id="assignCrew"></select></label>
-      <p id="assignError" class="error"></p>
-      <div class="modal-actions"><button class="btn ghost" data-close="assignModal" type="button">Annuler</button><button id="assignSubmit" class="btn primary" type="button">Affecter</button></div>
     </div>
   </div>
 

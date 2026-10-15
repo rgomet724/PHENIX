@@ -1,6 +1,10 @@
-const state = { user:null, canManage:false, missions:[], crews:[], natures:[], streets:[], nextMissionId:null, serverTime:Date.now(), banResults:[], appearance:null, notifications:{events:{}} };
-let banTimer=null;
+const state = { user:null, canManage:false, canOperate:false, missions:[], crews:[], natures:[], streets:[], banStreets:[], nextMissionId:null, serverTime:Date.now(), banResults:[], appearance:null, notifications:{events:{}} };
+let streetSuggestionIndex=-1;
+let banStreetLoading=false;
 let banRequestSeq=0;
+const assignmentChoices=new Map();
+const assignmentPending=new Set();
+let takeNextPending=false;
 let atlasSoundEnabled=localStorage.getItem('atlasSoundEnabled')!=='false';
 let atlasDesktopEnabled=localStorage.getItem('atlasDesktopNotifications')!=='false';
 let atlasAudioContext=null;
@@ -25,7 +29,7 @@ function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 function fmtTime(v){if(!v)return '—';return new Date(v).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
 function elapsed(from){if(!from)return 'Non démarrée';const ms=Math.max(0,Date.now()-new Date(from).getTime());const h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000),s=Math.floor((ms%60000)/1000);return h?`${h} h ${String(m).padStart(2,'0')} min`:`${m} min ${String(s).padStart(2,'0')} s`;}
 function fullAddress(m){return [m.number,m.street,m.complement].filter(Boolean).join(' ');}
-function statusLabel(s){return ({WAITING:'EN ATTENTE',ASSIGNED:'AFFECTÉE',DEPARTED:'PARTIE',ONSCENE:'SUR PLACE'})[s]||s;}
+function statusLabel(s){return ({WAITING:'EN ATTENTE',ASSIGNED:'EN COURS',DEPARTED:'EN COURS',IN_PROGRESS:'EN COURS',ONSCENE:'SUR PLACE'})[s]||s;}
 function priorityLabel(p){return p==='URGENT'?'PRIORITAIRE':'NORMALE';}
 function crewById(id){return state.crews.find(c=>String(c.id)===String(id));}
 
@@ -103,39 +107,92 @@ function closeModal(id){$(id).classList.add('hidden');if(document.querySelectorA
 document.addEventListener('click',e=>{const b=e.target.closest('[data-close]');if(b)closeModal(b.dataset.close);if(e.target.classList.contains('modal'))closeModal(e.target.id);});
 
 function populateSelects(){
-  const crewOptions=state.crews.map(c=>`<option value="${esc(c.id)}">${esc(c.callsign)} — ${esc(c.status)}</option>`).join('');
-  $('missionCrew').innerHTML='<option value="">À affecter plus tard</option>'+crewOptions;
-  $('assignCrew').innerHTML=crewOptions||'<option value="">Aucune patrouille active</option>';
-  $('nextCrew').innerHTML='<option value="">Choisir une patrouille</option>'+crewOptions;
+  fillCrewSelect($('missionCrew'),'À affecter plus tard');
+  fillCrewSelect($('nextCrew'),'Choisir une patrouille');
+  updateAssignmentFields();
 }
 
+function crewAssignable(crew){
+  if(typeof crew.assignable==='boolean')return crew.assignable;
+  return String(crew.status).toUpperCase()==='DISPO'&&!state.missions.some(m=>String(m.crewId)===String(crew.id)&&['ASSIGNED','DEPARTED','IN_PROGRESS','ONSCENE'].includes(m.status));
+}
+function fillCrewSelect(select,placeholder){
+  const selected=select.value;
+  const options=`<option value="">${esc(placeholder)}</option>`+state.crews.map(crew=>`<option value="${esc(crew.id)}" ${crewAssignable(crew)?'':'disabled'}>${esc(crew.callsign)} — ${crewAssignable(crew)?'DISPONIBLE':'INDISPONIBLE'}</option>`).join('');
+  if(select.dataset.crewOptions===options)return;
+  select.dataset.crewOptions=options;select.innerHTML=options;
+  if([...select.options].some(option=>option.value===selected))select.value=selected;
+}
+function preferredAssignmentMode(){return localStorage.getItem('atlasAssignmentMode')==='auto'?'auto':'manual';}
+function selectedAssignmentMode(name){return document.querySelector(`input[name="${name}"]:checked`)?.value||'manual';}
+function setAssignmentMode(name,mode){document.querySelectorAll(`input[name="${name}"]`).forEach(input=>{input.checked=input.value===mode;});}
+function updateAssignmentFields(){
+  const nextAuto=selectedAssignmentMode('nextAssignmentMode')==='auto';
+  const missionAuto=selectedAssignmentMode('missionAssignmentMode')==='auto';
+  $('nextCrewField').classList.toggle('hidden',nextAuto);
+  $('missionCrewField').classList.toggle('hidden',missionAuto);
+  $('nextAssignmentHelp').textContent=nextAuto?'ATLAS choisit une patrouille disponible au clic sur Affecter.':'Choisissez la patrouille pour l’intervention prioritaire.';
+  $('missionSubmit').textContent=missionAuto||$('missionCrew').value?'Créer et affecter':'Enregistrer en attente';
+  const available=state.crews.filter(crewAssignable);
+  if(!available.length)$('nextAssignmentHelp').textContent='Aucune patrouille disponible. L’intervention reste en attente.';
+  const selected=state.crews.find(crew=>crew.id===$('nextCrew').value);
+  $('takeNextBtn').disabled=takeNextPending||!state.canOperate||!state.nextMissionId||(nextAuto?!available.length:!selected||!crewAssignable(selected));
+}
+
+function normalizeStreet(value=''){return String(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('fr').replace(/[’']/g,' ').replace(/[-\s]+/g,' ').trim();}
+function streetMatches(query){
+  const normalized=normalizeStreet(query);
+  if(!normalized)return [];
+  return state.banStreets.filter(street=>normalizeStreet(street).includes(normalized)).sort((a,b)=>{
+    const rank=value=>normalizeStreet(value)===normalized?0:normalizeStreet(value).startsWith(normalized)?1:2;
+    return rank(a)-rank(b)||a.localeCompare(b,'fr',{sensitivity:'base',numeric:true});
+  }).slice(0,18);
+}
+function closeStreetSuggestions(){
+  $('missionStreetSuggestions').classList.add('hidden');$('missionStreet').setAttribute('aria-expanded','false');
+  $('missionStreet').removeAttribute('aria-activedescendant');streetSuggestionIndex=-1;
+}
+function chooseStreet(street){$('missionStreet').value=street;$('missionStreet').setCustomValidity('');closeStreetSuggestions();$('missionStreet').focus();}
+function highlightStreetSuggestion(index){
+  const options=[...$('missionStreetSuggestions').children];
+  if(!options.length)return;
+  streetSuggestionIndex=(index+options.length)%options.length;
+  options.forEach((option,i)=>{option.classList.toggle('active',i===streetSuggestionIndex);option.setAttribute('aria-selected',String(i===streetSuggestionIndex));});
+  $('missionStreet').setAttribute('aria-activedescendant',options[streetSuggestionIndex].id);
+  options[streetSuggestionIndex].scrollIntoView({block:'nearest'});
+}
+function renderStreetSuggestions(){
+  const box=$('missionStreetSuggestions');box.replaceChildren();streetSuggestionIndex=-1;
+  const matches=streetMatches($('missionStreet').value);
+  if(!matches.length){closeStreetSuggestions();return;}
+  matches.forEach((street,index)=>{
+    const option=document.createElement('button');option.type='button';option.className='street-suggestion';option.id=`atlas-street-${index}`;option.setAttribute('role','option');option.setAttribute('aria-selected','false');option.textContent=street;
+    option.addEventListener('pointerdown',event=>event.preventDefault());option.addEventListener('click',()=>chooseStreet(street));box.appendChild(option);
+  });
+  box.classList.remove('hidden');$('missionStreet').setAttribute('aria-expanded','true');
+}
+function streetSubmissionValue(){
+  const value=$('missionStreet').value.trim();
+  if(!value)throw new Error('Indiquez la voie de l’intervention.');
+  if(banStreetLoading&&!state.banStreets.length)throw new Error('La liste des voies est en cours de chargement. Réessayez dans un instant.');
+  const exact=state.banStreets.find(street=>normalizeStreet(street)===normalizeStreet(value));
+  if(state.banStreets.length&&!exact)throw new Error('Choisissez une voie parmi les résultats de la recherche.');
+  return exact||value;
+}
 async function loadBanStreets(){
-  const select=$('missionStreet');
-  const status=$('banStatus');
-  if(!select)return;
-  select.disabled=true;
-  select.innerHTML='<option value="">Chargement des voies de Chalon-sur-Saône…</option>';
-  if(status){status.textContent='Connexion à la Base Adresse Nationale…';status.classList.remove('ok','error');}
+  const input=$('missionStreet'),status=$('banStatus'),request=++banRequestSeq;
+  banStreetLoading=true;input.setAttribute('aria-busy','true');
+  status.textContent=state.banStreets.length?'Recherche disponible · actualisation des voies…':'Chargement des voies · vous pouvez déjà saisir le nom…';status.classList.remove('ok','error');
   try{
-    // t=Date.now() empêche tout cache navigateur : chaque ouverture déclenche bien un appel au serveur,
-    // lequel vérifie à son tour la version disponible dans la BAN officielle.
     const d=await api('/portail/atlas/api/streets?t='+Date.now());
-    const streets=Array.isArray(d.streets)?d.streets:[];
-    state.banStreets=streets;
-    select.replaceChildren();
-    const first=document.createElement('option');first.value='';first.textContent='Choisir une voie';select.appendChild(first);
-    streets.forEach(name=>{const o=document.createElement('option');o.value=name;o.textContent=name;select.appendChild(o);});
-    select.disabled=false;
-    if(status){
-      status.textContent=`${streets.length} voie${streets.length>1?'s':''} chargée${streets.length>1?'s':''} depuis la Base Adresse Nationale${d.stale?' (dernière liste disponible)':''}.`;
-      status.classList.add(d.stale?'error':'ok');
-    }
+    if(request!==banRequestSeq)return;
+    state.banStreets=[...new Set((d.streets||[]).map(street=>String(street).trim()).filter(Boolean))];
+    status.textContent=`${state.banStreets.length} voies · tapez quelques lettres puis choisissez la voie${d.stale?' · dernière liste disponible':''}.`;status.classList.add(d.stale?'error':'ok');
+    if(document.activeElement===input)renderStreetSuggestions();
   }catch(e){
-    state.banStreets=[];
-    select.replaceChildren();
-    const o=document.createElement('option');o.value='';o.textContent='Liste des voies indisponible';select.appendChild(o);select.disabled=true;
-    if(status){status.textContent='Impossible de charger les voies depuis la Base Adresse Nationale.';status.classList.add('error');}
-  }
+    if(request!==banRequestSeq)return;
+    status.textContent=state.banStreets.length?'Actualisation indisponible : recherche dans la dernière liste chargée.':'Liste des voies indisponible : saisissez et vérifiez le nom complet de la voie.';status.classList.add('error');
+  }finally{if(request===banRequestSeq){banStreetLoading=false;input.removeAttribute('aria-busy');}}
 }
 
 function renderNext(){
@@ -148,6 +205,7 @@ function renderNext(){
 function missionCard(m){
   const t=$('missionTemplate').content.cloneNode(true);
   const card=t.querySelector('.mission-card');
+  card.dataset.missionId=m.id;
   card.classList.add(m.priority==='URGENT'?'urgent':'normal');
   t.querySelector('.priority-label').textContent=priorityLabel(m.priority);
   t.querySelector('.nature').textContent=(m.natureCode?m.natureCode+' — ':'')+m.natureLabel;
@@ -158,17 +216,15 @@ function missionCard(m){
   const liveCrew=crewById(m.crewId);
   t.querySelector('.crew').textContent=m.crewCallsign||'Non affectée';
   if(m.crewId&&!liveCrew)t.querySelector('.crew').textContent+=(m.crewCallsign?' · ':'')+'absente de PHENIX';
-  t.querySelector('.elapsed').textContent=elapsed(m.departedAt);
+  t.querySelector('.elapsed').textContent=elapsed(m.startedAt||m.departedAt);
   const actions=t.querySelector('.mission-actions');
 
-  if(!m.crewId){
-    actions.append(button('Affecter une patrouille','secondary',()=>openAssign(m.id)));
-  }else if(m.status==='ASSIGNED'){
-    actions.append(button('PARTIE','departed',()=>setStatus(m.id,'DEPARTED')));
-  }else if(m.status==='DEPARTED'){
+  if(!m.crewId&&state.canOperate){
+    actions.append(missionAssignmentForm(m));
+  }else if(['IN_PROGRESS','ASSIGNED','DEPARTED'].includes(m.status)&&state.canOperate){
     actions.append(button('SUR PLACE','onscene',()=>setStatus(m.id,'ONSCENE')));
     actions.append(button('TERMINÉ','done',()=>setStatus(m.id,'DONE')));
-  }else if(m.status==='ONSCENE'){
+  }else if(m.status==='ONSCENE'&&state.canOperate){
     actions.append(button('TERMINÉ','done',()=>setStatus(m.id,'DONE')));
   }
   if(state.canManage)actions.append(button('Supprimer','danger',()=>deleteMission(m.id)));
@@ -176,19 +232,54 @@ function missionCard(m){
 }
 function button(label,kind,fn){const b=document.createElement('button');b.type='button';b.className='btn '+kind;b.textContent=label;b.addEventListener('click',fn);return b;}
 
+function missionAssignmentForm(mission){
+  const choice=assignmentChoices.get(mission.id)||{assignmentMode:preferredAssignmentMode(),crewId:''};
+  assignmentChoices.set(mission.id,choice);
+  const form=document.createElement('form');form.className='mission-assignment';
+  form.innerHTML=`<fieldset class="assignment-mode"><legend>Affectation de la patrouille</legend><label><input type="radio" name="assignment-${esc(mission.id)}" value="auto" ${choice.assignmentMode==='auto'?'checked':''}> Automatique</label><label><input type="radio" name="assignment-${esc(mission.id)}" value="manual" ${choice.assignmentMode==='manual'?'checked':''}> Manuelle</label></fieldset><label class="crew-choice">Patrouille disponible<select aria-label="Patrouille pour cette intervention"></select></label><small class="assignment-explanation"></small><button class="btn primary" type="submit">Affecter</button><p class="error" role="alert"></p>`;
+  const select=form.querySelector('select'),submit=form.querySelector('button[type="submit"]'),error=form.querySelector('.error');
+  fillCrewSelect(select,'Choisir une patrouille');select.value=choice.crewId;
+  const update=()=>{
+    const auto=choice.assignmentMode==='auto';
+    form.querySelector('.crew-choice').classList.toggle('hidden',auto);
+    form.querySelector('.assignment-explanation').textContent=auto?'Une patrouille disponible sera choisie au clic sur Affecter.':'L’affectation démarre immédiatement l’intervention.';
+    const selected=state.crews.find(crew=>crew.id===choice.crewId);
+    if(!state.crews.some(crewAssignable))form.querySelector('.assignment-explanation').textContent='Aucune patrouille disponible. L’intervention reste en attente.';
+    submit.disabled=assignmentPending.has(mission.id)||(auto?!state.crews.some(crewAssignable):!selected||!crewAssignable(selected));
+  };
+  form.querySelectorAll('input[type="radio"]').forEach(input=>input.addEventListener('change',()=>{choice.assignmentMode=input.value;localStorage.setItem('atlasAssignmentMode',input.value);error.textContent='';update();}));
+  select.addEventListener('change',()=>{choice.crewId=select.value;error.textContent='';update();});
+  form.addEventListener('submit',async event=>{
+    event.preventDefault();if(assignmentPending.has(mission.id))return;
+    assignmentPending.add(mission.id);error.textContent='';submit.disabled=true;submit.textContent='Affectation…';
+    try{
+      await api(`/portail/atlas/api/missions/${encodeURIComponent(mission.id)}/assign`,{method:'POST',body:JSON.stringify({assignmentMode:choice.assignmentMode,crewId:choice.assignmentMode==='manual'?choice.crewId:''})});
+      assignmentChoices.delete(mission.id);await refreshAfterMutation();
+    }catch(e){error.textContent=e.message;}
+    finally{assignmentPending.delete(mission.id);submit.textContent='Affecter';update();}
+  });
+  update();return form;
+}
+
 function renderMissions(){
-  const waiting=state.missions.filter(m=>['WAITING','ASSIGNED'].includes(m.status));
-  const active=state.missions.filter(m=>['DEPARTED','ONSCENE'].includes(m.status));
+  const waiting=state.missions.filter(m=>m.status==='WAITING');
+  const active=state.missions.filter(m=>['IN_PROGRESS','ASSIGNED','DEPARTED','ONSCENE'].includes(m.status));
   $('waitingCount').textContent=waiting.length;$('activeCount').textContent=active.length;
-  const w=$('waitingList'),a=$('activeList');w.replaceChildren();a.replaceChildren();
-  if(!waiting.length)w.innerHTML='<div class="empty-list">Aucune mission à venir</div>';else waiting.forEach(m=>w.appendChild(missionCard(m)));
-  if(!active.length)a.innerHTML='<div class="empty-list">Aucune intervention en cours</div>';else active.forEach(m=>a.appendChild(missionCard(m)));
+  for(const [id,missions,empty] of [['waitingList',waiting,'Aucune mission à venir'],['activeList',active,'Aucune intervention en cours']]){
+    const list=$(id),key=JSON.stringify([missions,state.crews,state.canOperate,state.canManage]);
+    if(list.dataset.renderKey===key)continue;
+    list.dataset.renderKey=key;list.replaceChildren();
+    if(!missions.length)list.innerHTML=`<div class="empty-list">${empty}</div>`;
+    else missions.forEach(mission=>list.appendChild(missionCard(mission)));
+  }
+  for(const id of assignmentChoices.keys())if(!waiting.some(m=>m.id===id))assignmentChoices.delete(id);
 }
 
 function renderAll(){
   applyAppearance();
   $('currentUser').textContent=state.user?`${state.user.name} · ${state.user.role}`:'—';
   $('manageBtn').classList.toggle('hidden',!state.canManage);
+  $('newMissionBtn').classList.toggle('hidden',!state.canOperate);
   populateSelects();renderNext();renderMissions();
   updateAtlasNotificationControls();
 }
@@ -226,6 +317,12 @@ async function refresh(silent=false){
   try{return await task}finally{if(atlasRefreshPending===task)atlasRefreshPending=null;}
 }
 
+async function refreshAfterMutation(){
+  // Attendre une éventuelle lecture antérieure au clic, puis recharger l’état enregistré.
+  if(atlasRefreshPending)await refresh(true);
+  return refresh(true);
+}
+
 $('atlasNotificationsBtn').addEventListener('click',()=>{updateAtlasNotificationControls();$('atlasNotificationFeedback').textContent='';openModal('notificationsModal');});
 $('atlasSoundEnabled').addEventListener('change',async event=>{atlasSoundEnabled=event.target.checked;localStorage.setItem('atlasSoundEnabled',String(atlasSoundEnabled));if(atlasSoundEnabled)await unlockAtlasAudio();});
 $('atlasDesktopEnabled').addEventListener('change',async event=>{atlasDesktopEnabled=event.target.checked;localStorage.setItem('atlasDesktopNotifications',String(atlasDesktopEnabled));if(atlasDesktopEnabled)await authorizeAtlasNotifications();updateAtlasNotificationControls();});
@@ -241,23 +338,46 @@ function installAtlasAudioUnlock(){
 }
 installAtlasAudioUnlock();
 
-$('newMissionBtn').addEventListener('click',()=>{$('missionForm').reset();$('missionError').textContent='';populateSelects();openModal('missionModal');loadBanStreets();setTimeout(()=>$('missionNumber')?.focus(),60);});
+$('newMissionBtn').addEventListener('click',()=>{$('missionForm').reset();$('missionError').textContent='';closeStreetSuggestions();setAssignmentMode('missionAssignmentMode',preferredAssignmentMode());populateSelects();$('missionCrew').value='';updateAssignmentFields();openModal('missionModal');loadBanStreets();setTimeout(()=>$('missionNature')?.focus(),60);});
 $('missionForm').addEventListener('submit',async e=>{
   e.preventDefault();$('missionError').textContent='';const submit=$('missionSubmit');submit.disabled=true;
   try{
     const natureLabel=String($('missionNature').value||'').trim();
-    await api('/portail/atlas/api/missions',{method:'POST',body:JSON.stringify({natureCode:'',natureLabel,priority:$('missionPriority').value,crewId:$('missionCrew').value,number:$('missionNumber').value,street:$('missionStreet').value,complement:$('missionComplement').value,notes:$('missionNotes').value})});
-    closeModal('missionModal');await refresh(true);
+    const assignmentMode=selectedAssignmentMode('missionAssignmentMode');
+    const street=streetSubmissionValue();
+    await api('/portail/atlas/api/missions',{method:'POST',body:JSON.stringify({natureCode:'',natureLabel,priority:$('missionPriority').value,assignmentMode,crewId:assignmentMode==='manual'?$('missionCrew').value:'',number:$('missionNumber').value,street,complement:$('missionComplement').value,notes:$('missionNotes').value})});
+    closeModal('missionModal');await refreshAfterMutation();
   }catch(err){$('missionError').textContent=err.message;}finally{submit.disabled=false;}
 });
 
-function openAssign(id){$('assignMissionId').value=id;$('assignError').textContent='';populateSelects();openModal('assignModal');}
-$('assignSubmit').addEventListener('click',async()=>{const id=$('assignMissionId').value,crewId=$('assignCrew').value;$('assignError').textContent='';try{await api(`/portail/atlas/api/missions/${encodeURIComponent(id)}/assign`,{method:'POST',body:JSON.stringify({crewId})});closeModal('assignModal');await refresh(true);}catch(e){$('assignError').textContent=e.message;}});
+async function setStatus(id,status){try{await api(`/portail/atlas/api/missions/${encodeURIComponent(id)}/status`,{method:'POST',body:JSON.stringify({status})});await refreshAfterMutation();}catch(e){alert(e.message);}}
+async function deleteMission(id){if(!confirm('Supprimer cette intervention ?'))return;try{await api(`/portail/atlas/api/missions/${encodeURIComponent(id)}`,{method:'DELETE'});await refreshAfterMutation();}catch(e){alert(e.message);}}
 
-async function setStatus(id,status){try{await api(`/portail/atlas/api/missions/${encodeURIComponent(id)}/status`,{method:'POST',body:JSON.stringify({status})});await refresh(true);}catch(e){alert(e.message);}}
-async function deleteMission(id){if(!confirm('Supprimer cette intervention ?'))return;try{await api(`/portail/atlas/api/missions/${encodeURIComponent(id)}`,{method:'DELETE'});await refresh(true);}catch(e){alert(e.message);}}
-
-$('takeNextBtn').addEventListener('click',async()=>{const crewId=$('nextCrew').value;if(!crewId){alert('Choisissez une patrouille.');return;}try{const d=await api('/portail/atlas/api/next',{method:'POST',body:JSON.stringify({crewId})});if(!d.mission)alert('Aucune mission à venir.');await refresh(true);}catch(e){alert(e.message);}});
+$('takeNextBtn').addEventListener('click',async()=>{
+  if(takeNextPending)return;
+  takeNextPending=true;$('nextError').textContent='';updateAssignmentFields();
+  const assignmentMode=selectedAssignmentMode('nextAssignmentMode');
+  try{const d=await api('/portail/atlas/api/next',{method:'POST',body:JSON.stringify({assignmentMode,crewId:assignmentMode==='manual'?$('nextCrew').value:''})});if(!d.mission)$('nextError').textContent='Aucune intervention en attente.';await refreshAfterMutation();}
+  catch(e){$('nextError').textContent=e.message;}finally{takeNextPending=false;updateAssignmentFields();}
+});
+document.querySelectorAll('input[name="nextAssignmentMode"], input[name="missionAssignmentMode"]').forEach(input=>input.addEventListener('change',()=>{localStorage.setItem('atlasAssignmentMode',input.value);$('nextError').textContent='';updateAssignmentFields();}));
+$('missionCrew').addEventListener('change',updateAssignmentFields);$('nextCrew').addEventListener('change',updateAssignmentFields);
+setAssignmentMode('nextAssignmentMode',preferredAssignmentMode());setAssignmentMode('missionAssignmentMode',preferredAssignmentMode());updateAssignmentFields();
+$('missionStreet').addEventListener('input',()=>{$('missionStreet').setCustomValidity('');renderStreetSuggestions();});
+$('missionStreet').addEventListener('focus',renderStreetSuggestions);
+$('missionStreet').addEventListener('blur',()=>setTimeout(closeStreetSuggestions,100));
+$('missionStreet').addEventListener('keydown',event=>{
+  if(event.key==='Escape'){closeStreetSuggestions();return;}
+  if(!['ArrowDown','ArrowUp','Enter'].includes(event.key))return;
+  const open=!$('missionStreetSuggestions').classList.contains('hidden');
+  if(event.key==='Enter'){
+    if(open&&$('missionStreetSuggestions').children.length){event.preventDefault();$('missionStreetSuggestions').children[Math.max(0,streetSuggestionIndex)].click();}
+    return;
+  }
+  if(!open)renderStreetSuggestions();
+  if(!$('missionStreetSuggestions').children.length)return;
+  event.preventDefault();highlightStreetSuggestion(streetSuggestionIndex<0?(event.key==='ArrowDown'?0:$('missionStreetSuggestions').children.length-1):streetSuggestionIndex+(event.key==='ArrowDown'?1:-1));
+});
 
 function editRow(value,type){const row=document.createElement('div');row.className='edit-row';const input=document.createElement('input');input.value=value;input.dataset.type=type;const del=document.createElement('button');del.type='button';del.textContent='×';del.addEventListener('click',()=>row.remove());row.append(input,del);return row;}
 function renderManage(){
@@ -267,6 +387,6 @@ $('manageBtn').addEventListener('click',()=>{renderManage();$('manageError').tex
 $('addNatureBtn').addEventListener('click',()=>{$('natureRows').appendChild(editRow('','nature'));$('natureRows').lastElementChild.querySelector('input').focus();});
 $('saveCatalogBtn').addEventListener('click',async()=>{$('manageError').textContent='';try{const labels=[...$('natureRows').querySelectorAll('input')].map(i=>i.value.trim()).filter(Boolean);await api('/portail/atlas/api/catalog/natures',{method:'POST',body:JSON.stringify({labels})});closeModal('manageModal');await refresh(true);}catch(e){$('manageError').textContent=e.message;}});
 
-setInterval(()=>{document.querySelectorAll('.mission-card').forEach(()=>{});renderMissions();renderNext();},1000);
+setInterval(()=>{document.querySelectorAll('.mission-card').forEach(card=>{const mission=state.missions.find(item=>item.id===card.dataset.missionId);if(mission)card.querySelector('.elapsed').textContent=elapsed(mission.startedAt||mission.departedAt);});},1000);
 setInterval(()=>refresh(true),2000);
 refresh();
