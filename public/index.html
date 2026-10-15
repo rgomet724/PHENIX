@@ -2950,6 +2950,21 @@ body.lightMode #argosPortalBtn .navIcon svg,
 body.lightMode #argosPortalBtn .navIcon svg *{stroke:#0758b6!important;}
 body.lightMode #argosPortalBtn:hover .navIcon svg,
 body.lightMode #argosPortalBtn:hover .navIcon svg *{stroke:#0758b6!important;}
+/* PEGASE — mode clair par défaut, option nuit noire */
+body.nightMode{--bg:#0b0d10;--p:#171a1f;--p2:#20242a;--t:#eef0f4;--m:#a6adb8;--l:#343942;--b:#5b91e9;background:#0b0d10!important;color:var(--t)!important}
+body.nightMode .app,body.nightMode main,body.nightMode .layout{background:#0b0d10!important;color:var(--t)!important}
+body.nightMode .top{background:#14171c!important;border-bottom:1px solid #343942!important;color:#fff!important}
+body.nightMode aside{background:#111318!important;border-right:1px solid #343942!important}
+body.nightMode .nav button{background:#1a1e24!important;border:1px solid #343942!important;color:#eef0f4!important}
+body.nightMode .nav button:hover,body.nightMode .nav button.activeNav{background:#303743!important}
+body.nightMode .section,body.nightMode .card,body.nightMode .modal .box:not(.crewBox),body.nightMode .consigneItem,body.nightMode .soundCard,body.nightMode .listCard{background:#171a1f!important;color:#eef0f4!important;border-color:#343942!important}
+body.nightMode input,body.nightMode select,body.nightMode textarea,body.nightMode .agentList,body.nightMode .historyBox,body.nightMode .eventCalendar,body.nightMode .eventDay,body.nightMode .linkCard,body.nightMode .eventTodayBox{background:#20242a!important;color:#eef0f4!important;border-color:#414750!important}
+body.nightMode .eventCalHead,body.nightMode .eventWeekDate{background:#242931!important;color:#eef0f4!important}
+body.nightMode .linkBody h3{color:#eef0f4!important}
+body.nightMode tr.dispo{background:#173b2a!important}
+body.nightMode tr.indispo{background:#442329!important}
+body.nightMode .themeToggle{background:#252b34!important;color:#fff!important}
+body.nightMode .tag,body.nightMode .mut{color:#b1bac8!important}
 </style>
 <style>
 
@@ -3163,7 +3178,7 @@ body.lightMode .wallPanel,body.lightMode .wallStat{background:#fff!important}bod
   </div>
 </div>
 <div id="standardDashboard" class="standardDashboard"><div class="cards"><div class="card"><span>Équipages</span><br><b id="cTotal">0</b></div><div class="card green"><span>Disponibles</span><br><b id="cDispo">0</b></div><div class="card red"><span>Indisponibles</span><br><b id="cIndispo">0</b></div><div class="card"><span>Effectifs</span><br><b id="cEff">0</b></div></div><div class="section"><div class="row dashTableHeader" style="justify-content:space-between"><h2>Tableau de bord opérationnel</h2><div class="row dashTools"><div id="dashZoomTools" class="row"><button class="small" onclick="setDashZoom(-1)" title="Réduire l'affichage">Zoom −</button><button class="small" onclick="resetDashZoom()" title="Réinitialiser le zoom">100 %</button><button class="small" onclick="setDashZoom(1)" title="Agrandir l'affichage">Zoom +</button><button id="compactDashBtn" class="small" onclick="toggleDashCompact()">Mode compact</button></div><button type="button" id="createCrewBtn" class="primary" onclick="openCrew()">Créer équipage</button></div></div><div id="dashTableWrap" class="dashTableWrap"><table id="crewTable"><thead><tr><th>Info</th><th>Indicatif</th><th>Matricules</th><th>Intervention</th><th>Code Blanc</th><th>Vacation</th><th>Actions</th></tr></thead><tbody id="crewRows"></tbody></table></div></div><div id="logSection" class="section"><h2>Journal des 5 dernières heures</h2><div id="logs"></div></div></div></section>
-<section id="settings" class="hidden"><div class="section settingsSection"><h2>Paramètres</h2><p class="mut">Personnalise l’affichage et les alertes de PHENIX sur cet appareil.</p><div class="settingsList"><div class="settingsItem mobileSoundSetting"><div><b>Alertes sonores</b><div class="mut">Active ou désactive le son lors d’un changement de statut.</div></div><button id="settingsSoundBtn" class="settingsSwitch" onclick="toggleNotifications()" aria-pressed="true"><span class="settingsSwitchKnob"></span><span id="settingsSoundText">Activées</span></button></div><div class="settingsItem settingsThemeItem"><div><b>Thème de l’application</b><div class="mut">Choisis le thème clair ou sombre.</div></div><div class="themeChoices" role="group" aria-label="Thème"><button id="settingsThemeDark" onclick="applyTheme('dark')">🌙 Sombre</button><button id="settingsThemeLight" onclick="applyTheme('light')">☀️ Clair</button></div></div><div id="settingsJTItem" class="settingsItem"><div><b>Journées type</b><div class="mut">Créez des horaires prédéfinis à appliquer rapidement lors de la création d’un équipage.</div></div><button class="primary settingsAction" onclick="openJTManager()">Gérer les journées type</button></div><div class="settingsItem"><div><b>Nom de ce poste</b><div class="mut">Utilisé dans l’historique de sécurité pour identifier cet ordinateur.</div></div><div class="row"><input id="deviceNameInput" style="max-width:220px" placeholder="Ex : PC Accueil"><button class="primary" onclick="saveDeviceName()">Enregistrer</button></div></div><div class="settingsItem"><div><b>Mot de passe</b><div class="mut">Modifiez le mot de passe de votre compte.</div></div><button class="primary settingsAction" onclick="changePass()">Modifier</button></div></div></div></section><section id="personnel" class="hidden"><div class="section"><div class="row" style="justify-content:space-between"><h2>Personnel</h2><button class="primary" onclick="addAgent()">Ajouter agent</button></div><p class="mut">Réservé Admin : ajout et modification des matricules, noms et prénoms. Les opérateurs sélectionnent ensuite uniquement les matricules dans les équipages.</p><table><thead><tr><th>Matricule</th><th>Nom</th><th>Prénom</th><th>Actif</th><th></th></tr></thead><tbody id="agentRows"></tbody></table><button class="primary" onclick="saveAgents()">Enregistrer le personnel</button></div></section>
+<section id="settings" class="hidden"><div class="section settingsSection"><h2>Paramètres</h2><p class="mut">Personnalise l’affichage et les alertes de PHENIX sur cet appareil.</p><div class="settingsList"><div class="settingsItem mobileSoundSetting"><div><b>Alertes sonores</b><div class="mut">Active ou désactive le son lors d’un changement de statut.</div></div><button id="settingsSoundBtn" class="settingsSwitch" onclick="toggleNotifications()" aria-pressed="true"><span class="settingsSwitchKnob"></span><span id="settingsSoundText">Activées</span></button></div><div class="settingsItem settingsThemeItem"><div><b>Thème de l’application</b><div class="mut">Choisis entre clair (par défaut), nuit noire et sombre bleu.</div></div><div class="themeChoices" role="group" aria-label="Thème"><button id="settingsThemeLight" onclick="applyTheme('light')">☀️ Clair (défaut)</button><button id="settingsThemeNight" onclick="applyTheme('night')">🌑 Nuit noire</button><button id="settingsThemeDark" onclick="applyTheme('dark')">🌙 Sombre bleu</button></div></div><div id="settingsJTItem" class="settingsItem"><div><b>Journées type</b><div class="mut">Créez des horaires prédéfinis à appliquer rapidement lors de la création d’un équipage.</div></div><button class="primary settingsAction" onclick="openJTManager()">Gérer les journées type</button></div><div class="settingsItem"><div><b>Nom de ce poste</b><div class="mut">Utilisé dans l’historique de sécurité pour identifier cet ordinateur.</div></div><div class="row"><input id="deviceNameInput" style="max-width:220px" placeholder="Ex : PC Accueil"><button class="primary" onclick="saveDeviceName()">Enregistrer</button></div></div><div class="settingsItem"><div><b>Mot de passe</b><div class="mut">Modifiez le mot de passe de votre compte.</div></div><button class="primary settingsAction" onclick="changePass()">Modifier</button></div></div></div></section><section id="personnel" class="hidden"><div class="section"><div class="row" style="justify-content:space-between"><h2>Personnel</h2><button class="primary" onclick="addAgent()">Ajouter agent</button></div><p class="mut">Réservé Admin : ajout et modification des matricules, noms et prénoms. Les opérateurs sélectionnent ensuite uniquement les matricules dans les équipages.</p><table><thead><tr><th>Matricule</th><th>Nom</th><th>Prénom</th><th>Actif</th><th></th></tr></thead><tbody id="agentRows"></tbody></table><button class="primary" onclick="saveAgents()">Enregistrer le personnel</button></div></section>
 <section id="notes" class="hidden"><div class="section"><h2>Notes privées</h2><p class="mut">Chaque agent voit uniquement ses propres notes.</p><textarea id="note" oninput="noteDirty=true"></textarea><br><br><button class="primary" onclick="saveNote()">Enregistrer mes notes</button></div></section><section id="consignes" class="hidden">
   <div class="section">
     <div class="row" style="justify-content:space-between">
@@ -3540,16 +3555,20 @@ async function api(url,opt={}){
 }
 
 function applyTheme(theme){
-  const light=theme==='light';
+  const selected=['light','night','dark'].includes(theme)?theme:'light';
+  const light=selected==='light';
   document.body.classList.toggle('lightMode',light);
+  document.body.classList.toggle('nightMode',selected==='night');
   const txt=$('themeText'), icon=document.querySelector('#themeBtn .themeIcon');
-  if(txt)txt.textContent=light?'Clair':'Sombre';
-  if(icon)icon.textContent=light?'☀️':'🌙';
-  localStorage.setItem('phenixTheme',light?'light':'dark');
+  if(txt)txt.textContent=light?'Clair':selected==='night'?'Nuit noire':'Sombre bleu';
+  if(icon)icon.textContent=light?'☀️':selected==='night'?'🌑':'🌙';
+  localStorage.setItem('phenixTheme',selected);
+  const themeMeta=document.querySelector('meta[name="theme-color"]');
+  if(themeMeta)themeMeta.content=light?'#ffffff':selected==='night'?'#0b0d10':'#07111f';
   updateSettingsUI();
 }
 function toggleTheme(){
-  applyTheme(document.body.classList.contains('lightMode')?'dark':'light');
+  applyTheme(document.body.classList.contains('lightMode')?'night':'light');
 }
 
 function saveDeviceName(){const v=String($('deviceNameInput')?.value||'').trim().slice(0,100);if(v)localStorage.setItem('phenixDeviceName',v);else localStorage.removeItem('phenixDeviceName');if($('deviceNameInput'))$('deviceNameInput').value=getDeviceName();alert('Nom du poste enregistré : '+getDeviceName())}
@@ -3758,7 +3777,8 @@ function updateSettingsUI(){
   if($('settingsDesktopText'))$('settingsDesktopText').textContent=permission==='unavailable'?'Indisponibles':permission==='denied'?'Bloquées':permission==='default'?'Autoriser':desktopOn?'Activées':'Désactivées';
   if($('settingsDesktopPermission'))$('settingsDesktopPermission').textContent=permission==='granted'?'Autorisation du navigateur accordée sur ce poste.':permission==='denied'?'Autorisez les notifications dans les paramètres du navigateur.':'Autorisation nécessaire sur chaque poste.';
   const light=document.body.classList.contains('lightMode');
-  $('settingsThemeDark')?.classList.toggle('active',!light);
+  $('settingsThemeDark')?.classList.toggle('active',!light&&!document.body.classList.contains('nightMode'));
+  $('settingsThemeNight')?.classList.toggle('active',document.body.classList.contains('nightMode'));
   $('settingsThemeLight')?.classList.toggle('active',light);
   if($('deviceNameInput')&&document.activeElement!==$('deviceNameInput'))$('deviceNameInput').value=getDeviceName();
 }
