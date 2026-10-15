@@ -3103,13 +3103,18 @@ body.lightMode .wallPanel,body.lightMode .wallStat{background:#fff!important}bod
 .materialCollectifChoice img{width:56px;height:48px;object-fit:contain;flex:none;background:#fff;border-radius:6px}
 .materialCollectifChoice span{font-weight:700}
 .crewEquipmentBadges{display:inline-flex;align-items:center;gap:6px;vertical-align:middle}
-.crewEquipmentBadge{display:inline-flex;align-items:center;justify-content:center;width:auto;height:auto;min-height:0;padding:4px 8px;border-radius:6px;background:rgba(59,130,246,.14);font-size:11px;font-weight:700;white-space:nowrap}
+.crewEquipmentBadge{display:inline-flex;align-items:center;justify-content:center;width:50px;height:40px}
 .crewEquipmentBadge img{width:48px;height:38px;object-fit:contain}
 .crewEquipmentInfo{display:flex;align-items:center;min-height:54px}
 .wallCrewEquipment{display:flex;justify-content:flex-end;margin-top:7px}
 .wallCrewEquipment .crewEquipmentBadge{width:auto;height:auto}
 .wallCrewEquipment .crewEquipmentBadge img{width:52px;height:42px}
 @media(max-width:700px){.materialCollectifChoices{grid-template-columns:1fr}}
+</style>
+<style id="crewEquipmentInfoStyles">
+.crewEquipmentInfoItems{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.crewEquipmentInfoItem{display:inline-flex;align-items:center;gap:8px;padding:6px 9px;border:1px solid var(--l);border-radius:8px;background:var(--p);font-size:12px;font-weight:700}
+.crewEquipmentInfoItem img{display:block;width:48px;height:38px;object-fit:contain;background:#fff;border-radius:5px}
 </style>
 </head><body>
 <div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
@@ -4002,21 +4007,38 @@ function formatVacationCell(c){
 function renderCrewEquipment(c){
   const equipment=c?.equipment||{};
   const entries=[
-    {key:'camera',label:'Caméra piéton'},
-    {key:'pie',label:'P.I.E.'}
+    {key:'camera',label:'Caméra piéton',asset:'/armement-camera.webp'},
+    {key:'pie',label:'P.I.E.',asset:'/armement-pie.webp'}
   ];
   const selected=entries.filter(item=>equipment[item.key]===true);
   if(!selected.length)return '';
   return '<span class="crewEquipmentBadges" aria-label="Matériel collectif">'+selected.map(item=>
-    '<span class="crewEquipmentBadge" title="'+item.label+'">'+item.label+'</span>'
+    '<span class="crewEquipmentBadge" title="'+item.label+'"><img src="'+item.asset+'" alt="" width="48" height="38"></span>'
   ).join('')+'</span>';
 }
+function renderCrewEquipmentInfo(c){
+  const equipment=c?.equipment||{};
+  const entries=[
+    {key:'camera',label:'Caméra piéton',asset:'/armement-camera.webp'},
+    {key:'pie',label:'P.I.E.',asset:'/armement-pie.webp'}
+  ];
+  const selected=entries.filter(item=>equipment[item.key]===true);
+  if(!selected.length)return '';
+  return '<div class="crewEquipmentInfoItems">'+selected.map(item=>
+    '<div class="crewEquipmentInfoItem"><img src="'+item.asset+'" alt=""><span>'+item.label+'</span></div>'
+  ).join('')+'</div>';
+}
+
 function renderCrews(){
   const readonly=!canOperate();
+  const dashboardAccess=S.user?.role==='dashboard';
+  const equipmentHeader=$('crewTable')?.querySelector('thead th:last-child');
+  if(equipmentHeader)equipmentHeader.textContent=dashboardAccess?'Matériel collectif':'Actions';
   $('crewRows').innerHTML=(S.crews||[]).map(c=>{
     const id=esc(String(c.id||'')).replaceAll('"','&quot;');
-    const actions=readonly
+    const actions=dashboardAccess
       ? renderCrewEquipment(c)
+      : readonly ? ''
       : `<button type="button" class="small" data-id="${id}" onclick="openCrew(this.dataset.id)">Modifier</button> <button type="button" class="small ok" data-id="${id}" onclick="statusCrew(this.dataset.id,'DISPO')">DISPO</button> <button type="button" class="small danger" data-id="${id}" onclick="openIndispo(this.dataset.id)">INDISPO</button>`;
     return `<tr class="${c.status==='INDISPO'?'indispo':'dispo'}"><td><button type="button" class="infoBtn" data-id="${id}" title="Infos équipage" onclick="showCrewInfo(this.dataset.id)">i</button></td><td><b>${esc(c.callsign)}</b><br><span class="pill">${esc(c.status)}</span></td><td>${(c.matricules||[]).map(m=>`<span class="pill">${esc(m)}</span>`).join('')}</td><td>${esc(c.intervention||'—')}</td><td>${esc(c.meal||'—')}</td><td>${formatVacationCell(c)}</td><td>${actions}</td></tr>`;
   }).join('');
@@ -4026,8 +4048,7 @@ function formatVacation(c){
   const fmt=v=>v?new Date(v).toLocaleString('fr-FR'):'—';
   return fmt(c.shiftStart)+' → '+fmt(c.shiftEnd);
 }
-function showCrewInfo(id){const c=S.crews.find(x=>x.id===id);if(!c)return;$('infoTitle').textContent='Infos '+c.callsign;const names=(c.matricules||[]).map(m=>'<div class="pill">'+an(m)+'</div>').join('')||'—';$('infoBody').innerHTML='<h3>Agents</h3>'+names+'<h3>Vacation</h3><div class="section">'+formatVacation(c)+'</div><h3>Heure de repas</h3><div class="section">'+(c.meal||'Aucune')+'</div><h3>Observations</h3><div class="section">'+(c.observations||'Aucune observation')+'</div>'+(renderCrewEquipment(c)?'<h3>Matériel collectif</h3><div class="section crewEquipmentInfo">'+renderCrewEquipment(c)+'</div>':'');$('infoModal').style.display='grid'}
-function parseInterventionLine(line){
+function showCrewInfo(id){const c=S.crews.find(x=>x.id===id);if(!c)return;$('infoTitle').textContent='Infos '+c.callsign;const names=(c.matricules||[]).map(m=>'<div class="pill">'+an(m)+'</div>').join('')||'—';const equipmentInfo=renderCrewEquipmentInfo(c);$('infoBody').innerHTML='<h3>Agents</h3>'+names+'<h3>Vacation</h3><div class="section">'+formatVacation(c)+'</div><h3>Heure de repas</h3><div class="section">'+(c.meal||'Aucune')+'</div><h3>Observations</h3><div class="section">'+(c.observations||'Aucune observation')+'</div>'+(equipmentInfo?'<h3>Matériel collectif</h3><div class="section crewEquipmentInfo">'+equipmentInfo+'</div>':'');$('infoModal').style.display='grid'} function parseInterventionLine(line){
   const raw=String(line||'').trim();
   const m=raw.match(/^([^|:-]{1,20})\s*[|:-]\s*(.+)$/);
   return m?{code:m[1].trim().toUpperCase(),label:m[2].trim(),raw}:{code:'',label:raw,raw};
