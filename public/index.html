@@ -3233,6 +3233,7 @@ body.nightMode .crewEquipmentChoiceText small{color:#a6b4c8}
 #infoBody>button{margin-top:14px}
 @media(max-width:700px){.crewActionsAndEquipment{justify-content:end}}
 </style>
+
 </head><body>
 <div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
   <div class="phenixLoadingCard">
@@ -4971,7 +4972,39 @@ async function copySignatureForOutlook(){
   }catch(e){if(status)status.textContent='Copie impossible sur ce navigateur. Utilise “Télécharger HTML”.'}
 }
 function downloadSignatureHtml(){
-  const content='<!doctype html><html><head><meta charset="utf-8"></head><body>'+buildMailSignatureHtml()+'</body></html>';
+  const content='<!doctype html><html><head><meta charset="utf-8"></head><body>'+buildMailSignatureHtml()+'<script id="pegaseHeaderCentralColor">
+(function(){
+  function syncHeaderColor(){
+    const bar=document.querySelector('#app .top');
+    const selected=document.querySelector('#app .nav button.activeNav, #app .nav button[aria-selected="true"]');
+    if(!bar||!selected)return;
+    const style=getComputedStyle(selected);
+    const background=style.backgroundImage&&style.backgroundImage!=='none'?style.backgroundImage:style.backgroundColor;
+    if(background&&background!=='rgba(0, 0, 0, 0)')bar.style.setProperty('background',background,'important');
+    const textColor=style.color||'#fff';
+    bar.style.setProperty('color',textColor,'important');
+    bar.querySelectorAll('h1,.tag,.right,#agentName,#clock,.topAgentIdentity').forEach(el=>el.style.setProperty('color',textColor,'important'));
+    bar.style.setProperty('filter','none','important');
+    const rgb=style.backgroundColor.match(/\d+/g);
+    if(rgb&&rgb.length>=3){
+      const meta=document.querySelector('meta[name="theme-color"]');
+      if(meta)meta.content='#'+rgb.slice(0,3).map(v=>Number(v).toString(16).padStart(2,'0')).join('');
+    }
+  }
+  function start(){
+    syncHeaderColor();
+    const nav=document.querySelector('#app .nav');
+    if(nav)new MutationObserver(syncHeaderColor).observe(nav,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style','aria-selected']});
+    new MutationObserver(syncHeaderColor).observe(document.documentElement,{attributes:true,attributeFilter:['class','style']});
+    if(document.head)new MutationObserver(syncHeaderColor).observe(document.head,{childList:true,subtree:true});
+    window.addEventListener('storage',syncHeaderColor);
+    window.addEventListener('load',syncHeaderColor,{once:true});
+    setTimeout(syncHeaderColor,250);
+    setTimeout(syncHeaderColor,1000);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+})();
+</script></body></html>';
   const blob=new Blob([content],{type:'text/html;charset=utf-8'}),a=document.createElement('a');
   a.href=URL.createObjectURL(blob);a.download='signature-phenix-outlook.html';document.body.appendChild(a);a.click();a.remove();
 }
