@@ -52,18 +52,23 @@ function safeEqual(a,b){
   return aa.length===bb.length && crypto.timingSafeEqual(aa,bb);
 }
 
-function interventionLabel(v){
+function interventionParts(v){
   const raw=String(v||'').trim();
-  const m=raw.match(/^(?:\d{1,4}|[^|:-]{1,20})\s*[|:-]\s*(.+)$/);
-  return (m?m[1]:raw).trim();
+  const m=raw.match(/^([^|]+)\|\s*(.+)$/);
+  return m?{code:m[1].trim().toUpperCase(),label:m[2].trim()}:{code:'',label:raw};
 }
 function normalizeInterventions(list){
-  const labels=[...new Set((Array.isArray(list)?list:[])
-    .map(interventionLabel)
-    .map(x=>String(x||'').trim())
-    .filter(Boolean))];
-  labels.sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base',numeric:true}));
-  return labels.slice(0,500).map((label,i)=>String(20+i).padStart(3,'0')+' | '+label);
+  const used=new Set(),out=[];
+  for(const entry of Array.isArray(list)?list:[]){
+    const item=entry&&typeof entry==='object'?{code:String(entry.code||'').trim().toUpperCase(),label:String(entry.label||'').trim()}:interventionParts(entry);
+    if(!item.label)continue;
+    if(!item.code){let i=20;while(used.has(String(i).padStart(3,'0')))i++;item.code=String(i).padStart(3,'0');}
+    const key=item.code.toLocaleUpperCase('fr-FR');
+    if(used.has(key))continue;
+    used.add(key);out.push(item.code+' | '+item.label);
+    if(out.length===500)break;
+  }
+  return out;
 }
 
 
@@ -783,11 +788,6 @@ app.post('/api/agents', needLogin, needAdmin, (req,res)=>{
   res.json({ok:true});
 });
 
-function normalizeCrewEquipment(value){
-  if(!value || typeof value !== 'object' || Array.isArray(value)) return {camera:false,pie:false};
-  return {camera:value.camera === true, pie:value.pie === true};
-}
-
 app.post('/api/crew', needLogin, needOperational, (req,res)=>{
   const d=load(); const c=req.body.crew||{};
   if(!c.callsign) return res.status(400).json({error:'Indicatif obligatoire'});
@@ -795,10 +795,10 @@ app.post('/api/crew', needLogin, needOperational, (req,res)=>{
   if(c.id){
     const i=d.crews.findIndex(x=>x.id===c.id);
     if(i<0) return res.status(404).json({error:'Équipage introuvable'});
-    d.crews[i]={...d.crews[i], callsign:c.callsign, matricules:c.matricules||[], observations:c.observations||'', meal:c.meal||'', shiftStart:String(c.shiftStart||''), shiftEnd:String(c.shiftEnd||''), equipment:normalizeCrewEquipment(Object.prototype.hasOwnProperty.call(c,'equipment') ? c.equipment : d.crews[i].equipment)};
+    d.crews[i]={...d.crews[i], callsign:c.callsign, matricules:c.matricules||[], observations:c.observations||'', meal:c.meal||'', shiftStart:String(c.shiftStart||''), shiftEnd:String(c.shiftEnd||'')};
     audit(d,req,'Modification équipage '+c.callsign);
   } else {
-    d.crews.push({id:Date.now().toString(), callsign:c.callsign, matricules:c.matricules||[], observations:c.observations||'', meal:c.meal||'', shiftStart:String(c.shiftStart||''), shiftEnd:String(c.shiftEnd||''), equipment:normalizeCrewEquipment(c.equipment), status:'DISPO', intervention:''});
+    d.crews.push({id:Date.now().toString(), callsign:c.callsign, matricules:c.matricules||[], observations:c.observations||'', meal:c.meal||'', shiftStart:String(c.shiftStart||''), shiftEnd:String(c.shiftEnd||''), status:'DISPO', intervention:''});
     audit(d,req,'Création équipage '+c.callsign);
   }
 
