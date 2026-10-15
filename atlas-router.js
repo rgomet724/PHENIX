@@ -694,7 +694,11 @@ function mountInterventions(app, deps = {}) {
   });
 
   router.post('/catalog/natures', requireManager, (req, res) => {
-    const labels = Array.isArray(req.body?.labels) ? req.body.labels : [];
+    if (!Array.isArray(req.body?.labels)) return res.status(400).json({ message: 'Liste de motifs invalide.' });
+    const labels = req.body.labels.map(x => String(x || '').trim());
+    if (labels.some(x => !x || x.length > 180 || /[\\r\\n]/.test(x))) return res.status(400).json({ message: 'Chaque motif doit comporter entre 1 et 180 caractères.' });
+    if (labels.length > 500) return res.status(400).json({ message: 'Maximum 500 motifs.' });
+    if (new Set(labels.map(x => x.toLocaleLowerCase('fr-FR'))).size !== labels.length) return res.status(400).json({ message: 'Un motif figure plusieurs fois.' });
     const phenix = loadPhenix();
     phenix.interventions = normalizeInterventions(labels);
     savePhenix(phenix);
