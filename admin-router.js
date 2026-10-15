@@ -651,6 +651,42 @@ function mountCentralAdmin(app, deps = {}) {
     } catch (error) { res.status(400).json({ error: error.message }); }
   });
 
+  // Référentiel partagé PHENIX / ATLAS — administration exclusivement.
+  router.get('/interventions', (req, res) => {
+    const phenix = loadPhenix();
+    const interventions = (Array.isArray(phenix.interventions) ? phenix.interventions : []).map(raw => {
+      const match = String(raw || '').match(/^([^|]+)\|\s*(.+)$/);
+      return match ? { code: match[1].trim(), label: match[2].trim() } : { code: '', label: String(raw || '').trim() };
+    });
+    res.json({ interventions });
+  });
+
+  router.put('/interventions', (req, res) => {
+    const items = req.body && req.body.interventions;
+    if (!Array.isArray(items) || !items.length || items.length > 500)
+      return res.status(400).json({ error: 'Le catalogue doit contenir entre 1 et 500 interventions.' });
+    const codes = new Set(), labels = new Set(), normalized = [];
+    for (const raw of items) {
+      const code = String(raw && raw.code || '').trim().toUpperCase();
+      const label = String(raw && raw.label || '').trim();
+      if (!/^[A-Z0-9][A-Z0-9._-]{0,19}$/.test(code) || !label || label.length > 180)
+        return res.status(400).json({ error: 'Code (lettres, chiffres, tiret, point) ou motif invalide.' });
+      const key = label.toLocaleLowerCase('fr-FR');
+      if (codes.has(code) || labels.has(key))
+        return res.status(400).json({ error: 'Un code ou un motif figure plusieurs fois.' });
+      codes.add(code); labels.add(key);
+      normalized.push(`${code} | ${label}`);
+    }
+    const phenix = loadPhenix();
+    phenix.interventions = normalized;
+    savePhenix(phenix);
+    auditAndSave(loadAdminConfig(true), req, 'Modification codes interventions', `${normalized.length} codes et motifs mis à jour`);
+    res.json({ ok: true, interventions: normalized.map(v => {
+      const index = v.indexOf(' | ');
+      return { code: v.slice(0, index), label: v.slice(index + 3) };
+    }) });
+  });
+
   router.get('/catalog', (req, res) => {
     const portal = loadPortal();
     res.json({ applications: APPLICATIONS, categories: portal.categories, apps: portal.apps });
