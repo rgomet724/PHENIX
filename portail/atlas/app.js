@@ -89,7 +89,7 @@ function updateAtlasNotificationControls(){
   const permission='Notification' in window?Notification.permission:'unavailable';
   $('atlasNotificationPermission').textContent=permission==='granted'?'Notifications de bureau autorisées sur ce poste.':permission==='denied'?'Notifications bloquées : autorisez-les dans les paramètres du navigateur.':permission==='unavailable'?'Ce navigateur ne propose pas les notifications de bureau.':'Cliquez sur « Autoriser sur ce poste » puis acceptez la demande du navigateur.';
   $('atlasAuthorizeNotifications').disabled=permission==='unavailable';
-  $('atlasNotificationsBtn').textContent=atlasDesktopEnabled&&permission==='granted'?'🔔 Notifications activées':'🔔 Notifications';
+  $('atlasNotificationsBtn').textContent=atlasDesktopEnabled&&permission==='granted'?'Notifications activées':'Notifications';
 }
 async function authorizeAtlasNotifications(){
   const audioPermission=unlockAtlasAudio();
@@ -379,13 +379,45 @@ $('missionStreet').addEventListener('keydown',event=>{
   event.preventDefault();highlightStreetSuggestion(streetSuggestionIndex<0?(event.key==='ArrowDown'?0:$('missionStreetSuggestions').children.length-1):streetSuggestionIndex+(event.key==='ArrowDown'?1:-1));
 });
 
-function editRow(value,type){const row=document.createElement('div');row.className='edit-row';const input=document.createElement('input');input.value=value;input.dataset.type=type;const del=document.createElement('button');del.type='button';del.textContent='×';del.addEventListener('click',()=>row.remove());row.append(input,del);return row;}
-function renderManage(){
-  const n=$('natureRows');n.replaceChildren();state.natures.forEach(x=>n.appendChild(editRow(x.label,'nature')));
+let catalogBusy=false;
+function catalogLabels(){return [...$('natureRows').querySelectorAll('input')].map(i=>i.value.trim());}
+async function saveCatalog(){
+  if(catalogBusy)return false;
+  const labels=catalogLabels(),error=$('manageError');
+  error.textContent='';
+  if(labels.some(x=>!x)){error.textContent='Renseignez chaque motif ou supprimez sa ligne.';return false;}
+  if(new Set(labels.map(x=>x.toLocaleLowerCase('fr-FR'))).size!==labels.length){error.textContent='Deux motifs identiques sont présents.';return false;}
+  catalogBusy=true;
+  try{
+    const d=await api('/portail/atlas/api/catalog/natures',{method:'POST',body:JSON.stringify({labels})});
+    state.natures=d.natures||[];
+    renderManage();
+    $('manageSuccess').textContent='Modifications enregistrées.';
+    return true;
+  }catch(e){error.textContent=e.message;return false;}
+  finally{catalogBusy=false;}
 }
-$('manageBtn').addEventListener('click',()=>{renderManage();$('manageError').textContent='';openModal('manageModal');});
-$('addNatureBtn').addEventListener('click',()=>{$('natureRows').appendChild(editRow('','nature'));$('natureRows').lastElementChild.querySelector('input').focus();});
-$('saveCatalogBtn').addEventListener('click',async()=>{$('manageError').textContent='';try{const labels=[...$('natureRows').querySelectorAll('input')].map(i=>i.value.trim()).filter(Boolean);await api('/portail/atlas/api/catalog/natures',{method:'POST',body:JSON.stringify({labels})});closeModal('manageModal');await refresh(true);}catch(e){$('manageError').textContent=e.message;}});
+function editRow(value){
+  const row=document.createElement('div');row.className='edit-row';
+  const input=document.createElement('input');input.value=value;input.maxLength=180;input.setAttribute('aria-label','Motif d’intervention');
+  const save=button('Enregistrer','secondary',()=>saveCatalog());
+  const del=button('Supprimer','danger',async()=>{
+    if(!confirm('Supprimer ce motif du catalogue ?'))return;
+    row.remove();if(!await saveCatalog())$('natureRows').append(row);
+  });
+  row.append(input,save,del);return row;
+}
+function renderManage(){
+  $('natureRows').replaceChildren();
+  state.natures.forEach(x=>$('natureRows').appendChild(editRow(x.label)));
+}
+$('manageBtn').addEventListener('click',()=>{renderManage();$('manageError').textContent='';$('manageSuccess').textContent='';openModal('manageModal');});
+$('addNatureBtn').addEventListener('click',()=>{
+  $('natureRows').appendChild(editRow(''));
+  $('manageSuccess').textContent='';
+  $('natureRows').lastElementChild.querySelector('input').focus();
+});
+$('saveCatalogBtn').addEventListener('click',saveCatalog);
 
 setInterval(()=>{document.querySelectorAll('.mission-card').forEach(card=>{const mission=state.missions.find(item=>item.id===card.dataset.missionId);if(mission)card.querySelector('.elapsed').textContent=elapsed(mission.startedAt||mission.departedAt);});},1000);
 setInterval(()=>refresh(true),2000);

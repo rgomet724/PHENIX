@@ -22,3 +22,34 @@
 .manage-grid.single-panel{grid-template-columns:1fr}
 .manage-grid.single-panel .manage-panel{max-width:760px}
 @media(max-width:600px){.brand-logo{width:48px;height:48px}}
+
+/* Identité institutionnelle ARGOS / ATLAS */
+:root{--blue:#123c69;--blue2:#235c93;--ink:#1a2d43;--muted:#607187;--line:#dbe3ed;--bg:#f4f7fa;--shadow:0 2px 10px rgba(17,43,75,.04)}
+.topbar{background:#fff;color:var(--ink);border-bottom:3px solid var(--blue);box-shadow:none}
+.brand strong{font-size:21px;letter-spacing:.025em;color:var(--blue)}
+.brand span{color:var(--muted);opacity:1}
+.sync-pill,.user-pill{border-radius:5px;background:#eef3f8;color:#31516f;font-weight:600}
+.topbar .btn.ghost{background:#fff;color:var(--blue);border-color:var(--line)}
+.page{max-width:1540px;padding-top:30px}
+.next-card,.next-action-card,.board-column{border-radius:7px;box-shadow:var(--shadow)}
+.next-card{border-top:3px solid var(--blue)}
+.next-summary h2{font-size:21px}
+.next-priority,.status-badge{border-radius:4px}
+.board-column{min-height:480px}
+.column-head{border-bottom:1px solid var(--line);margin-bottom:13px;padding-bottom:14px}
+.column-head h2{font-size:17px}
+.toolbar h1{font-size:25px;color:var(--blue)}
+.mission-card{border-radius:5px;background:#fff!important;padding:16px 17px 16px 20px}
+.mission-card .mission-priority{width:4px}
+.mission-top h3{font-size:17px}
+.mission-meta>div{border-radius:4px;background:#f8fafc}
+.btn{border-radius:5px;font-weight:700}
+.btn.secondary{background:#eaf0f7;color:var(--blue)}
+.btn.ghost{background:#fff}
+.modal-card{border-radius:8px}
+.manage-panel{border-radius:6px}
+.edit-row{align-items:center}
+.edit-row input{min-width:0}
+.edit-row .btn{white-space:nowrap;padding:10px 12px}
+.catalog-success{color:#216342;font-weight:700;font-size:13px}
+@media(max-width:600px){.edit-row{flex-wrap:wrap}.edit-row input{flex-basis:100%}.edit-row .btn{flex:1}}

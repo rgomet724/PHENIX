@@ -13,14 +13,14 @@
       <img class="brand-logo" src="/portail/atlas/logo-atlas.png" alt="Logo ATLAS">
       <div>
         <strong>ATLAS</strong>
-        <span>Gestion de l’attente des interventions</span>
+        <span>Gestion opérationnelle des interventions</span>
       </div>
     </div>
     <div class="top-actions">
       <span id="syncState" class="sync-pill">PHENIX connecté</span>
       <span id="currentUser" class="user-pill">—</span>
-      <button id="atlasNotificationsBtn" class="btn ghost" type="button">🔔 Notifications</button>
-      <a class="btn ghost" href="/portail/">← ARGOS</a>
+      <button id="atlasNotificationsBtn" class="btn ghost" type="button">Notifications</button>
+      <a class="btn ghost" href="/portail/">Retour à ARGOS</a>
     </div>
   </header>
 
@@ -41,7 +41,7 @@
         <label id="nextCrewField" for="nextCrew">Patrouille disponible<select id="nextCrew"></select></label>
         <small id="nextAssignmentHelp">Choisissez la patrouille pour l’intervention prioritaire.</small>
         <button id="takeNextBtn" class="btn primary large" type="button" disabled>Affecter</button>
-        <small>L’intervention passe immédiatement en cours et la patrouille devient indisponible dans PHENIX.</small>
+        
         <p id="nextError" class="error" role="alert"></p>
       </div>
     </section>
@@ -52,8 +52,8 @@
         <p><span id="waitingCount">0</span> en attente · <span id="activeCount">0</span> en cours</p>
       </div>
       <div class="toolbar-actions">
-        <button id="manageBtn" class="btn secondary hidden" type="button">⚙ Paramètres</button>
-        <button id="newMissionBtn" class="btn primary hidden" type="button">＋ Ajouter une intervention</button>
+        <button id="manageBtn" class="btn secondary hidden" type="button">Gestion des motifs</button>
+        <button id="newMissionBtn" class="btn primary hidden" type="button">Nouvelle intervention</button>
       </div>
     </section>
 
@@ -111,7 +111,7 @@
           <legend>Affectation de la patrouille</legend>
           <label><input type="radio" name="missionAssignmentMode" value="auto"> Automatique</label>
           <label><input type="radio" name="missionAssignmentMode" value="manual" checked> Manuelle</label>
-          <small>En automatique, ATLAS choisit une patrouille disponible au moment de l’enregistrement.</small>
+          
         </fieldset>
         <label id="missionCrewField">Patrouille disponible
           <select id="missionCrew"><option value="">À affecter plus tard</option></select>
@@ -146,14 +146,14 @@
       <div class="modal-head"><div><span class="eyebrow">ADMINISTRATION</span><h2>Paramètres ATLAS</h2></div><button class="icon-btn" data-close="manageModal" type="button">×</button></div>
       <div class="manage-grid single-panel">
         <section class="manage-panel">
-          <h3>Natures d’intervention</h3>
-          <p>Cette liste est partagée avec PHENIX. Les adresses sont désormais recherchées en direct dans la Base Adresse Nationale.</p>
+          <h3>Motifs d’intervention</h3>
+          <p>Catalogue commun à ATLAS et PHENIX.</p>
           <div id="natureRows" class="edit-list"></div>
-          <button id="addNatureBtn" class="btn secondary" type="button">＋ Ajouter une nature</button>
+          <button id="addNatureBtn" class="btn secondary" type="button">Ajouter un motif</button>
         </section>
       </div>
-      <p id="manageError" class="error"></p>
-      <div class="modal-actions"><button class="btn ghost" data-close="manageModal" type="button">Fermer</button><button id="saveCatalogBtn" class="btn primary" type="button">Enregistrer les listes</button></div>
+      <p id="manageError" class="error" role="alert"></p><p id="manageSuccess" class="catalog-success" role="status"></p>
+      <div class="modal-actions"><button class="btn ghost" data-close="manageModal" type="button">Fermer</button><button id="saveCatalogBtn" class="btn primary" type="button">Enregistrer les modifications</button></div>
     </div>
   </div>
 
