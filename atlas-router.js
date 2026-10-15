@@ -94,9 +94,16 @@ function interventionParts(raw) {
 }
 
 function normalizeInterventions(list) {
-  const labels = [...new Set((Array.isArray(list) ? list : []).map(interventionParts).map(x => x.label).map(x => String(x || '').trim()).filter(Boolean))];
-  labels.sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base', numeric: true }));
-  return labels.slice(0, 500).map((label, i) => `${String(20 + i).padStart(3, '0')} | ${label}`);
+  const out=[],codes=new Set(),labels=new Set();
+  for(const raw of Array.isArray(list)?list:[]){
+    const p=raw&&typeof raw==='object'?{code:String(raw.code||'').trim().toUpperCase(),label:String(raw.label||'').trim()}:interventionParts(raw);
+    if(!p.code||!p.label||p.code.length>20||p.label.length>180||! /^[A-Z0-9][A-Z0-9._-]*$/.test(p.code))throw new Error('Code ou motif invalide.');
+    const k=p.label.toLocaleLowerCase('fr-FR');
+    if(codes.has(p.code)||labels.has(k))throw new Error('Code ou motif déjà présent.');
+    codes.add(p.code);labels.add(k);out.push(p.code+' | '+p.label);
+    if(out.length>500)throw new Error('Maximum 500 motifs.');
+  }
+  return out;
 }
 
 function buildAddress(m) {
@@ -353,7 +360,7 @@ function mountInterventions(app, deps = {}) {
     if (!stored) return null;
     const access = appAccess(stored, 'atlas');
     if (!access.enabled) return null;
-    return { id: stored.id, login: stored.login, name: stored.displayName || stored.login, role: access.role, source: 'PHENIX' };
+    return { id: stored.id, login: stored.login, name: stored.displayName || stored.login, role: String(stored.role||'').toLowerCase()==='admin'?'admin':access.role, source: 'PHENIX' };
   }
 
   function requireUser(req, res, next) {
@@ -694,13 +701,11 @@ function mountInterventions(app, deps = {}) {
   });
 
   router.post('/catalog/natures', requireManager, (req, res) => {
-    if (!Array.isArray(req.body?.labels)) return res.status(400).json({ message: 'Liste de motifs invalide.' });
-    const labels = req.body.labels.map(x => String(x || '').trim());
-    if (labels.some(x => !x || x.length > 180 || /[\\r\\n]/.test(x))) return res.status(400).json({ message: 'Chaque motif doit comporter entre 1 et 180 caractères.' });
-    if (labels.length > 500) return res.status(400).json({ message: 'Maximum 500 motifs.' });
-    if (new Set(labels.map(x => x.toLocaleLowerCase('fr-FR'))).size !== labels.length) return res.status(400).json({ message: 'Un motif figure plusieurs fois.' });
+    if(!Array.isArray(req.body?.labels))return res.status(400).json({message:'Catalogue invalide.'});
+    let entries;
+    try{entries=normalizeInterventions(req.body.labels)}catch(e){return res.status(400).json({message:e.message});}
     const phenix = loadPhenix();
-    phenix.interventions = normalizeInterventions(labels);
+    phenix.interventions = entries;
     savePhenix(phenix);
     res.json({ ok: true, natures: phenix.interventions.map(interventionParts) });
   });
