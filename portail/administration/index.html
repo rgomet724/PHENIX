@@ -7,6 +7,7 @@
   <title>Administration centrale — ARGOS</title>
   <link rel="stylesheet" href="/portail/administration/styles.css">
   <script src="/portail/administration/app.js" defer></script>
+  <script src="/portail/administration/interventions.js" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -131,6 +132,23 @@
             <div class="form-footer"><button class="button primary" type="submit">Enregistrer les accès</button></div>
           </form>
         </div>
+        <article class="panel" id="interventionCatalogPanel" style="margin-top:24px">
+          <div class="panel-heading">
+            <div><h2>Codes et motifs d’intervention</h2><p>Référentiel commun à PHENIX et ATLAS. Gestion réservée aux administrateurs.</p></div>
+            <button class="button secondary" id="interventionReload" type="button">Actualiser</button>
+          </div>
+          <div class="table-scroll">
+            <table class="intervention-table">
+              <thead><tr><th style="width:150px">Code</th><th>Motif d’intervention</th><th style="width:120px">Action</th></tr></thead>
+              <tbody id="interventionRows"><tr><td colspan="3">Chargement des codes…</td></tr></tbody>
+            </table>
+          </div>
+          <p id="interventionError" role="alert" style="color:#ad1c2b;font-weight:700"></p>
+          <div class="form-footer" style="justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <button class="button secondary" id="interventionAdd" type="button">Ajouter un code et un motif</button>
+            <button class="button primary" id="interventionSave" type="button">Enregistrer les modifications</button>
+          </div>
+        </article>
       </section>
 
       <section class="view hidden" data-view-panel="apps">
