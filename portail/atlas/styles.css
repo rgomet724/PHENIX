@@ -53,3 +53,22 @@
 .edit-row .btn{white-space:nowrap;padding:10px 12px}
 .catalog-success{color:#216342;font-weight:700;font-size:13px}
 @media(max-width:600px){.edit-row{flex-wrap:wrap}.edit-row input{flex-basis:100%}.edit-row .btn{flex:1}}
+
+/* ATLAS — charte PEGASE / PHENIX */
+:root{--blue:#0018a8;--blue2:#0758b6;--bg:#f4f6fa;--line:#d9e0e9;--shadow:0 2px 9px rgba(0,24,75,.045)}
+.topbar{background:var(--blue);box-shadow:none;border-bottom:1px solid #001485}
+.page{max-width:1520px}
+.next-card,.next-action-card,.board-column,.mission-card,.modal-card,.manage-panel{border-radius:5px;box-shadow:var(--shadow)}
+.mission-card.urgent,.mission-card.normal{background:#fff}
+.mission-priority{width:4px!important}
+.mission-meta>div{border-radius:4px;background:#f8faff}
+.btn,.status-badge,.next-priority,.icon-btn,input,select,textarea{border-radius:4px}
+.btn{font-weight:700}
+.toolbar h1{color:#15284a}
+.column-head{border-bottom:1px solid var(--line);padding-bottom:13px}
+.edit-row{align-items:center;flex-wrap:wrap}
+.edit-row .nature-code{flex:0 0 110px;width:110px;font-weight:700}
+.edit-row .nature-label{flex:1 1 240px;min-width:140px}
+.edit-row .btn{white-space:nowrap}
+.catalog-success{color:#1c703b;font-weight:700}
+@media(max-width:600px){.edit-row .nature-code{flex:0 0 100px}.edit-row .nature-label{flex:1 1 100%}}

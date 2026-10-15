@@ -380,43 +380,30 @@ $('missionStreet').addEventListener('keydown',event=>{
 });
 
 let catalogBusy=false;
-function catalogLabels(){return [...$('natureRows').querySelectorAll('input')].map(i=>i.value.trim());}
+function catalogLabels(){return [...$('natureRows').querySelectorAll('.edit-row')].map(row=>({code:row.querySelector('.nature-code').value.trim().toUpperCase(),label:row.querySelector('.nature-label').value.trim()}));}
 async function saveCatalog(){
   if(catalogBusy)return false;
-  const labels=catalogLabels(),error=$('manageError');
-  error.textContent='';
-  if(labels.some(x=>!x)){error.textContent='Renseignez chaque motif ou supprimez sa ligne.';return false;}
-  if(new Set(labels.map(x=>x.toLocaleLowerCase('fr-FR'))).size!==labels.length){error.textContent='Deux motifs identiques sont présents.';return false;}
+  const labels=catalogLabels(),error=$('manageError');error.textContent='';$('manageSuccess').textContent='';
+  if(labels.some(x=>!x.code||!x.label)){error.textContent='Renseignez un code et un motif pour chaque ligne.';return false;}
+  if(new Set(labels.map(x=>x.code)).size!==labels.length){error.textContent='Code utilisé plusieurs fois.';return false;}
+  if(new Set(labels.map(x=>x.label.toLocaleLowerCase('fr-FR'))).size!==labels.length){error.textContent='Motif utilisé plusieurs fois.';return false;}
   catalogBusy=true;
   try{
     const d=await api('/portail/atlas/api/catalog/natures',{method:'POST',body:JSON.stringify({labels})});
-    state.natures=d.natures||[];
-    renderManage();
-    $('manageSuccess').textContent='Modifications enregistrées.';
-    return true;
-  }catch(e){error.textContent=e.message;return false;}
-  finally{catalogBusy=false;}
+    state.natures=d.natures||[];renderManage();$('manageSuccess').textContent='Codes et motifs enregistrés dans PHENIX et ATLAS.';return true;
+  }catch(e){error.textContent=e.message;return false;}finally{catalogBusy=false;}
 }
 function editRow(value){
   const row=document.createElement('div');row.className='edit-row';
-  const input=document.createElement('input');input.value=value;input.maxLength=180;input.setAttribute('aria-label','Motif d’intervention');
-  const save=button('Enregistrer','secondary',()=>saveCatalog());
-  const del=button('Supprimer','danger',async()=>{
-    if(!confirm('Supprimer ce motif du catalogue ?'))return;
-    row.remove();if(!await saveCatalog())$('natureRows').append(row);
-  });
-  row.append(input,save,del);return row;
+  const code=document.createElement('input');code.className='nature-code';code.placeholder='Code';code.maxLength=20;code.value=value.code||'';code.setAttribute('aria-label','Code intervention');
+  const label=document.createElement('input');label.className='nature-label';label.placeholder='Motif d’intervention';label.maxLength=180;label.value=value.label||'';label.setAttribute('aria-label','Motif intervention');
+  const save=button('Enregistrer','secondary',saveCatalog);
+  const del=button('Supprimer','danger',async()=>{if(!confirm('Supprimer ce code et ce motif du catalogue ?'))return;const next=catalogLabels().filter((_,i)=>i!==[...$('natureRows').children].indexOf(row));if(!next.length){$('manageError').textContent='Le catalogue ne peut pas être vide.';return;}row.remove();if(!await saveCatalog())$('natureRows').append(row);});
+  row.append(code,label,save,del);return row;
 }
-function renderManage(){
-  $('natureRows').replaceChildren();
-  state.natures.forEach(x=>$('natureRows').appendChild(editRow(x.label)));
-}
+function renderManage(){$('natureRows').replaceChildren();state.natures.forEach(x=>$('natureRows').appendChild(editRow(x)));}
 $('manageBtn').addEventListener('click',()=>{renderManage();$('manageError').textContent='';$('manageSuccess').textContent='';openModal('manageModal');});
-$('addNatureBtn').addEventListener('click',()=>{
-  $('natureRows').appendChild(editRow(''));
-  $('manageSuccess').textContent='';
-  $('natureRows').lastElementChild.querySelector('input').focus();
-});
+$('addNatureBtn').addEventListener('click',()=>{const row=editRow({code:'',label:''});$('natureRows').appendChild(row);row.querySelector('input').focus();});
 $('saveCatalogBtn').addEventListener('click',saveCatalog);
 
 setInterval(()=>{document.querySelectorAll('.mission-card').forEach(card=>{const mission=state.missions.find(item=>item.id===card.dataset.missionId);if(mission)card.querySelector('.elapsed').textContent=elapsed(mission.startedAt||mission.departedAt);});},1000);
