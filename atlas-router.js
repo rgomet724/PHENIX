@@ -8,7 +8,7 @@ const zlib = require('zlib');
 const { Readable } = require('stream');
 const { appAccess, appearanceFor, notificationSettingsForApp } = require('./central-config');
 
-const VERSION = '1.3.0';
+const VERSION = '1.4.0-direct-assignment';
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
 
 function safeEqual(a, b) {
@@ -310,7 +310,7 @@ function mountInterventions(app, deps = {}) {
 
   function defaultData() {
     return {
-      schemaVersion: 1,
+      schemaVersion: 2,
       missions: [],
       history: [],
       streets: []
@@ -322,7 +322,7 @@ function mountInterventions(app, deps = {}) {
       if (!fs.existsSync(DB_FILE)) return defaultData();
       const parsed = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
       return {
-        schemaVersion: 1,
+        schemaVersion: Number(parsed.schemaVersion) || 1,
         missions: Array.isArray(parsed.missions) ? parsed.missions : [],
         history: Array.isArray(parsed.history) ? parsed.history : [],
         streets: Array.isArray(parsed.streets) ? parsed.streets : []
@@ -334,6 +334,7 @@ function mountInterventions(app, deps = {}) {
   }
 
   function saveDispatch(data) {
+    data.schemaVersion = 2;
     data.history = (data.history || []).slice(0, 1000);
     atomicWriteJson(DB_FILE, data);
   }
@@ -394,15 +395,78 @@ function mountInterventions(app, deps = {}) {
   }
 
   function crewBusyInDispatch(data, crewId, excludingMissionId = '') {
-    return (data.missions || []).some(m => String(m.crewId || '') === String(crewId) && String(m.id) !== String(excludingMissionId) && ['ASSIGNED', 'DEPARTED', 'ONSCENE'].includes(m.status));
+    return (data.missions || []).some(m => String(m.crewId || '') === String(crewId) && String(m.id) !== String(excludingMissionId) && ['ASSIGNED', 'DEPARTED', 'IN_PROGRESS', 'ONSCENE'].includes(m.status));
+  }
+
+  function assignmentMode(body = {}) {
+    const mode = String(body.assignmentMode || 'manual').toLowerCase();
+    if (!['auto', 'manual'].includes(mode)) throw Object.assign(new Error('Choisissez une affectation automatique ou manuelle.'), { statusCode: 400, code: 'BAD_ASSIGNMENT_MODE' });
+    return mode;
+  }
+
+  function availableCrews(data, excludingMissionId = '') {
+    return activeCrews().filter(crew => crew.status.toUpperCase() === 'DISPO' && !crewBusyInDispatch(data, crew.id, excludingMissionId));
+  }
+
+  function chooseCrew(data, body = {}, excludingMissionId = '') {
+    const mode = assignmentMode(body);
+    if (mode === 'auto') {
+      const lastAssignments = new Map();
+      for (const mission of [...data.missions, ...data.history]) {
+        if (!mission.crewId) continue;
+        const time = Date.parse(mission.assignedAt || mission.startedAt || mission.createdAt || '') || 0;
+        const id = String(mission.crewId);
+        lastAssignments.set(id, Math.max(lastAssignments.get(id) || 0, time));
+      }
+      const crew = availableCrews(data, excludingMissionId).sort((a, b) =>
+        (lastAssignments.get(a.id) || 0) - (lastAssignments.get(b.id) || 0)
+        || a.callsign.localeCompare(b.callsign, 'fr', { numeric: true })
+        || a.id.localeCompare(b.id)
+      )[0];
+      if (!crew) throw Object.assign(new Error('Aucune patrouille disponible. Vous pouvez enregistrer l’intervention en attente avec l’affectation manuelle.'), { statusCode: 409, code: 'NO_AVAILABLE_CREW' });
+      return crew;
+    }
+    const crewId = String(body.crewId || '').trim();
+    if (!crewId) throw Object.assign(new Error('Choisissez une patrouille.'), { statusCode: 400, code: 'CREW_REQUIRED' });
+    const crew = activeCrews().find(item => item.id === crewId);
+    if (!crew) throw Object.assign(new Error('Patrouille active introuvable dans PHENIX.'), { statusCode: 400, code: 'CREW_NOT_FOUND' });
+    if (crewBusyInDispatch(data, crewId, excludingMissionId)) throw Object.assign(new Error('Cette patrouille a déjà une intervention en cours dans ATLAS.'), { statusCode: 409, code: 'CREW_BUSY' });
+    if (crew.status.toUpperCase() !== 'DISPO') throw Object.assign(new Error('Cette patrouille est indisponible dans PHENIX. Choisissez une patrouille disponible.'), { statusCode: 409, code: 'CREW_UNAVAILABLE' });
+    return crew;
+  }
+
+  function startMission(data, mission, body, user) {
+    const crew = chooseCrew(data, body, mission.id);
+    const now = new Date().toISOString();
+    Object.assign(mission, {
+      crewId: crew.id, crewCallsign: crew.callsign,
+      status: 'IN_PROGRESS', assignmentMode: assignmentMode(body),
+      assignedAt: now, startedAt: now, departedAt: now,
+      assignedBy: user.name
+    });
+    setCrewOnMission(mission, 'IN_PROGRESS');
+    return mission;
+  }
+
+  function assignmentHandler(handler) {
+    return (req, res) => {
+      try { handler(req, res); }
+      catch (error) {
+        if (!error.statusCode) console.error('[ATLAS] Affectation impossible:', error.message);
+        res.status(error.statusCode || 500).json({ error: error.code || 'ASSIGNMENT_FAILED', message: error.statusCode ? error.message : 'Impossible d’enregistrer l’affectation.' });
+      }
+    };
   }
 
   function setCrewOnMission(mission, status) {
     const phenix = loadPhenix();
     const crew = findCrew(phenix, mission.crewId);
-    if (!crew) throw Object.assign(new Error('La patrouille n’existe plus dans PHENIX.'), { statusCode: 409 });
+    if (!crew) {
+      if (status === 'DONE') return;
+      throw Object.assign(new Error('La patrouille n’existe plus dans PHENIX.'), { statusCode: 409 });
+    }
 
-    if (status === 'DEPARTED' || status === 'ONSCENE') {
+    if (status === 'IN_PROGRESS' || status === 'ONSCENE') {
       crew.status = 'INDISPO';
       crew.intervention = buildPhenixIntervention(mission);
       crew.interventionCode = String(mission.natureCode || '').trim().toUpperCase();
@@ -412,7 +476,7 @@ function mountInterventions(app, deps = {}) {
     }
 
     if (status === 'DONE') {
-      if (String(crew.dispatchMissionId || crew.eventId || '') === String(mission.id) || crew.interventionSource === 'regulation') {
+      if (String(crew.dispatchMissionId || crew.eventId || '') === String(mission.id)) {
         crew.status = 'DISPO';
         crew.intervention = '';
         crew.interventionCode = '';
@@ -424,13 +488,30 @@ function mountInterventions(app, deps = {}) {
     savePhenix(phenix);
   }
 
+  // Les missions déjà affectées dans l’ancienne version deviennent des interventions en cours.
+  // Leur date d’affectation et les archives sont conservées.
+  try {
+    const data = loadDispatch();
+    let changed = false;
+    for (const mission of data.missions) {
+      if (!['ASSIGNED', 'DEPARTED'].includes(mission.status)) continue;
+      mission.status = 'IN_PROGRESS';
+      mission.startedAt = mission.startedAt || mission.departedAt || mission.assignedAt || mission.createdAt || new Date().toISOString();
+      mission.departedAt = mission.departedAt || mission.startedAt;
+      mission.assignmentMode = mission.assignmentMode || 'manual';
+      if (activeCrews().some(crew => crew.id === String(mission.crewId))) setCrewOnMission(mission, 'IN_PROGRESS');
+      changed = true;
+    }
+    if (changed) saveDispatch(data);
+  } catch (error) { console.error('[ATLAS] Migration des affectations impossible:', error.message); }
+
   const router = express.Router();
   router.use(express.json({ limit: '1mb' }));
   router.use((req, res, next) => { res.set('Cache-Control', 'no-store, max-age=0'); next(); });
 
   router.get('/healthz', (req, res) => res.json({ ok: true, version: VERSION, dataFile: DB_FILE }));
 
-  // Liste déroulante complète des voies de Chalon-sur-Saône.
+  // Liste des voies utilisée par le champ de recherche de Chalon-sur-Saône.
   // Cette route vérifie la BAN officielle à chaque appel, puis renvoie les noms de voies dédupliqués.
   router.get('/streets', requireUser, async (req, res) => {
     try {
@@ -507,14 +588,14 @@ function mountInterventions(app, deps = {}) {
       canOperate: req.regulationUser.role !== 'consultation',
       missions,
       nextMissionId: nextMission ? nextMission.id : null,
-      crews: activeCrews(),
+      crews: activeCrews().map(crew => ({ ...crew, assignable: crew.status.toUpperCase() === 'DISPO' && !crewBusyInDispatch(data, crew.id) })),
       natures,
       streets: [...data.streets].sort((a, b) => String(a).localeCompare(String(b), 'fr', { sensitivity: 'base', numeric: true })),
       serverTime: Date.now()
     });
   });
 
-  router.post('/missions', requireOperator, (req, res) => {
+  router.post('/missions', requireOperator, assignmentHandler((req, res) => {
     const b = req.body || {};
     const natureLabel = String(b.natureLabel || '').trim();
     const natureCode = String(b.natureCode || '').trim();
@@ -523,9 +604,8 @@ function mountInterventions(app, deps = {}) {
     if (!street) return res.status(400).json({ error: 'ADDRESS_REQUIRED', message: 'La voie est obligatoire.' });
 
     const data = loadDispatch();
+    const mode = assignmentMode(b);
     const crewId = String(b.crewId || '').trim();
-    if (crewId && crewBusyInDispatch(data, crewId)) return res.status(409).json({ error: 'CREW_BUSY', message: 'Cette patrouille a déjà une mission active dans ATLAS.' });
-    if (crewId && !activeCrews().some(c => c.id === crewId)) return res.status(400).json({ error: 'CREW_NOT_FOUND', message: 'Cette patrouille n’est plus active dans PHENIX.' });
 
     const mission = {
       id: crypto.randomUUID(),
@@ -536,70 +616,58 @@ function mountInterventions(app, deps = {}) {
       street: street.slice(0, 180),
       complement: String(b.complement || '').trim().slice(0, 240),
       notes: String(b.notes || '').trim().slice(0, 1000),
-      status: crewId ? 'ASSIGNED' : 'WAITING',
-      crewId,
-      crewCallsign: crewId ? (activeCrews().find(c => c.id === crewId)?.callsign || '') : '',
+      status: 'WAITING',
+      crewId: '',
+      crewCallsign: '',
+      assignmentMode: mode,
       createdAt: new Date().toISOString(),
       createdBy: req.regulationUser.name,
-      assignedAt: crewId ? new Date().toISOString() : null,
+      assignedAt: null,
+      startedAt: null,
       departedAt: null,
       onSceneAt: null
     };
+    if (mode === 'auto' || crewId) startMission(data, mission, b, req.regulationUser);
     data.missions.push(mission);
     if (street && !data.streets.some(x => String(x).toLocaleLowerCase('fr-FR') === street.toLocaleLowerCase('fr-FR'))) data.streets.push(street);
     saveDispatch(data);
     res.json({ ok: true, mission });
-  });
+  }));
 
-  router.post('/missions/:id/assign', requireOperator, (req, res) => {
+  router.post('/missions/:id/assign', requireOperator, assignmentHandler((req, res) => {
     const data = loadDispatch();
     const mission = data.missions.find(m => m.id === req.params.id);
     if (!mission) return res.status(404).json({ error: 'NOT_FOUND', message: 'Intervention introuvable.' });
-    if (!['WAITING', 'ASSIGNED'].includes(mission.status)) return res.status(409).json({ error: 'MISSION_STARTED', message: 'Cette intervention a déjà démarré.' });
-    const crewId = String(req.body?.crewId || '').trim();
-    const crew = activeCrews().find(c => c.id === crewId);
-    if (!crew) return res.status(400).json({ error: 'CREW_NOT_FOUND', message: 'Patrouille active introuvable dans PHENIX.' });
-    if (crewBusyInDispatch(data, crewId, mission.id)) return res.status(409).json({ error: 'CREW_BUSY', message: 'Cette patrouille a déjà une mission active.' });
-    mission.crewId = crew.id;
-    mission.crewCallsign = crew.callsign;
-    mission.status = 'ASSIGNED';
-    mission.assignedAt = mission.assignedAt || new Date().toISOString();
+    if (mission.status !== 'WAITING') {
+      if (['IN_PROGRESS', 'ONSCENE'].includes(mission.status) && (assignmentMode(req.body) === 'auto' || String(req.body?.crewId || '') === String(mission.crewId))) {
+        return res.json({ ok: true, mission, alreadyAssigned: true });
+      }
+      return res.status(409).json({ error: 'MISSION_STARTED', message: 'Cette intervention a déjà démarré.' });
+    }
+    startMission(data, mission, req.body || {}, req.regulationUser);
     saveDispatch(data);
     res.json({ ok: true, mission });
-  });
+  }));
 
-  router.post('/next', requireOperator, (req, res) => {
-    const crewId = String(req.body?.crewId || '').trim();
-    if (!crewId) return res.status(400).json({ error: 'CREW_REQUIRED', message: 'Choisissez une patrouille.' });
+  router.post('/next', requireOperator, assignmentHandler((req, res) => {
     const data = loadDispatch();
-    if (crewBusyInDispatch(data, crewId)) return res.status(409).json({ error: 'CREW_BUSY', message: 'Cette patrouille a déjà une mission active.' });
-    const crew = activeCrews().find(c => c.id === crewId);
-    if (!crew) return res.status(400).json({ error: 'CREW_NOT_FOUND', message: 'Patrouille active introuvable dans PHENIX.' });
     const next = [...data.missions].filter(m => m.status === 'WAITING' && !m.crewId).sort(missionSort)[0];
     if (!next) return res.json({ ok: true, mission: null, message: 'Aucune mission à venir.' });
-    next.crewId = crew.id;
-    next.crewCallsign = crew.callsign;
-    next.status = 'ASSIGNED';
-    next.assignedAt = new Date().toISOString();
+    startMission(data, next, req.body || {}, req.regulationUser);
     saveDispatch(data);
     res.json({ ok: true, mission: next });
-  });
+  }));
 
   router.post('/missions/:id/status', requireOperator, (req, res) => {
     const requested = String(req.body?.status || '').toUpperCase();
-    if (!['DEPARTED', 'ONSCENE', 'DONE'].includes(requested)) return res.status(400).json({ error: 'BAD_STATUS', message: 'État invalide.' });
+    if (!['ONSCENE', 'DONE'].includes(requested)) return res.status(400).json({ error: 'BAD_STATUS', message: 'État invalide.' });
     const data = loadDispatch();
     const mission = data.missions.find(m => m.id === req.params.id);
     if (!mission) return res.status(404).json({ error: 'NOT_FOUND', message: 'Intervention introuvable.' });
     if (!mission.crewId) return res.status(409).json({ error: 'NO_CREW', message: 'Aucune patrouille n’est affectée à cette intervention.' });
 
     const now = new Date().toISOString();
-    if (requested === 'DEPARTED') {
-      mission.status = 'DEPARTED';
-      mission.departedAt = mission.departedAt || now;
-      setCrewOnMission(mission, 'DEPARTED');
-    } else if (requested === 'ONSCENE') {
-      if (!mission.departedAt) mission.departedAt = now;
+    if (requested === 'ONSCENE') {
       mission.status = 'ONSCENE';
       mission.onSceneAt = mission.onSceneAt || now;
       setCrewOnMission(mission, 'ONSCENE');
@@ -617,7 +685,7 @@ function mountInterventions(app, deps = {}) {
     const data = loadDispatch();
     const mission = data.missions.find(m => m.id === req.params.id);
     if (!mission) return res.status(404).json({ error: 'NOT_FOUND', message: 'Intervention introuvable.' });
-    if (['DEPARTED', 'ONSCENE'].includes(mission.status)) {
+    if (['IN_PROGRESS', 'ONSCENE'].includes(mission.status)) {
       try { setCrewOnMission(mission, 'DONE'); } catch {}
     }
     data.missions = data.missions.filter(m => m.id !== req.params.id);
