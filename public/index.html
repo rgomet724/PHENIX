@@ -3219,22 +3219,7 @@ body.nightMode .crewEquipmentChoice:has(input:checked){background:#152e51;border
 body.nightMode .crewEquipmentChoiceText small{color:#a6b4c8}
 @media(max-width:700px){.crewEquipmentChoices{grid-template-columns:1fr}.crewEquipmentChoice{min-height:70px;padding:8px 10px}.crewActionsAndEquipment{justify-content:flex-start}.crewEquipmentBadge{width:54px;min-width:54px}}
 </style>
-
-<style id="pegaseEquipmentLayoutFix">
-#app .top{min-height:76px!important}
-#app .top #clock{font-size:14px!important;font-weight:600!important;letter-spacing:0!important;line-height:1.3!important}
-#app .top .mobileClock{font-size:13px!important;font-weight:600!important;letter-spacing:0!important}
-.crewActionsAndEquipment{display:grid;grid-template-columns:auto 94px;justify-content:end;align-items:center;gap:10px;flex-wrap:nowrap}
-.crewRowActions{flex-wrap:nowrap;white-space:nowrap}
-.crewEquipmentBadges{min-width:94px;min-height:36px;justify-content:flex-start;gap:6px}
-.crewEquipmentBadge,.wallCrewEquipment .crewEquipmentBadge{width:44px;min-width:44px;min-height:34px;padding:0;border:0!important;background:transparent!important;border-radius:0}
-.crewEquipmentBadge img{width:42px;height:32px}
-.crewEquipmentBadgeName{display:none!important}
-#infoBody>button{margin-top:14px}
-@media(max-width:700px){.crewActionsAndEquipment{justify-content:end}}
-</style>
-
-</head><body>
+<style id="pegaseEquipmentInfoOnly">.crewEquipmentBadgeName{display:none!important}.crewEquipmentBadge{width:48px;min-width:48px;min-height:38px;padding:2px;border:0!important;background:transparent!important}.crewEquipmentBadge img{width:46px;height:36px;object-fit:contain}.crewEquipmentBadges{gap:6px}.wallCrewEquipment .crewEquipmentBadge{width:54px;min-width:54px;min-height:42px}.wallCrewEquipment .crewEquipmentBadge img{width:52px;height:40px}</style></head><body>
 <div id="phenixLoading" class="phenixLoading" role="status" aria-live="polite" aria-label="Chargement de PHENIX">
   <div class="phenixLoadingCard">
     <img class="phenixLoadingLogo" src="/logo.png" alt="Logo PHENIX">
@@ -4148,8 +4133,8 @@ function renderCrews(){
     const id=esc(String(c.id||'')).replaceAll('"','&quot;');
     const actions=readonly
       ? ''
-      : `<button type="button" class="small ok" data-id="${id}" onclick="statusCrew(this.dataset.id,'DISPO')">DISPO</button> <button type="button" class="small danger" data-id="${id}" onclick="openIndispo(this.dataset.id)">INDISPO</button>`;
-    return `<tr class="${c.status==='INDISPO'?'indispo':'dispo'}"><td><button type="button" class="infoBtn" data-id="${id}" title="Infos équipage" onclick="showCrewInfo(this.dataset.id)">i</button></td><td><b>${esc(c.callsign)}</b><br><span class="pill">${esc(c.status)}</span></td><td>${(c.matricules||[]).map(m=>`<span class="pill">${esc(m)}</span>`).join('')}</td><td>${esc(c.intervention||'—')}</td><td>${esc(c.meal||'—')}</td><td>${formatVacationCell(c)}</td><td><div class="crewActionsAndEquipment">${readonly?'':`<span class="crewRowActions">${actions}</span>`}${renderCrewEquipment(c)}</div></td></tr>`;
+      : `<button type="button" class="small" data-id="${id}" onclick="openCrew(this.dataset.id)">Modifier</button> <button type="button" class="small ok" data-id="${id}" onclick="statusCrew(this.dataset.id,'DISPO')">DISPO</button> <button type="button" class="small danger" data-id="${id}" onclick="openIndispo(this.dataset.id)">INDISPO</button>`;
+    return `<tr class="${c.status==='INDISPO'?'indispo':'dispo'}"><td><button type="button" class="infoBtn" data-id="${id}" title="Infos équipage" onclick="showCrewInfo(this.dataset.id)">i</button></td><td><b>${esc(c.callsign)}</b><br><span class="pill">${esc(c.status)}</span></td><td>${(c.matricules||[]).map(m=>`<span class="pill">${esc(m)}</span>`).join('')}</td><td>${esc(c.intervention||'—')}</td><td>${esc(c.meal||'—')}</td><td>${formatVacationCell(c)}</td><td><div class="crewActionsAndEquipment">${readonly?'':`<span class="crewRowActions">${actions}</span>`}${readonly?renderCrewEquipment(c):''}</div></td></tr>`;
   }).join('');
 }
 function formatVacation(c){
@@ -4157,7 +4142,7 @@ function formatVacation(c){
   const fmt=v=>v?new Date(v).toLocaleString('fr-FR'):'—';
   return fmt(c.shiftStart)+' → '+fmt(c.shiftEnd);
 }
-function showCrewInfo(id){const c=S.crews.find(x=>x.id===id);if(!c)return;$('infoTitle').textContent='Infos '+c.callsign;const names=(c.matricules||[]).map(m=>'<div class="pill">'+an(m)+'</div>').join('')||'—';$('infoBody').innerHTML='<h3>Agents</h3>'+names+'<h3>Vacation</h3><div class="section">'+formatVacation(c)+'</div><h3>Heure de repas</h3><div class="section">'+(c.meal||'Aucune')+'</div><h3>Observations</h3><div class="section">'+(c.observations||'Aucune observation')+'</div>'+'<h3>Armement collectif</h3><div class="section">'+renderCrewEquipment(c)+'</div>';if(canOperate()){const edit=document.createElement('button');edit.type='button';edit.className='small';edit.textContent='Modifier';edit.onclick=()=>{closeModal('infoModal');openCrew(id)};$('infoBody').appendChild(edit)}$('infoModal').style.display='grid'}
+function showCrewInfo(id){const c=S.crews.find(x=>x.id===id);if(!c)return;$('infoTitle').textContent='Infos '+c.callsign;const names=(c.matricules||[]).map(m=>'<div class="pill">'+an(m)+'</div>').join('')||'—';$('infoBody').innerHTML='<h3>Agents</h3>'+names+'<h3>Vacation</h3><div class="section">'+formatVacation(c)+'</div><h3>Heure de repas</h3><div class="section">'+(c.meal||'Aucune')+'</div><h3>Observations</h3><div class="section">'+(c.observations||'Aucune observation')+'</div>'+'<h3>Armement collectif</h3><div class="section">'+renderCrewEquipment(c)+'</div>';$('infoModal').style.display='grid'}
 function parseInterventionLine(line){
   const raw=String(line||'').trim();
   const m=raw.match(/^([^|:-]{1,20})\s*[|:-]\s*(.+)$/);
@@ -4972,39 +4957,7 @@ async function copySignatureForOutlook(){
   }catch(e){if(status)status.textContent='Copie impossible sur ce navigateur. Utilise “Télécharger HTML”.'}
 }
 function downloadSignatureHtml(){
-  const content='<!doctype html><html><head><meta charset="utf-8"></head><body>'+buildMailSignatureHtml()+'<script id="pegaseHeaderCentralColor">
-(function(){
-  function syncHeaderColor(){
-    const bar=document.querySelector('#app .top');
-    const selected=document.querySelector('#app .nav button.activeNav, #app .nav button[aria-selected="true"]');
-    if(!bar||!selected)return;
-    const style=getComputedStyle(selected);
-    const background=style.backgroundImage&&style.backgroundImage!=='none'?style.backgroundImage:style.backgroundColor;
-    if(background&&background!=='rgba(0, 0, 0, 0)')bar.style.setProperty('background',background,'important');
-    const textColor=style.color||'#fff';
-    bar.style.setProperty('color',textColor,'important');
-    bar.querySelectorAll('h1,.tag,.right,#agentName,#clock,.topAgentIdentity').forEach(el=>el.style.setProperty('color',textColor,'important'));
-    bar.style.setProperty('filter','none','important');
-    const rgb=style.backgroundColor.match(/\d+/g);
-    if(rgb&&rgb.length>=3){
-      const meta=document.querySelector('meta[name="theme-color"]');
-      if(meta)meta.content='#'+rgb.slice(0,3).map(v=>Number(v).toString(16).padStart(2,'0')).join('');
-    }
-  }
-  function start(){
-    syncHeaderColor();
-    const nav=document.querySelector('#app .nav');
-    if(nav)new MutationObserver(syncHeaderColor).observe(nav,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style','aria-selected']});
-    new MutationObserver(syncHeaderColor).observe(document.documentElement,{attributes:true,attributeFilter:['class','style']});
-    if(document.head)new MutationObserver(syncHeaderColor).observe(document.head,{childList:true,subtree:true});
-    window.addEventListener('storage',syncHeaderColor);
-    window.addEventListener('load',syncHeaderColor,{once:true});
-    setTimeout(syncHeaderColor,250);
-    setTimeout(syncHeaderColor,1000);
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
-})();
-</script></body></html>';
+  const content='<!doctype html><html><head><meta charset="utf-8"></head><body>'+buildMailSignatureHtml()+'</body></html>';
   const blob=new Blob([content],{type:'text/html;charset=utf-8'}),a=document.createElement('a');
   a.href=URL.createObjectURL(blob);a.download='signature-phenix-outlook.html';document.body.appendChild(a);a.click();a.remove();
 }
