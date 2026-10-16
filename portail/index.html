@@ -4155,7 +4155,10 @@ function renderCrews(){
       ? renderCrewEquipment(c)
       : readonly ? ''
       : `<button type="button" class="small" data-id="${id}" onclick="openCrew(this.dataset.id)">Modifier</button> <button type="button" class="small ok" data-id="${id}" onclick="statusCrew(this.dataset.id,'DISPO')">DISPO</button> <button type="button" class="small danger" data-id="${id}" onclick="openIndispo(this.dataset.id)">INDISPO</button>`;
-    return `<tr class="${c.status==='INDISPO'?'indispo':'dispo'}"><td><button type="button" class="infoBtn" data-id="${id}" title="Infos équipage" onclick="showCrewInfo(this.dataset.id)">i</button></td><td><b>${esc(c.callsign)}</b><br><span class="pill">${esc(c.status)}</span></td><td>${(c.matricules||[]).map(m=>`<span class="pill">${esc(m)}</span>`).join('')}</td><td>${esc(c.intervention||'—')}</td><td>${esc(c.meal||'—')}</td><td>${formatVacationCell(c)}</td><td><div class="crewActionsAndEquipment">${readonly?'':`<span class="crewRowActions">${actions}</span>`}${renderCrewEquipment(c)}</div></td></tr>`;
+    const cellContent=dashboardAccess
+      ? `<div class="crewActionsAndEquipment">${actions}</div>`
+      : readonly ? '' : `<span class="crewRowActions">${actions}</span>`;
+    return `<tr class="${c.status==='INDISPO'?'indispo':'dispo'}"><td><button type="button" class="infoBtn" data-id="${id}" title="Infos équipage" onclick="showCrewInfo(this.dataset.id)">i</button></td><td><b>${esc(c.callsign)}</b><br><span class="pill">${esc(c.status)}</span></td><td>${(c.matricules||[]).map(m=>`<span class="pill">${esc(m)}</span>`).join('')}</td><td>${esc(c.intervention||'—')}</td><td>${esc(c.meal||'—')}</td><td>${formatVacationCell(c)}</td><td>${cellContent}</td></tr>`;
   }).join('');
 }
 function formatVacation(c){
