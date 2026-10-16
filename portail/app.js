@@ -518,6 +518,7 @@ function bindEvents() {
   el('categoryForm').addEventListener('submit', saveCategory);
   el('categoryResetBtn').addEventListener('click', resetCategoryForm);
   el('categoryAdminList').addEventListener('click', handleAdminAction);
+  el('userForm').addEventListener('submit', createUser);
   el('userAdminList').addEventListener('click', handleAdminAction);
 }
 
