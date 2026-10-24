@@ -167,7 +167,7 @@ function applyAppearance() {
     icon.href = appearance.faviconData;
   }
   if (appearance.backgroundData) {
-    document.body.style.backgroundImage = `linear-gradient(rgba(248,250,251,.86),rgba(237,241,243,.91)),url(${JSON.stringify(appearance.backgroundData)})`;
+    document.body.style.backgroundImage = `url(${JSON.stringify(appearance.backgroundData)})`;
     document.body.style.backgroundSize = 'cover';
     document.body.style.backgroundPosition = 'center';
     document.body.style.backgroundAttachment = 'fixed';
