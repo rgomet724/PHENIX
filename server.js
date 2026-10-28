@@ -1100,6 +1100,10 @@ mountCentralAdmin(app,{
   isProd:IS_PROD
 });
 
+// Console radio SYRIUS : comptes et droits du centre d'administration PHENIX.
+const { mountSyrius } = require('./syrius-router');
+mountSyrius(app, { loadPhenix: load, passwordExpired });
+
 // Portail d'accès professionnel (isolé de PHENIX)
 const { mountPortal } = require('./portal-router');
 mountPortal(app);
@@ -1111,3 +1115,4 @@ app.use((err,req,res,next)=>{
 });
 
 app.listen(PORT,'0.0.0.0',()=>console.log('PHENIX sécurisé prêt sur le port '+PORT));
+

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 740">
+<rect width="1100" height="740" fill="#e8eddf"/>
+<g fill="#d5e1c9"><path d="M0 0h230l-20 170L0 230zM930 0h170v280l-160-60zM0 520l260 90 60 130H0zM750 580l350-60v220H680z"/><path d="m420 40 180 10-30 80-150-30zM80 300l80 50-50 80-100-20z"/></g>
+<g fill="#e2e4dd" stroke="#cbd2c7" stroke-width="1"><path d="m200 150 180-20 70 110-70 80-180-60zM430 160l140-15 70 130-160 45-60-80zM170 340l180-30 80 120-150 70-120-80zM470 370l130-20 90 150-140 50-120-70zM730 100l170 60-30 140-150-20zM740 400l170 30 100 100-200 40z"/></g>
+<path d="M760-60C620 90 780 140 680 255s20 130-30 240-180 160-140 290" fill="none" stroke="#9fcfdf" stroke-width="68"/>
+<path d="M760-60C620 90 780 140 680 255s20 130-30 240-180 160-140 290" fill="none" stroke="#b2d9e6" stroke-width="48"/>
+<g fill="none" stroke="#d0cbbf" stroke-width="15"><path d="M-50 160 420 360 1000 630M160-40l190 360 50 440M-30 580l1150-360M470-30l-30 180 110 140 10 450"/></g>
+<g fill="none" stroke="#fffdf5" stroke-width="10"><path d="M-50 160 420 360 1000 630M160-40l190 360 50 440M-30 580l1150-360M470-30l-30 180 110 140 10 450"/></g>
+<g fill="none" stroke="#fdfcf8" stroke-width="5"><path d="M20 270 520 500M80 70l330 620M290 0l130 300-160 340M70 430l550-250M260 560l600-220M530 80l380 320M690 20l370 480M790 120l-80 590M890 70 870 630M190 200l260 10M130 390l260 10M430 570l170 80M760 600l310 60"/></g>
+<g fill="#627063" font-family="Arial,sans-serif" font-size="12"><text x="100" y="130">CHAMPFORGEUIL</text><text x="420" y="105">CHÂTENOY-LE-ROYAL</text><text x="730" y="220">SAINT-MARCEL</text><text x="810" y="470">LES CHAVANNES</text><text x="160" y="620">SAINT-RÉMY</text><text x="650" y="660">LUX</text></g>
+<text x="390" y="360" fill="#55645e" font-family="Arial,sans-serif" font-size="24" font-weight="700" text-anchor="middle">Chalon-sur-Saône</text>
+<text x="470" y="410" fill="#7b8b7e" font-family="Arial,sans-serif" font-size="12">Centre-ville</text><text x="682" y="466" fill="#548eaa" font-family="Arial,sans-serif" font-size="13" font-style="italic" transform="rotate(-64 682 466)">La Saône</text>
+<circle cx="490" cy="380" r="4" fill="#a5b9a2"/>
+</svg>

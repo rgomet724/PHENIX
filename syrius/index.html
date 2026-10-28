@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#253d91">
+  <meta name="description" content="Console radio PHENIX : conférences, prise de parole, messagerie et vue tactique.">
+  <title>SYRIUS · Console radio PHENIX</title>
+  <link rel="icon" type="image/svg+xml" href="/syrius/favicon.svg">
+  <link rel="stylesheet" href="/syrius/styles.css">
+  <script src="/syrius/app.js" defer></script>
+</head>
+<body>
+  <div id="boot-screen" class="boot-screen"><span class="brand-star"></span><p>Ouverture de la console radio…</p></div>
+  <section id="auth-screen" class="auth-screen" hidden>
+    <div class="auth-brand"><span class="brand-star"></span><span class="wordmark">syrius</span><span class="brand-divider"></span><span>PHENIX</span></div>
+    <div class="auth-card">
+      <div class="auth-icon"><svg><use href="/syrius/icons.svg#radio"/></svg></div>
+      <p class="eyebrow">COMMUNICATIONS RADIO</p><h1>Votre équipe.<br>Sur la même fréquence.</h1>
+      <p class="auth-copy">Accédez à vos conférences et restez en liaison avec vos équipages.</p>
+      <form id="login-form">
+        <label>Identifiant PHENIX<input name="login" id="login" autocomplete="username" required placeholder="Votre identifiant"></label>
+        <label>Mot de passe<input name="password" id="password" type="password" autocomplete="current-password" required placeholder="Votre mot de passe"></label>
+        <p id="login-error" class="form-error" role="alert" hidden></p>
+        <button class="button primary" type="submit">Ouvrir ma console <svg><use href="/syrius/icons.svg#chevron"/></svg></button>
+      </form>
+      <a class="auth-back" href="/portail/"><svg><use href="/syrius/icons.svg#back"/></svg> Retour au portail ARGOS</a>
+    </div>
+    <p class="auth-foot">Console indépendante inspirée de SYRIUS · Réseau PHENIX</p>
+  </section>
+
+  <div id="app-shell" class="app-shell" hidden>
+    <header class="topbar">
+      <div class="brand"><span class="brand-star"></span><span class="wordmark">syrius</span><span class="brand-divider"></span><span class="brand-product">DISPATCHER <small>PHENIX</small></span></div>
+      <div class="topbar-middle"><span class="connection-dot" id="connection-dot"></span><span id="connection-label">Connexion…</span></div>
+      <div class="topbar-right"><time id="clock"></time><button id="profile-button" class="profile-button" title="Mon poste radio"><span id="user-initials" class="avatar">OP</span><span class="profile-copy"><strong id="user-name"></strong><small id="user-role"></small></span><svg><use href="/syrius/icons.svg#chevron"/></svg></button></div>
+    </header>
+
+    <div class="workspace">
+      <nav class="rail" aria-label="Navigation de la console">
+        <button class="rail-button active" data-view="console" title="Console radio" aria-label="Console radio"><svg><use href="/syrius/icons.svg#radio"/></svg><span>Radio</span></button>
+        <button class="rail-button" data-view="messages" title="Messagerie" aria-label="Messagerie"><svg><use href="/syrius/icons.svg#message"/></svg><span>Messages</span></button>
+        <button class="rail-button" data-view="journal" title="Journal radio" aria-label="Journal radio"><svg><use href="/syrius/icons.svg#history"/></svg><span>Journal</span></button>
+        <button class="rail-button admin-only" data-view="admin" title="Administration des conférences" aria-label="Administration des conférences" hidden><svg><use href="/syrius/icons.svg#settings"/></svg><span>Admin</span></button>
+        <div class="rail-spacer"></div>
+        <button id="help-button" class="rail-button" title="Guide d’utilisation" aria-label="Guide d’utilisation"><svg><use href="/syrius/icons.svg#help"/></svg><span>Aide</span></button>
+        <a class="rail-button" href="/portail/" title="Retour à ARGOS" aria-label="Retour à ARGOS"><svg><use href="/syrius/icons.svg#back"/></svg><span>ARGOS</span></a>
+      </nav>
+
+      <aside class="sidebar">
+        <div class="sidebar-heading"><div><p class="eyebrow">RÉPERTOIRE RADIO</p><h2>Conférences <span id="channel-count" class="count">0</span></h2></div><button id="new-channel" class="icon-button admin-only" title="Créer une conférence" aria-label="Créer une conférence" hidden><svg><use href="/syrius/icons.svg#plus"/></svg></button></div>
+        <label class="search-box"><svg><use href="/syrius/icons.svg#search"/></svg><input id="channel-search" type="search" placeholder="Rechercher une conférence" aria-label="Rechercher une conférence"></label>
+        <div class="sidebar-section-label"><span>GROUPES D’APPEL</span><svg><use href="/syrius/icons.svg#groups"/></svg></div>
+        <div id="channel-list" class="channel-list"></div>
+        <div class="sidebar-bottom"><span class="small-radio"><svg><use href="/syrius/icons.svg#headset"/></svg></span><div><strong id="my-callsign">Mon poste</strong><span id="my-status">Disponible</span></div><span class="presence-dot"></span></div>
+      </aside>
+
+      <main id="main-content" class="main-content">
+        <div id="console-view" class="console-view">
+          <section class="map-section" aria-label="Vue tactique">
+            <div class="map-toolbar"><div><svg><use href="/syrius/icons.svg#map"/></svg><h1>Vue tactique</h1><span class="toolbar-divider"></span><span class="muted">Chalon-sur-Saône</span></div><button id="share-location" class="button small"><svg><use href="/syrius/icons.svg#location"/></svg><span>Partager ma position</span></button></div>
+            <div id="tactical-map" class="tactical-map" tabindex="0" aria-label="Carte interactive. Utilisez les boutons pour zoomer et faites glisser pour déplacer la carte.">
+              <img class="map-fallback" src="/syrius/map-fallback.svg" alt="Fond de plan simplifié de Chalon-sur-Saône">
+              <div id="map-tiles" class="map-tiles"></div><div id="map-markers" class="map-markers"></div>
+              <div class="map-caption"><span class="live-dot"></span><strong>VUE TACTIQUE</strong><span id="map-online-count">0 position partagée</span></div>
+              <div class="map-buttons"><button id="map-zoom-in" aria-label="Zoom avant" title="Zoom avant">+</button><button id="map-zoom-out" aria-label="Zoom arrière" title="Zoom arrière">−</button><button id="map-center" aria-label="Recentrer la carte" title="Recentrer la carte"><svg><use href="/syrius/icons.svg#location"/></svg></button></div>
+              <div id="map-empty" class="map-empty"><svg><use href="/syrius/icons.svg#pin"/></svg><div><strong>Vos équipes, en un coup d’œil</strong><span>Les positions partagées dans la conférence apparaissent ici.</span></div></div>
+              <span id="map-fallback-notice" class="map-fallback-notice" hidden>Fond de plan simplifié · tuiles indisponibles</span>
+              <div class="map-attribution"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a><span> · </span><a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener">Signaler</a></div>
+            </div>
+          </section>
+
+          <aside class="radio-panel" aria-label="Commandes radio">
+            <div class="panel-heading"><h2>Liaison radio</h2><span class="tag">PTT · WEB</span></div>
+            <div id="call-card" class="call-card">
+              <div class="call-heading"><div class="call-group-icon"><svg><use href="/syrius/icons.svg#groups"/></svg></div><div><small>GROUPE D’APPEL</small><h3 id="selected-channel-name">Sélectionnez une conférence</h3></div><span id="call-member-count" class="call-member-count">0</span></div>
+              <div class="call-status"><span id="floor-dot" class="floor-dot"></span><span id="floor-label">Canal disponible</span></div>
+              <div class="ptt-wrap"><button id="ptt-button" class="ptt-button" aria-label="Maintenir pour parler" disabled><svg><use href="/syrius/icons.svg#mic"/></svg><span id="ptt-text">PTT</span></button></div>
+              <strong id="ptt-hint" class="ptt-hint">Rejoignez une conférence</strong><span class="ptt-keyboard">Alternat maintenu · touche <kbd>Espace</kbd></span>
+              <div class="call-volume"><button id="mute-button" class="icon-button light" aria-label="Couper le son"><svg><use href="/syrius/icons.svg#volume"/></svg></button><input id="volume-slider" type="range" min="0" max="100" value="80" aria-label="Volume d’écoute"><span id="volume-value">80</span></div>
+              <button id="join-channel" class="join-button">Rejoindre la conférence</button>
+            </div>
+            <button id="audio-unlock" class="button audio-unlock" hidden><svg><use href="/syrius/icons.svg#headset"/></svg> Activer l’écoute audio</button>
+            <div class="participant-heading"><h3>Participants <span id="participant-count" class="count">0</span></h3><svg><use href="/syrius/icons.svg#groups"/></svg></div>
+            <div id="participant-list" class="participant-list"></div>
+            <div class="radio-panel-bottom"><span><svg><use href="/syrius/icons.svg#shield"/></svg> Conférence PHENIX</span><button id="sos-button" class="sos-button" disabled><svg><use href="/syrius/icons.svg#alert"/></svg> Alerte</button></div>
+          </aside>
+
+          <section class="activity-section" aria-label="Échanges de la conférence">
+            <div class="activity-heading"><div class="activity-tabs" role="tablist" aria-label="Échanges"><button id="messages-tab" class="active" role="tab" aria-selected="true" aria-controls="messages-pane"><svg><use href="/syrius/icons.svg#message"/></svg> Messagerie</button><button id="journal-tab" role="tab" aria-selected="false" aria-controls="journal-pane"><svg><use href="/syrius/icons.svg#history"/></svg> Journal radio</button></div><span id="activity-channel" class="muted"></span></div>
+            <div id="alert-banner" class="alert-banner" hidden></div>
+            <div id="messages-pane" class="messages-pane" role="tabpanel" aria-labelledby="messages-tab"><div id="message-list" class="message-list"></div><form id="message-form" class="message-form"><label class="sr-only" for="message-input">Message à la conférence</label><input id="message-input" maxlength="2000" autocomplete="off" placeholder="Écrire à la conférence…" required><button id="send-message" type="submit" class="send-button" aria-label="Envoyer le message"><svg><use href="/syrius/icons.svg#send"/></svg></button></form></div>
+            <div id="journal-pane" class="journal-pane" role="tabpanel" aria-labelledby="journal-tab" hidden><div id="event-list" class="event-list"></div></div>
+          </section>
+        </div>
+
+        <section id="admin-view" class="admin-view" hidden>
+          <header class="admin-header"><div><p class="eyebrow">ADMINISTRATION RADIO</p><h1>Vos conférences, votre organisation.</h1><p>Créez les groupes d’appel et choisissez les agents qui peuvent les rejoindre.</p></div><button id="admin-new-channel" class="button primary"><svg><use href="/syrius/icons.svg#plus"/></svg> Nouvelle conférence</button></header>
+          <div class="admin-stats"><div><span>Conférences ouvertes</span><strong id="stat-channels">0</strong><svg><use href="/syrius/icons.svg#radio"/></svg></div><div><span>Postes en conférence</span><strong id="stat-connected">0</strong><svg><use href="/syrius/icons.svg#headset"/></svg></div><div><span>Alertes à prendre en compte</span><strong id="stat-alerts">0</strong><svg><use href="/syrius/icons.svg#alert"/></svg></div></div>
+          <div class="admin-table-card"><div class="admin-table-heading"><h2>Gestion des conférences</h2><label class="checkbox-label"><input id="show-archived" type="checkbox"> Afficher les archives</label></div><div class="table-scroll"><table><thead><tr><th>Conférence</th><th>Accès</th><th>Participants</th><th>État</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody id="admin-channels"></tbody></table></div></div>
+          <div class="admin-note"><svg><use href="/syrius/icons.svg#shield"/></svg><p>Les comptes et les droits d’accès à SYRIUS se gèrent depuis le <a href="/portail/administration/">centre d’administration PHENIX</a>. Ici, vous organisez leurs conférences radio.</p></div>
+        </section>
+      </main>
+    </div>
+    <footer class="statusbar"><span><span id="footer-dot" class="live-dot"></span><span id="footer-status">Liaison en cours…</span></span><span id="footer-channel">Aucune conférence rejointe</span><span>SYRIUS · PHENIX <span class="statusbar-version">/ 1.0</span></span></footer>
+  </div>
+
+  <dialog id="channel-dialog" class="modal" aria-labelledby="channel-dialog-title"><form id="channel-form"><header class="modal-header"><div><p class="eyebrow">ADMINISTRATION</p><h2 id="channel-dialog-title">Nouvelle conférence</h2></div><button type="button" class="icon-button" data-close="channel-dialog" aria-label="Fermer"><svg><use href="/syrius/icons.svg#close"/></svg></button></header><div class="modal-body"><input id="channel-id" type="hidden"><label>Nom de la conférence <span class="required">*</span><input id="channel-name" maxlength="60" required placeholder="Ex. PM · Événement centre-ville"></label><label>Description<textarea id="channel-description" maxlength="160" rows="2" placeholder="Précisez l’usage de cette conférence"></textarea></label><fieldset class="color-fieldset"><legend>Couleur du groupe</legend><div id="channel-colors" class="color-options"></div></fieldset><label>Accès à la conférence<select id="channel-audience"><option value="all">Tous les utilisateurs SYRIUS autorisés</option><option value="selected">Uniquement les membres sélectionnés</option></select></label><fieldset id="member-fieldset" class="member-fieldset" hidden><legend>Membres autorisés</legend><div id="channel-members" class="member-options"></div><p class="field-help">Les administrateurs SYRIUS conservent l’accès à toutes les conférences.</p></fieldset><p id="channel-form-error" class="form-error" role="alert" hidden></p></div><footer class="modal-footer"><button type="button" class="button" data-close="channel-dialog">Annuler</button><button type="submit" class="button primary" id="channel-submit">Créer la conférence</button></footer></form></dialog>
+
+  <dialog id="profile-dialog" class="modal compact-modal" aria-labelledby="profile-title"><form id="profile-form"><header class="modal-header"><h2 id="profile-title">Mon poste radio</h2><button type="button" class="icon-button" data-close="profile-dialog" aria-label="Fermer"><svg><use href="/syrius/icons.svg#close"/></svg></button></header><div class="modal-body"><label>Indicatif radio<input id="callsign-input" maxlength="40" placeholder="Ex. CENTRAL 01" required></label><label>Disponibilité<select id="status-select"><option value="available">Disponible</option><option value="busy">Occupé</option><option value="away">Absent</option></select></label><p class="field-help">Votre indicatif identifie ce poste pendant cette connexion.</p><p id="profile-error" class="form-error" role="alert" hidden></p></div><footer class="modal-footer"><button type="button" id="logout-button" class="button danger-ghost"><svg><use href="/syrius/icons.svg#logout"/></svg> Déconnexion</button><button type="submit" class="button primary">Enregistrer</button></footer></form></dialog>
+
+  <dialog id="sos-dialog" class="modal compact-modal" aria-labelledby="sos-title"><form id="sos-form"><header class="modal-header"><h2 id="sos-title">Alerter la conférence</h2><button type="button" class="icon-button" data-close="sos-dialog" aria-label="Fermer"><svg><use href="/syrius/icons.svg#close"/></svg></button></header><div class="modal-body"><p>Les participants de votre conférence verront votre demande d’assistance. Votre position sera jointe si vous avez choisi de la partager.</p><label>Message<input id="sos-message" maxlength="300" value="Demande d’assistance"></label><p class="field-help">Cette alerte est diffusée aux utilisateurs du site PHENIX.</p></div><footer class="modal-footer"><button class="button" type="button" data-close="sos-dialog">Annuler</button><button type="submit" class="button danger">Diffuser l’alerte</button></footer></form></dialog>
+
+  <dialog id="help-dialog" class="modal" aria-labelledby="help-title"><header class="modal-header"><div><p class="eyebrow">PRISE EN MAIN</p><h2 id="help-title">En liaison, en quelques gestes.</h2></div><button class="icon-button" data-close="help-dialog" aria-label="Fermer"><svg><use href="/syrius/icons.svg#close"/></svg></button></header><div class="modal-body help-body"><ol><li><strong>Choisissez votre conférence.</strong><span>Sélectionnez un groupe à gauche, puis cliquez sur « Rejoindre la conférence ».</span></li><li><strong>Prenez la parole.</strong><span>Maintenez le bouton PTT ou la touche Espace. Relâchez pour rendre la parole. Autorisez le microphone lors de la première utilisation.</span></li><li><strong>Gardez le contact.</strong><span>La messagerie et le journal suivent la conférence sélectionnée. La position se partage uniquement à votre demande.</span></li><li><strong>Organisez vos groupes.</strong><span>Les administrateurs peuvent créer, renommer, restreindre et archiver des conférences depuis l’onglet Admin.</span></li></ol><p class="help-about">Console indépendante développée pour PHENIX, inspirée des présentations publiques de <a href="https://www.acmoss.fr/syrius" target="_blank" rel="noopener">SYRIUS et du RRF</a>. Les échanges ont lieu entre les utilisateurs de ce site. L’audio nécessite HTTPS et, selon les réseaux utilisés, un relais TURN configuré par l’administrateur.</p></div><footer class="modal-footer"><button class="button primary" data-close="help-dialog">C’est compris</button></footer></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <div id="remote-audios" hidden></div>
+</body>
+</html>
