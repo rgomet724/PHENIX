@@ -48,6 +48,8 @@
     onChange: () => renderAudio(), onError: error => toast(error.message, true)
   });
   background.enabled = readPreference('background-listening') !== 'false';
+  const memberPicker = new window.SyriusMemberPicker({ list: $('channel-members'), search: $('channel-member-search'),
+    summary: $('channel-member-summary'), empty: $('channel-member-empty'), clear: $('channel-member-clear') });
 
   function element(tag, className, content) {
     const node = document.createElement(tag);
@@ -167,7 +169,7 @@
       button.title = channel.description;
       const symbol = element('span', 'channel-symbol'); symbol.append(icon('groups'));
       const copy = element('span', 'channel-text');
-      copy.append(element('strong', '', channel.name), element('small', '', channel.id === state.channelId ? 'Conférence rejointe' : `${channel.participantCount} poste${channel.participantCount > 1 ? 's' : ''} en ligne`));
+      copy.append(element('strong', '', channel.name), element('small', '', `${channel.audience === 'selected' || channel.memberIds.length ? 'Privée · ' : ''}${channel.id === state.channelId ? 'Conférence rejointe' : `${channel.participantCount} poste${channel.participantCount > 1 ? 's' : ''} en ligne`}`));
       button.append(symbol, copy, element('span', 'join-indicator'));
       button.addEventListener('click', run(async () => {
         if (selectedId === channel.id) { if (window.matchMedia('(max-width: 900px)').matches) setView('console'); return; }
@@ -270,6 +272,7 @@
   }
   function renderAdmin() {
     if (state.user.role !== 'admin') return;
+    if ($('channel-dialog').open) memberPicker.refresh(state.users);
     $('stat-channels').textContent = state.channels.filter(channel => !channel.archived).length;
     $('stat-connected').textContent = state.channels.reduce((sum, channel) => sum + channel.participantCount, 0);
     $('stat-alerts').textContent = state.alerts.filter(alert => !alert.acknowledgedBy).length;
@@ -284,8 +287,11 @@
       const edit = element('button', 'icon-button'); edit.title = `Modifier ${channel.name}`; edit.setAttribute('aria-label', edit.title); edit.append(icon('edit')); edit.addEventListener('click', () => openChannel(channel));
       const archive = element('button', 'icon-button archiver'); archive.title = `${channel.archived ? 'Réouvrir' : 'Archiver'} ${channel.name}`; archive.setAttribute('aria-label', archive.title); archive.append(icon(channel.archived ? 'history' : 'archive'));
       archive.addEventListener('click', run(async () => { await request(`/channels/${channel.id}/archive`, { archived: !channel.archived }); toast(channel.archived ? 'Conférence réouverte.' : 'Conférence archivée. Vous pourrez la réouvrir depuis les archives.'); }));
-      actions.append(edit, archive); actionsCell.append(actions);
-      const audience = element('td', '', channel.memberIds.length ? `${channel.memberIds.length} membre${channel.memberIds.length > 1 ? 's' : ''} sélectionné${channel.memberIds.length > 1 ? 's' : ''}` : 'Tous les utilisateurs');
+      const members = element('button', 'button small manage-channel-members', 'Agents'); members.type = 'button';
+      members.setAttribute('aria-label', `Choisir les agents autorisés pour ${channel.name}`);
+      members.addEventListener('click', () => { openChannel(channel); $('channel-audience').focus(); });
+      actions.append(members, edit, archive); actionsCell.append(actions);
+      const audience = element('td', '', channel.audience === 'selected' || channel.memberIds.length ? `Privée · ${channel.memberIds.length} agent${channel.memberIds.length > 1 ? 's' : ''} sélectionné${channel.memberIds.length > 1 ? 's' : ''}` : 'Tous les agents');
       const count = element('td', '', String(channel.participantCount));
       audience.dataset.label = 'Accès'; count.dataset.label = 'Participants'; status.dataset.label = 'État';
       row.append(titleCell, audience, count, status, actionsCell);
@@ -333,7 +339,7 @@
     $('channel-name').value = channel?.name || ''; $('channel-description').value = channel?.description || '';
     $('channel-dialog-title').textContent = channel ? 'Modifier la conférence' : 'Nouvelle conférence';
     $('channel-submit').textContent = channel ? 'Enregistrer les modifications' : 'Créer la conférence';
-    $('channel-audience').value = channel?.memberIds.length ? 'selected' : 'all';
+    $('channel-audience').value = channel?.audience === 'selected' || channel?.memberIds.length ? 'selected' : 'all';
     $('member-fieldset').hidden = $('channel-audience').value !== 'selected';
     $('channel-colors').replaceChildren(...COLORS.map((color, index) => {
       const label = element('label', 'color-option'), input = element('input');
@@ -342,11 +348,7 @@
       input.checked = color === (channel?.color || COLORS[0]);
       const swatch = element('span'); swatch.style.setProperty('--swatch', color); label.append(input, swatch); return label;
     }));
-    $('channel-members').replaceChildren(...state.users.map(user => {
-      const label = element('label'), input = element('input'); input.type = 'checkbox'; input.value = user.id;
-      input.checked = Boolean(channel?.memberIds.includes(user.id));
-      label.append(input, element('span', '', user.name), element('small', '', user.role === 'admin' ? 'Admin' : 'Utilisateur')); return label;
-    }));
+    memberPicker.open(state.users, channel?.memberIds || []);
     $('channel-dialog').showModal();
   }
 
@@ -491,9 +493,8 @@
   $('channel-form').addEventListener('submit', async event => {
     event.preventDefault(); $('channel-form-error').hidden = true; const button = $('channel-submit'); button.disabled = true;
     try {
-      const memberIds = $('channel-audience').value === 'selected' ? [...$('channel-members').querySelectorAll('input:checked')].map(input => input.value) : [];
-      if ($('channel-audience').value === 'selected' && !memberIds.length) throw new Error('Sélectionnez au moins un membre pour limiter l’accès.');
-      const body = { name: $('channel-name').value, description: $('channel-description').value, color: $('channel-colors').querySelector('input:checked').value, memberIds };
+      const audience = $('channel-audience').value, memberIds = audience === 'selected' ? memberPicker.memberIds : [];
+      const body = { name: $('channel-name').value, description: $('channel-description').value, color: $('channel-colors').querySelector('input:checked').value, audience, memberIds };
       const id = $('channel-id').value, result = await request(id ? `/channels/${id}` : '/channels', body, id ? 'PATCH' : 'POST');
       if (result.channel) selectedId = result.channel.id;
       $('channel-dialog').close(); render(); toast(id ? 'Conférence mise à jour.' : 'Conférence créée. Elle est maintenant disponible.');

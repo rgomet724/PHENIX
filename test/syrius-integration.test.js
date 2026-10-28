@@ -51,7 +51,7 @@ test('Intégration avec le serveur PHENIX, le portail ARGOS et l’administratio
   assert.equal((await status.json()).user.id, 'integration-admin');
   const bootstrap = await fetch(`${origin}/syrius/api/bootstrap`, { headers: { cookie } });
   assert.equal((await bootstrap.json()).user.role, 'admin');
-  for (const asset of ['app.js', 'styles.css', 'icons.svg', 'favicon.svg', 'map-fallback.svg', 'radio-audio.js', 'audio-transport.js', 'audio-codec.js', 'audio-inbox.js', 'background-audio.js', 'ptt-control.js', 'branding.js', 'audio-worklet.js', 'manifest.webmanifest', 'sw.js', 'offline.html', 'icon-192.png', 'icon-512.png']) {
+  for (const asset of ['app.js', 'styles.css', 'icons.svg', 'favicon.svg', 'map-fallback.svg', 'radio-audio.js', 'audio-transport.js', 'audio-codec.js', 'audio-inbox.js', 'background-audio.js', 'ptt-control.js', 'member-picker.js', 'branding.js', 'audio-worklet.js', 'manifest.webmanifest', 'sw.js', 'offline.html', 'icon-192.png', 'icon-512.png']) {
     assert.equal((await fetch(`${origin}/syrius/${asset}`)).status, 200, asset);
   }
   const manifest = await (await fetch(`${origin}/syrius/manifest.webmanifest`)).json();

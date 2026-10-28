@@ -18,6 +18,10 @@ Depuis l’onglet **Admin** de la console, un administrateur peut :
 
 Les administrateurs SYRIUS conservent l’accès à toutes les conférences. Une restriction de membres s’applique également aux messages, à l’historique et aux positions. L’archivage ferme la liaison des postes présents. Une désactivation centrale de compte est prise en compte au prochain échange ou au contrôle de session, toutes les 15 secondes au maximum.
 
+Pour sélectionner les agents : **Admin → Agents** sur la ligne de la conférence, puis **Privée · choisir les agents**. Rechercher un nom ou un identifiant, cocher les agents et enregistrer. Les choix sont conservés en changeant de recherche et incluent les agents hors ligne. La sélection reste modifiable plus tard. Les comptes dont l’accès SYRIUS est désactivé restent visibles et doivent d’abord être activés dans l’administration centrale pour un nouvel ajout.
+
+Le mode privé est enregistré séparément de la liste des agents : retirer le dernier agent ne rend pas le groupe public. Sans agent sélectionné, seuls les administrateurs SYRIUS y accèdent. Les anciens groupes avec des membres sélectionnés restent privés ; aucune migration manuelle n’est nécessaire. Une appartenance existante reste modifiable après désactivation du compte, sans lui rendre l’accès à SYRIUS. Le retour à un groupe ouvert exige le choix explicite **Tous les agents autorisés sur SYRIUS**.
+
 La tuile SYRIUS est ajoutée à la réponse du portail ARGOS. Les tuiles déjà enregistrées sont conservées. Les droits centraux et les règles de visibilité de la tuile restent appliqués.
 
 ## Utilisation

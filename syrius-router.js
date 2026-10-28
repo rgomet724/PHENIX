@@ -49,7 +49,10 @@ function mountSyrius(app, options) {
   const users = () => options.loadPhenix().users || [];
   const access = user => appAccess(user, 'syrius');
   const isAdmin = user => access(user).role === 'admin';
-  const allowed = (user, channel) => Boolean(channel && (isAdmin(user) || !channel.memberIds.length || channel.memberIds.includes(user.id)));
+  // Une liste vide ne doit jamais rendre publique une conférence privée.
+  // Les groupes déjà enregistrés sans audience conservent leur restriction.
+  const audienceOf = channel => channel?.audience === 'selected' || channel?.memberIds?.length ? 'selected' : 'all';
+  const allowed = (user, channel) => Boolean(channel && (isAdmin(user) || audienceOf(channel) === 'all' || channel.memberIds.includes(user.id)));
   const nameOf = user => String(user.displayName || user.login || 'Utilisateur').slice(0, 80);
   const channelFor = id => data.channels.find(channel => channel.id === id);
   const usable = (user, channel) => access(user).enabled && allowed(user, channel) && !channel.archived;
@@ -94,7 +97,7 @@ function mountSyrius(app, options) {
     const ids = new Set(visible.map(channel => channel.id));
     return {
       revision, user: identity(user), clientId: client?.id || null, channelId: client?.channelId || null,
-      channels: visible.map(channel => ({ ...channel,
+      channels: visible.map(channel => ({ ...channel, audience: audienceOf(channel),
         participantCount: [...clients.values()].filter(peer => peer.channelId === channel.id && usable(peer.user, channel)).length,
         floor: floors.get(channel.id) || null
       })),
@@ -102,7 +105,7 @@ function mountSyrius(app, options) {
       messages: data.messages.filter(message => ids.has(message.channelId)).slice(-400),
       events: data.events.filter(item => ids.has(item.channelId)).slice(0, 150),
       alerts: data.alerts.filter(item => ids.has(item.channelId)).slice(0, 100),
-      users: isAdmin(user) ? users().filter(item => access(item).enabled).map(identity) : [],
+      users: isAdmin(user) ? users().map(item => ({ ...identity(item), login: item.login || '', enabled: access(item).enabled })) : [],
       audioTransport: socketServer ? 'wss-voice' : 'https-voice', audioSampleRate: 8000, audioCodecs: ['mulaw8', 'pcm16'], appearance: branding()
     };
   }
@@ -279,9 +282,17 @@ function mountSyrius(app, options) {
     if (!name) fail(400, 'Donnez un nom à la conférence.');
     if (data.channels.some(channel => channel.id !== existing?.id && channel.name.toLocaleLowerCase('fr') === name.toLocaleLowerCase('fr'))) fail(409, 'Ce nom de conférence est déjà utilisé.');
     const memberIds = body.memberIds ?? existing?.memberIds ?? [];
-    if (!Array.isArray(memberIds) || memberIds.length > 500 || memberIds.some(id => typeof id !== 'string' || !users().some(user => user.id === id && access(user).enabled))) fail(400, 'La liste des membres contient un compte non autorisé.');
+    if (!Array.isArray(memberIds) || memberIds.length > 500 || memberIds.some(id => typeof id !== 'string')) fail(400, 'La liste des agents est invalide.');
+    const audience = body.audience ?? (memberIds.length ? 'selected' : audienceOf(existing));
+    if (!['all', 'selected'].includes(audience)) fail(400, 'Choisissez une conférence publique ou privée.');
+    if (audience === 'selected') for (const id of memberIds) {
+      const user = userFor(id);
+      // Garder une appartenance existante ne réactive pas un compte central.
+      // Elle peut être retirée même si le compte a été désactivé ou supprimé.
+      if ((!user || !access(user).enabled) && !existing?.memberIds.includes(id)) fail(400, 'Activez d’abord l’accès SYRIUS de cet agent dans l’administration centrale.');
+    }
     return { name, description: text(body.description ?? existing?.description, 160),
-      color: COLORS.includes(body.color) ? body.color : existing?.color || COLORS[0], memberIds: [...new Set(memberIds)] };
+      color: COLORS.includes(body.color) ? body.color : existing?.color || COLORS[0], audience, memberIds: audience === 'selected' ? [...new Set(memberIds)] : [] };
   }
   api.post('/channels', admin, (req, res) => {
     if (data.channels.length >= 100) fail(409, 'La limite de 100 conférences est atteinte.');

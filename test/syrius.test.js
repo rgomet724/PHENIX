@@ -100,7 +100,7 @@ test('SYRIUS : conférences, accès, persistance et signalisation entre deux pos
     return { ws, next, events, ticket: issued.data.ticket, send: body => ws.send(JSON.stringify(body)) };
   }
   const adminClient = 'test-admin-radio-poste', alphaClient = 'test-alpha-radio-poste';
-  let adminStream, alphaStream, privateId, publicId, floorId;
+  let adminStream, alphaStream, privateId, publicId, floorId, managedPrivateId;
   t.after(async () => {
     sockets.forEach(socket => socket.terminate());
     streams.forEach(item => item.close()); radio.close();
@@ -122,7 +122,10 @@ test('SYRIUS : conférences, accès, persistance et signalisation entre deux pos
     assert.equal((await call('/login', { login: 'admin', password: 'incorrect' }, 'nobody')).status, 401);
     assert.equal((await call('/login', { login: 'screen', password }, 'nobody')).status, 403);
     const result = await call('/bootstrap'); assert.equal(result.data.user.role, 'admin');
-    assert.equal(result.data.channels.length, 3); assert.equal(result.data.users.length, 3);
+    assert.equal(result.data.channels.length, 3); assert.equal(result.data.users.length, 4);
+    assert.equal(result.data.users.find(user => user.id === 'screen').enabled, false);
+    assert.equal(result.data.users.find(user => user.id === 'alpha').login, 'alpha');
+    assert.ok(result.data.users.every(user => !Object.hasOwn(user, 'passwordHash')));
   });
   await t.test('Seul un administrateur crée les conférences ; CSRF et origine sont contrôlés', async () => {
     assert.equal((await call('/channels', { name: 'Interdit' }, 'alpha')).status, 403);
@@ -149,6 +152,30 @@ test('SYRIUS : conférences, accès, persistance et signalisation entre deux pos
     assert.ok(!bravo.data.channels.some(channel => channel.id === privateId));
     assert.ok(!bravo.data.messages.some(message => message.channelId === privateId));
     assert.equal((await call('/messages', { channelId: privateId, text: 'Intrusion' }, 'bravo')).status, 404);
+  });
+  await t.test('Les agents autorisés se choisissent par conférence et une liste privée vide ne devient jamais publique', async () => {
+    const created = await call('/channels', { name: 'Agents sélectionnés', audience: 'selected', memberIds: ['alpha'] });
+    assert.equal(created.status, 201); managedPrivateId = created.data.channel.id;
+    assert.equal(created.data.channel.audience, 'selected');
+    assert.ok((await call('/bootstrap', undefined, 'alpha')).data.channels.some(channel => channel.id === managedPrivateId));
+    assert.ok(!(await call('/bootstrap', undefined, 'bravo')).data.channels.some(channel => channel.id === managedPrivateId));
+    assert.equal((await call(`/channels/${managedPrivateId}`, { memberIds: ['bravo'] }, 'alpha', 'PATCH')).status, 403);
+    assert.equal((await call(`/channels/${managedPrivateId}`, { audience: 'selected', memberIds: ['alpha', 'bravo'] }, 'admin', 'PATCH')).status, 200);
+    assert.ok((await call('/bootstrap', undefined, 'bravo')).data.channels.some(channel => channel.id === managedPrivateId));
+    // Un ancien client sans champ audience ne doit pas ouvrir une conférence en retirant le dernier agent.
+    assert.equal((await call(`/channels/${managedPrivateId}`, { memberIds: [] }, 'admin', 'PATCH')).status, 200);
+    for (const agent of ['alpha', 'bravo']) {
+      assert.ok(!(await call('/bootstrap', undefined, agent)).data.channels.some(channel => channel.id === managedPrivateId));
+      assert.equal((await call('/messages', { channelId: managedPrivateId, text: 'Intrusion' }, agent)).status, 404);
+    }
+    const closed = (await call('/bootstrap')).data.channels.find(channel => channel.id === managedPrivateId);
+    assert.equal(closed.audience, 'selected'); assert.deepEqual(closed.memberIds, []);
+    assert.equal((await call('/channels', { name: 'Administrateurs seuls', audience: 'selected', memberIds: [] })).status, 201);
+    assert.equal((await call(`/channels/${managedPrivateId}`, { audience: 'all' }, 'admin', 'PATCH')).status, 200);
+    assert.ok((await call('/bootstrap', undefined, 'bravo')).data.channels.some(channel => channel.id === managedPrivateId));
+    assert.equal((await call(`/channels/${managedPrivateId}`, { audience: 'selected', memberIds: ['alpha'] }, 'admin', 'PATCH')).status, 200);
+    assert.equal((await call(`/channels/${managedPrivateId}`, { memberIds: ['screen'] }, 'admin', 'PATCH')).status, 400);
+    assert.equal((await call(`/channels/${managedPrivateId}`, { audience: 'invalide' }, 'admin', 'PATCH')).status, 400);
   });
   await t.test('Deux postes rejoignent le même groupe et voient les présences', async () => {
     adminStream = await stream('admin', adminClient); alphaStream = await stream('alpha', alphaClient);
@@ -296,10 +323,12 @@ test('SYRIUS : conférences, accès, persistance et signalisation entre deux pos
   await t.test('Un retrait de membre libère immédiatement sa prise de parole', async () => {
     await call('/presence', { clientId: alphaClient, channelId: privateId }, 'alpha');
     const claim = await call('/floor', { clientId: alphaClient, action: 'claim' }, 'alpha');
-    assert.equal((await call(`/channels/${privateId}`, { memberIds: ['bravo'] }, 'admin', 'PATCH')).status, 200);
+    assert.equal((await call(`/channels/${privateId}`, { audience: 'selected', memberIds: [] }, 'admin', 'PATCH')).status, 200);
     const revoked = await alphaStream.next('state', value => value.channelId === null && !value.channels.some(channel => channel.id === privateId));
     assert.equal(revoked.peers.length, 0);
     const admin = await call('/bootstrap'); assert.equal(admin.data.channels.find(channel => channel.id === privateId).floor, null);
+    assert.equal(admin.data.channels.find(channel => channel.id === privateId).audience, 'selected');
+    assert.ok(!(await call('/bootstrap', undefined, 'bravo')).data.channels.some(channel => channel.id === privateId));
     assert.equal((await call('/audio', { clientId: alphaClient, floorId: claim.data.floor.id, sequence: 0, sampleRate: 16000, pcm: 'AAAAAA==' }, 'alpha')).status, 404);
   });
   await t.test('La désactivation centrale coupe un poste déjà connecté', async () => {
@@ -309,12 +338,34 @@ test('SYRIUS : conférences, accès, persistance et signalisation entre deux pos
     await alphaStream.next('expired');
     assert.equal((await call('/bootstrap', undefined, 'alpha')).status, 403);
   });
+  await t.test('Désactiver un agent dans le centre ne bloque pas la modification ni le retrait de son appartenance privée', async () => {
+    assert.equal((await call(`/channels/${managedPrivateId}`, { name: 'Groupe conservé' }, 'admin', 'PATCH')).status, 200);
+    const channel = (await call('/bootstrap')).data.channels.find(channel => channel.id === managedPrivateId);
+    assert.deepEqual(channel.memberIds, ['alpha']); assert.equal(channel.audience, 'selected');
+    assert.equal((await call('/channels', { name: 'Ajout désactivé', audience: 'selected', memberIds: ['alpha'] })).status, 400);
+    assert.equal((await call(`/channels/${managedPrivateId}`, { memberIds: [] }, 'admin', 'PATCH')).status, 200);
+    const empty = (await call('/bootstrap')).data.channels.find(channel => channel.id === managedPrivateId);
+    assert.equal(empty.audience, 'selected'); assert.deepEqual(empty.memberIds, []);
+  });
   await t.test('La persistance contient les conférences renommées, les messages et les acquittements', async () => {
     const saved = JSON.parse(fs.readFileSync(filename, 'utf8'));
     assert.equal(saved.channels.find(channel => channel.id === publicId).name, 'Dispositif marché');
     assert.ok(saved.messages.some(message => message.text === 'Message privé'));
     assert.ok(saved.alerts[0].acknowledgedBy);
+    assert.equal(saved.channels.find(channel => channel.id === managedPrivateId).audience, 'selected');
     assert.equal(saved.floors, undefined); assert.equal(saved.peers, undefined); assert.equal(saved.signals, undefined);
+    const reloaded = mountSyrius(express(), { dataFile: filename, loadPhenix: () => ({ users }) });
+    try {
+      assert.ok(!reloaded.snapshot(users.find(user => user.id === 'bravo')).channels.some(channel => channel.id === managedPrivateId));
+      assert.equal(reloaded.snapshot(users[0]).channels.find(channel => channel.id === managedPrivateId).audience, 'selected');
+    } finally { reloaded.close(); }
+    const legacyFile = path.join(directory, 'legacy-syrius.json');
+    fs.writeFileSync(legacyFile, JSON.stringify({ ...saved, channels: [{ id: 'legacy-private', name: 'Ancienne privée', memberIds: ['bravo'], archived: false }] }));
+    const legacy = mountSyrius(express(), { dataFile: legacyFile, loadPhenix: () => ({ users }) });
+    try {
+      assert.equal(legacy.snapshot(users.find(user => user.id === 'bravo')).channels[0].audience, 'selected');
+      assert.ok(!legacy.snapshot(users.find(user => user.id === 'alpha')).channels.length);
+    } finally { legacy.close(); }
   });
   await t.test('La déconnexion ferme immédiatement le flux du compte', async () => {
     assert.equal((await call('/logout', {})).status, 200); await adminStream.next('expired');
