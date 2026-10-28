@@ -31,7 +31,7 @@ La tuile SYRIUS est ajoutée à la réponse du portail ARGOS. Les tuiles déjà 
 
 Le profil permet de choisir l’indicatif et la disponibilité du poste. La déconnexion ferme la session PHENIX commune. Les alertes sont adressées aux utilisateurs de la conférence sur ce site.
 
-## Audio et téléphone — version 2.2 (essai renforcé)
+## Audio et téléphone — version 2.3 (essai renforcé)
 
 Le micro est traité en PCM16 mono à 16 kHz, puis la voix est sous-échantillonnée à 8 kHz et compandée en µ-law 8 bits. Les fragments représentent 120 ms de parole, contre 160 ms précédemment. Ce choix privilégie une qualité de voix téléphonique et un débit réduit plutôt qu’une voix large bande. Pour une même durée, les échantillons compressés occupent quatre fois moins d’octets que le PCM16 précédent : environ 10,7 ko/s en base64, hors métadonnées et TLS. Le test de codec mesure la durée conservée et l’erreur de quantification sur un signal de référence.
 
@@ -52,6 +52,14 @@ Sur téléphone : Radio, Groupes, Messages, Carte et Plus restent disponibles. *
 Le bouton **Désactiver mon microphone**, la déconnexion ou la fermeture de la page ferment la piste. L’arrêt de parole, la perte d’accès et le changement de groupe restent contrôlés par le serveur. Les tickets WSS sont à usage unique, liés à la session et au poste SSE, et expirent après 30 secondes. Une confirmation de fin de phrase précède la libération de l’alternat ; aucun accusé par fragment ne ralentit l’émission.
 
 Références : [Audio Session](https://developer.mozilla.org/en-US/docs/Web/API/AudioSession/type), [Media Session](https://developer.mozilla.org/en-US/docs/Web/API/Media_Session_API).
+
+## Signaux PTT et alerte vocale
+
+Le signal validé, extrait de la vidéo fournie, est dans `syrius/sounds/ptt.wav` : trois impulsions en environ 180 ms. Il est identique au début et à la fin de l’émission. Le signal de début suit l’attribution de parole par le serveur ; la capture du micro commence à sa fin. Relâcher pendant le signal annule la capture et rend l’alternat. Le signal de fin suit l’envoi des derniers fragments et la réponse de libération du serveur. Une transmission échouée ne reçoit pas de signal de fin confirmant sa réussite.
+
+L’annonce française fournie est conservée sans modification dans `syrius/sounds/alerte-code-rouge.mp3`. À la réception d’une nouvelle alerte non acquittée, les postes de la conférence rejointe lisent cette annonce localement. Les anciennes alertes au chargement, les répétitions d’état, les acquittements et les alertes d’autres groupes ne la déclenchent pas. Les annonces simultanées ne se superposent pas.
+
+Les sons réutilisent le contexte audio déjà activé et le volume de la radio, y compris le mode muet, sans nouvelle demande de microphone. Ils se téléchargent séparément et ne sont pas envoyés dans le relais vocal. Dans **Audio**, **Tester le signal PTT** et **Tester l’alerte vocale** permettent un essai sur le poste, sans diffuser d’alerte aux autres utilisateurs. Un fichier sonore lent ou indisponible ne bloque pas la prise de parole ; l’attente de chargement d’un signal est limitée à 750 ms. Une suspension du téléphone annule les sons en cours pour ne pas les rejouer au réveil. Les mêmes limites de navigateur et d’arrière-plan que pour la voix continuent de s’appliquer.
 
 ## Apparence — administration centrale
 
