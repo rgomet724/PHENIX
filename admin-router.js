@@ -788,6 +788,7 @@ function mountCentralAdmin(app, deps = {}) {
       if (input.removeFavicon) current.faviconData = '';
       if (input.removeBackground) current.backgroundData = '';
       auditAndSave(config, req, 'Modification apparence', appId.toUpperCase());
+      deps.onAppearanceChanged?.(appId);
       res.json({ ok: true, appearance: current });
     } catch (error) { res.status(400).json({ error: error.message }); }
   });
@@ -842,3 +843,4 @@ function mountCentralAdmin(app, deps = {}) {
 }
 
 module.exports = { mountCentralAdmin };
+

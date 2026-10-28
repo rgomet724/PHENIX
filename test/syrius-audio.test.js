@@ -40,7 +40,7 @@ test('Le microphone rééchantillonne 44,1 / 48 kHz en paquets PCM16 de 160 ms s
   }
 });
 
-function audioHarness(send = async () => {}) {
+function audioHarness(send = async () => {}, finish = async () => {}) {
   const nodes = [], worklets = [], errors = [], levels = [];
   const track = { enabled: true, readyState: 'live', stop() { this.readyState = 'ended'; } };
   const stream = { getTracks: () => [track], getAudioTracks: () => [track] };
@@ -73,14 +73,14 @@ function audioHarness(send = async () => {}) {
     btoa: value => Buffer.from(value, 'binary').toString('base64'), atob: value => Buffer.from(value, 'base64').toString('binary'),
     AbortController, setTimeout, clearTimeout, console };
   vm.runInNewContext(fs.readFileSync(path.join(root, 'radio-audio.js'), 'utf8'), context);
-  const audio = new context.window.SyriusAudio({ send, onError: error => errors.push(error), onLevel: value => levels.push(value) });
-  return { audio, nodes, worklets, track, errors, levels };
+  const audio = new context.window.SyriusAudio({ send, finish, onError: error => errors.push(error), onLevel: value => levels.push(value) });
+  return { audio, nodes, worklets, track, errors, levels, context };
 }
 
 test('Le PTT attend l’activation audio, expédie dans l’ordre et termine le dernier fragment avant de rendre la parole', async () => {
   const sent = []; let unblock;
   const blocked = new Promise(resolve => { unblock = resolve; });
-  const { audio, worklets, track, errors } = audioHarness(async packet => { sent.push(packet); if (packet.sequence === 0) await blocked; });
+  const { audio, worklets, track, errors } = audioHarness(async body => { sent.push(...(body.packets || [body])); if (body.sequence === 0) await blocked; });
   assert.throws(() => audio.startCapture('floor-1'), /Activez la radio/);
   await audio.prepareMicrophone(); assert.ok(audio.ready); assert.equal(track.enabled, false);
   audio.startCapture('floor-1'); assert.equal(track.enabled, true);
@@ -101,6 +101,48 @@ test('Le PTT attend l’activation audio, expédie dans l’ordre et termine le 
   worklet.emit({ type: 'pcm', id, samples: new Int16Array([3000]).buffer });
   await audio.stopCapture();
   assert.equal(sent.at(-1).floorId, 'floor-2'); assert.equal(sent.at(-1).sequence, 0);
+});
+
+test('Le secours HTTP maintient la cadence avec un aller-retour de 400 ms, supérieur aux fragments de 160 ms', async () => {
+  const sent = [], batchSizes = [];
+  const { audio, worklets, errors } = audioHarness(async body => {
+    const packets = body.packets || [body]; batchSizes.push(packets.length); sent.push(...packets);
+    await new Promise(resolve => setTimeout(resolve, 400));
+  });
+  await audio.prepareMicrophone(); audio.startCapture('delayed-floor');
+  const id = worklets[0].command.id;
+  for (let index = 0; index < 20; index++) {
+    worklets[0].emit({ type: 'pcm', id, samples: new Int16Array(2560).fill(index).buffer });
+    await new Promise(resolve => setTimeout(resolve, 160));
+  }
+  await audio.stopCapture();
+  assert.equal(errors.length, 0); assert.equal(sent.length, 20);
+  assert.deepEqual(sent.map(packet => packet.sequence), Array.from({ length: 20 }, (_, index) => index));
+  assert.ok(batchSizes.some(size => size > 1), 'les fragments s’envoient par lots plutôt que de saturer la file');
+});
+
+test('Le microphone iPhone reprend après l’autorisation et réutilise sa capture après une interruption', async () => {
+  const { audio, context, worklets } = audioHarness();
+  let acquisitions = 0;
+  const getMicrophone = context.navigator.mediaDevices.getUserMedia;
+  context.navigator.mediaDevices.getUserMedia = async () => {
+    acquisitions++; audio.context.state = 'interrupted'; return getMicrophone();
+  };
+  await audio.prepareMicrophone(); assert.equal(audio.ready, true); assert.equal(acquisitions, 1);
+  audio.context.state = 'interrupted'; assert.equal(audio.ready, false); assert.equal(audio.microphoneReady, true);
+  await audio.prepareMicrophone(); assert.equal(audio.ready, true); assert.equal(acquisitions, 1); assert.equal(worklets.length, 1);
+});
+
+test('Relâcher attend l’accusé de fin de phrase sans attendre un accusé pour chaque fragment', async () => {
+  let resolveFinish, finishing = false;
+  const { audio, worklets } = audioHarness(async () => {}, async (_floorId, sequence) => {
+    assert.equal(sequence, 0); finishing = true; await new Promise(resolve => { resolveFinish = resolve; });
+  });
+  await audio.prepareMicrophone(); audio.startCapture('flush-floor');
+  worklets[0].emit({ type: 'pcm', id: worklets[0].command.id, samples: new Int16Array(2560).buffer });
+  let stopped = false; const stop = audio.stopCapture().then(() => { stopped = true; });
+  await new Promise(resolve => setImmediate(resolve)); assert.equal(finishing, true); assert.equal(stopped, false);
+  resolveFinish(); await stop; assert.equal(stopped, true);
 });
 
 test('Un échec réseau arrête le micro et un retard ne s’accumule pas sans limite', async () => {
@@ -133,4 +175,18 @@ test('Un test micro ne transmet rien à la conférence et se ferme explicitement
   worklets[0].emit({ type: 'pcm', id: 999, samples: new Int16Array(2560).buffer });
   assert.equal(sent.length, 0); audio.stopMicrophoneTest(); assert.equal(track.enabled, false);
   audio.disableMicrophone(); assert.equal(track.readyState, 'ended'); assert.equal(audio.ready, false);
+});
+
+test('Les pauses et changements d’écran réutilisent le même micro autorisé jusqu’à sa fermeture explicite', async () => {
+  const { audio, track, context } = audioHarness();
+  const acquire = context.navigator.mediaDevices.getUserMedia; let requests = 0;
+  context.navigator.mediaDevices.getUserMedia = async () => { requests++; return acquire(); };
+  await audio.prepareMicrophone();
+  for (let index = 0; index < 12; index++) {
+    audio.startCapture(`group-${index}`); await audio.pauseMicrophone();
+    assert.equal(track.enabled, false); assert.equal(track.readyState, 'live');
+    audio.context.state = 'interrupted'; await audio.prepareMicrophone();
+  }
+  assert.equal(requests, 1, 'pas de nouvelle demande getUserMedia à chaque reprise');
+  audio.disableMicrophone(); assert.equal(track.readyState, 'ended');
 });

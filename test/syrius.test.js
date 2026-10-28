@@ -8,6 +8,7 @@ const path = require('node:path');
 const express = require('express');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
+const { WebSocket } = require('ws');
 
 const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'phenix-syrius-test-'));
 process.env.CENTRAL_ADMIN_DATA_FILE = path.join(directory, 'admin.json');
@@ -27,9 +28,10 @@ test('SYRIUS : conférences, accès, persistance et signalisation entre deux pos
   const filename = path.join(directory, 'syrius.json');
   const radio = mountSyrius(app, { dataFile: filename, loadPhenix: () => ({ users }), passwordExpired: user => Boolean(user.mustChangePassword) });
   const server = app.listen(0, '127.0.0.1');
+  radio.attachServer(server);
   await new Promise(resolve => server.once('listening', resolve));
   const origin = `http://127.0.0.1:${server.address().port}`;
-  const streams = [];
+  const streams = [], sockets = [];
   const accounts = {};
   async function call(route, body, who = 'admin', method = 'POST', headers = {}) {
     const account = accounts[who] || {};
@@ -77,9 +79,30 @@ test('SYRIUS : conférences, accès, persistance et signalisation entre deux pos
     const item = { next, events, close: () => controller.abort(), reading }; streams.push(item);
     await next('state'); return item;
   }
+  async function audioSocket(who, clientId, reusedTicket) {
+    const issued = reusedTicket ? { data: { ticket: reusedTicket } } : await call('/audio-link', { clientId }, who);
+    if (!reusedTicket) assert.equal(issued.status, 200);
+    const ws = new WebSocket(`${origin.replace('http:', 'ws:')}/syrius/audio`, { origin }); sockets.push(ws);
+    const events = [], waiters = [];
+    ws.on('error', () => {});
+    ws.on('message', raw => {
+      const event = JSON.parse(raw.toString()), index = waiters.findIndex(waiter => waiter.type === event.type);
+      if (index === -1) events.push(event);
+      else { const waiter = waiters.splice(index, 1)[0]; clearTimeout(waiter.timer); waiter.resolve(event); }
+    });
+    const next = type => new Promise((resolve, reject) => {
+      const index = events.findIndex(event => event.type === type);
+      if (index !== -1) return resolve(events.splice(index, 1)[0]);
+      const waiter = { type, resolve, timer: setTimeout(() => reject(new Error(`Message WSS ${type} non reçu`)), 2000) }; waiters.push(waiter);
+    });
+    await new Promise((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject); });
+    ws.send(JSON.stringify({ type: 'auth', clientId, ticket: issued.data.ticket }));
+    return { ws, next, events, ticket: issued.data.ticket, send: body => ws.send(JSON.stringify(body)) };
+  }
   const adminClient = 'test-admin-radio-poste', alphaClient = 'test-alpha-radio-poste';
   let adminStream, alphaStream, privateId, publicId, floorId;
   t.after(async () => {
+    sockets.forEach(socket => socket.terminate());
     streams.forEach(item => item.close()); radio.close();
     await Promise.all(streams.map(item => item.reading));
     server.closeAllConnections(); await new Promise(resolve => server.close(resolve));
@@ -182,6 +205,44 @@ test('SYRIUS : conférences, accès, persistance et signalisation entre deux pos
     assert.equal((await call('/audio', { ...packet, floorId, sequence: 0 }, 'alpha')).status, 200, 'l’émission suivante repart de zéro');
     const saved = fs.readFileSync(filename, 'utf8'); assert.ok(!saved.includes(pcm), 'aucun audio n’est enregistré');
     bravoStream.close();
+  });
+  await t.test('Le flux continu envoie sans aller-retour par fragment et confirme la fin de phrase', async () => {
+    assert.equal((await call('/audio-link', { clientId: alphaClient }, 'bravo')).status, 409);
+    assert.equal((await call('/audio-link', { clientId: alphaClient }, 'alpha', 'POST', { 'x-csrf-token': '' })).status, 403);
+    const audio = await audioSocket('alpha', alphaClient); await audio.next('ready');
+    const tone = Buffer.alloc(5120);
+    for (let index = 0; index < 2560; index++) tone.writeInt16LE(Math.round(Math.sin(index * 2 * Math.PI * 400 / 16000) * 12000), index * 2);
+    const pcm = tone.toString('base64');
+    for (let sequence = 1; sequence <= 5; sequence++) audio.send({ type: 'audio', floorId, sequence, sampleRate: 16000, pcm });
+    for (let sequence = 1; sequence <= 5; sequence++) {
+      const packet = await adminStream.next('audio', packet => packet.sequence === sequence && packet.pcm === pcm);
+      assert.equal(packet.floorId, floorId);
+    }
+    assert.equal(audio.events.length, 0, 'aucun accusé par fragment susceptible de bloquer la cadence');
+    audio.send({ type: 'flush', floorId, sequence: 5 }); assert.equal((await audio.next('flushed')).sequence, 5);
+    const replay = await audioSocket('alpha', alphaClient, audio.ticket);
+    assert.equal((await replay.next('error')).status, 401, 'un ticket est à usage unique');
+    await call('/floor', { clientId: alphaClient, action: 'release' }, 'alpha');
+    audio.send({ type: 'audio', floorId, sequence: 6, sampleRate: 16000, pcm });
+    assert.equal((await audio.next('error')).status, 409);
+    floorId = (await call('/floor', { clientId: alphaClient, action: 'claim' }, 'alpha')).data.floor.id;
+    audio.send({ type: 'audio', floorId, sequence: 0, sampleRate: 16000, pcm });
+    await adminStream.next('audio', packet => packet.floorId === floorId);
+    const lastRadioEvent = (await call('/bootstrap')).data.events[0].id;
+    const closed = new Promise(resolve => audio.ws.once('close', resolve)); audio.ws.close(); await closed;
+    await adminStream.next('state', value => value.events[0]?.id === lastRadioEvent && value.channels.find(channel => channel.id === publicId)?.floor === null);
+    const wrongOrigin = new WebSocket(`${origin.replace('http:', 'ws:')}/syrius/audio`, { origin: 'https://intrus.example' }); sockets.push(wrongOrigin);
+    await new Promise(resolve => wrongOrigin.once('error', error => { assert.match(error.message, /403/); resolve(); }));
+  });
+  await t.test('Le secours HTTPS accepte les lots ordonnés et refuse un lot invalide sans diffusion partielle', async () => {
+    floorId = (await call('/floor', { clientId: alphaClient, action: 'claim' }, 'alpha')).data.floor.id;
+    const packet = { floorId, sampleRate: 16000, pcm: 'AAAAAA==' };
+    const batch = { clientId: alphaClient, floorId, packets: [0, 1, 2, 3].map(sequence => ({ ...packet, sequence })) };
+    assert.equal((await call('/audio', batch, 'alpha')).status, 200);
+    for (let sequence = 0; sequence <= 3; sequence++) await adminStream.next('audio', value => value.floorId === floorId && value.sequence === sequence);
+    assert.equal((await call('/audio', { ...batch, packets: [{ ...packet, sequence: 4 }, { ...packet, sequence: 3 }] }, 'alpha')).status, 409);
+    assert.equal((await call('/audio', { ...packet, clientId: alphaClient, sequence: 4 }, 'alpha')).status, 200, 'le lot rejeté ne consomme pas le numéro 4');
+    assert.equal((await call('/audio', { ...batch, packets: Array(5).fill(packet) }, 'alpha')).status, 400);
   });
   await t.test('La position est partagée uniquement dans le groupe rejoint ; une alerte peut être acquittée', async () => {
     assert.equal((await call('/presence', { clientId: alphaClient, position: { lat: 46.781, lng: 4.854 } }, 'alpha')).status, 200);

@@ -51,7 +51,7 @@ test('Intégration avec le serveur PHENIX, le portail ARGOS et l’administratio
   assert.equal((await status.json()).user.id, 'integration-admin');
   const bootstrap = await fetch(`${origin}/syrius/api/bootstrap`, { headers: { cookie } });
   assert.equal((await bootstrap.json()).user.role, 'admin');
-  for (const asset of ['app.js', 'styles.css', 'icons.svg', 'favicon.svg', 'map-fallback.svg', 'radio-audio.js', 'audio-worklet.js', 'manifest.webmanifest', 'sw.js', 'offline.html', 'icon-192.png', 'icon-512.png']) {
+  for (const asset of ['app.js', 'styles.css', 'icons.svg', 'favicon.svg', 'map-fallback.svg', 'radio-audio.js', 'audio-transport.js', 'ptt-control.js', 'branding.js', 'audio-worklet.js', 'manifest.webmanifest', 'sw.js', 'offline.html', 'icon-192.png', 'icon-512.png']) {
     assert.equal((await fetch(`${origin}/syrius/${asset}`)).status, 200, asset);
   }
   const manifest = await (await fetch(`${origin}/syrius/manifest.webmanifest`)).json();
@@ -63,10 +63,50 @@ test('Intégration avec le serveur PHENIX, le portail ARGOS et l’administratio
   const catalog = await fetch(`${origin}/portail/administration/api/catalog`, { headers: { cookie } });
   assert.equal(catalog.status, 200);
   assert.ok((await catalog.json()).applications.some(app => app.id === 'syrius'));
+  // Le réglage reste exclusivement dans le centre d’administration existant.
+  const adminSession = await (await fetch(`${origin}/portail/administration/api/session`, { headers: { cookie } })).json();
+  const streamController = new AbortController();
+  t.after(() => streamController.abort());
+  const stream = await fetch(`${origin}/syrius/api/stream?clientId=integration-branding-radio`, { headers: { cookie }, signal: streamController.signal });
+  const reader = stream.body.getReader();
+  await reader.read(); // état initial
+  const logoData = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=';
+  const changed = await fetch(`${origin}/portail/administration/api/appearance/syrius`, {
+    method: 'PUT', headers: { cookie, 'content-type': 'application/json', 'x-admin-csrf': adminSession.csrfToken },
+    body: JSON.stringify({ title: 'Radio de test', subtitle: 'Police de test', primaryColor: '#123456', accentColor: '#a32478', backgroundColor: '#eeeeee', logoData, faviconData: logoData, backgroundData: logoData })
+  });
+  assert.equal(changed.status, 200);
+  const timer = setTimeout(() => streamController.abort(), 3000);
+  let liveAppearance;
+  try {
+    const decoder = new TextDecoder(); let pending = '';
+    while (!liveAppearance) {
+      const { value, done } = await reader.read(); assert.equal(done, false); pending += decoder.decode(value, { stream: true });
+      let index;
+      while ((index = pending.indexOf('\n\n')) !== -1) {
+        const frame = pending.slice(0, index); pending = pending.slice(index + 2);
+        const raw = frame.match(/^data: (.+)$/m)?.[1];
+        if (raw && frame.startsWith('event: state')) {
+          const state = JSON.parse(raw);
+          if (state.appearance.accentColor === '#a32478') liveAppearance = state.appearance;
+        }
+      }
+    }
+  } finally { clearTimeout(timer); streamController.abort(); }
+  assert.equal(liveAppearance.title, 'Radio de test');
+  assert.equal(liveAppearance.logoData, undefined, 'les images ne saturent pas le flux de parole');
+  assert.match(liveAppearance.logoUrl, /^\/syrius\/branding\/logo\?v=/);
+  const logo = await fetch(`${origin}${liveAppearance.logoUrl}`);
+  assert.equal(logo.status, 200); assert.match(logo.headers.get('content-type'), /image\/png/);
+  assert.equal(Buffer.from(await logo.arrayBuffer()).toString('base64'), logoData.split(',')[1]);
+  const publicBranding = await (await fetch(`${origin}/syrius/branding`)).json();
+  assert.equal(publicBranding.appearance.primaryColor, '#123456');
   const portalLogin = await fetch(`${origin}/portail/api/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ login: 'integration-admin', password: 'integration-test-only' }) });
   assert.equal(portalLogin.status, 200);
   const portal = await fetch(`${origin}/portail/api/portal`, { headers: { cookie: portalLogin.headers.get('set-cookie').split(';')[0] } });
   const portalData = await portal.json();
   assert.ok(portalData.apps.some(app => app.url === '/'), JSON.stringify(portalData.apps));
   assert.ok(portalData.apps.some(app => app.id === 'app-syrius' && app.url === '/syrius/'));
+  const radioTile = portalData.apps.find(app => app.id === 'app-syrius');
+  assert.equal(radioTile.name, 'Radio de test'); assert.equal(radioTile.logoData, logoData); assert.equal(radioTile.accentColor, '#a32478');
 });

@@ -434,10 +434,11 @@ function mountPortal(app) {
     // Ajoute SYRIUS aux portails existants sans réécrire leur configuration.
     if (!apps.some(item => item.id === 'app-syrius' || /^\/syrius(?:\/|$)/.test(String(item.url || '')))) {
       const category = categories.find(item => item.id === 'cat-operationnel') || categories[0];
+      const radioAppearance = appearanceFor('syrius', config);
       if (category) apps.push({
-        id: 'app-syrius', categoryId: category.id, name: 'SYRIUS',
-        description: 'Conférences et communications radio', url: '/syrius/',
-        logoData: '', accentColor: '#4264d7', order: 25
+        id: 'app-syrius', categoryId: category.id, name: radioAppearance.title,
+        description: radioAppearance.subtitle, url: '/syrius/',
+        logoData: radioAppearance.logoData, accentColor: radioAppearance.accentColor, order: 25
       });
     }
     if (req.portalUser.source === 'PHENIX') {
