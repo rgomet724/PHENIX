@@ -11,7 +11,7 @@ const roleLabels = {
   admin: 'Administrateur', superviseur: 'Superviseur', operateur: 'Opérateur', dashboard: 'Écran Dashboard',
   user: 'Utilisateur', consultation: 'Consultation'
 };
-const appLabels = { phenix: 'PHENIX', argos: 'Portail ARGOS', atlas: 'ATLAS', arretes: 'Arrêtés' };
+const appLabels = { phenix: 'PHENIX', argos: 'Portail ARGOS', atlas: 'ATLAS', arretes: 'Arrêtés', syrius: 'SYRIUS' };
 
 async function api(path, options = {}) {
   const headers = new Headers(options.headers || {});
@@ -116,7 +116,7 @@ function renderDashboard() {
 }
 
 function accessBadges(user) {
-  return ['phenix', 'argos', 'atlas', 'arretes'].map(id => `<span class="access-dot${user.access?.[id]?.enabled ? '' : ' off'}">${escapeHtml(appLabels[id])}</span>`).join('');
+  return ['phenix', 'argos', 'atlas', 'arretes', 'syrius'].map(id => `<span class="access-dot${user.access?.[id]?.enabled ? '' : ' off'}">${escapeHtml(appLabels[id])}</span>`).join('');
 }
 
 function renderUsers() {
@@ -602,3 +602,4 @@ function bindEvents() {
 }
 
 document.addEventListener('DOMContentLoaded', initialize);
+

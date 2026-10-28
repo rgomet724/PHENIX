@@ -431,6 +431,15 @@ function mountPortal(app) {
     const config = loadAdminConfig();
     const categories = [...data.categories].sort((a, b) => Number(a.order || 0) - Number(b.order || 0) || String(a.name).localeCompare(String(b.name), 'fr'));
     let apps = [...data.apps];
+    // Ajoute SYRIUS aux portails existants sans réécrire leur configuration.
+    if (!apps.some(item => item.id === 'app-syrius' || /^\/syrius(?:\/|$)/.test(String(item.url || '')))) {
+      const category = categories.find(item => item.id === 'cat-operationnel') || categories[0];
+      if (category) apps.push({
+        id: 'app-syrius', categoryId: category.id, name: 'SYRIUS',
+        description: 'Conférences et communications radio', url: '/syrius/',
+        logoData: '', accentColor: '#4264d7', order: 25
+      });
+    }
     if (req.portalUser.source === 'PHENIX') {
       const phenix = loadPhenixUsers();
       const rawId = String(req.portalUser.id || '').replace(/^phenix:/, '');
@@ -442,6 +451,7 @@ function mountPortal(app) {
           if ((item.id === 'app-phenix' || url === '/') && !appAccess(stored, 'phenix', config).enabled) return false;
           if ((item.id === 'app-atlas' || url.startsWith('/portail/atlas')) && !appAccess(stored, 'atlas', config).enabled) return false;
           if ((item.id === 'app-arretes' || url.startsWith('/arretes') || url.includes('arretes-municipaux')) && !appAccess(stored, 'arretes', config).enabled) return false;
+          if ((item.id === 'app-syrius' || url.startsWith('/syrius')) && !appAccess(stored, 'syrius', config).enabled) return false;
           return true;
         });
       }
@@ -592,3 +602,4 @@ function mountPortal(app) {
 }
 
 module.exports = { mountPortal };
+

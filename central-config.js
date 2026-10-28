@@ -15,7 +15,8 @@ const APPLICATIONS = Object.freeze([
   { id: 'phenix', name: 'PHENIX', roles: ['admin', 'superviseur', 'operateur', 'dashboard'] },
   { id: 'argos', name: 'Portail ARGOS', roles: ['admin', 'user'] },
   { id: 'atlas', name: 'ATLAS', roles: ['admin', 'superviseur', 'operateur', 'consultation'] },
-  { id: 'arretes', name: 'Arrêtés', roles: ['admin', 'user'] }
+  { id: 'arretes', name: 'Arrêtés', roles: ['admin', 'user'] },
+  { id: 'syrius', name: 'SYRIUS · Radio', roles: ['admin', 'user'] }
 ]);
 
 const DEFAULT_APPEARANCE = Object.freeze({
@@ -32,6 +33,11 @@ const DEFAULT_APPEARANCE = Object.freeze({
   atlas: {
     title: 'ATLAS', subtitle: 'Gestion de l’attente des interventions',
     primaryColor: '#0018a8', accentColor: '#0878df', backgroundColor: '#eef3f8',
+    logoData: '', faviconData: '', backgroundData: ''
+  },
+  syrius: {
+    title: 'SYRIUS', subtitle: 'Communications radio · PHENIX',
+    primaryColor: '#253d91', accentColor: '#4264d7', backgroundColor: '#eef1f6',
     logoData: '', faviconData: '', backgroundData: ''
   },
   arretes: {
@@ -195,6 +201,7 @@ function defaultAccessForUser(user) {
       role: role === 'admin' ? 'admin' : role === 'superviseur' ? 'superviseur' : role === 'operateur' ? 'operateur' : 'consultation'
     },
     arretes: { enabled: argosEnabled, role: role === 'admin' ? 'admin' : 'user' },
+    syrius: { enabled: argosEnabled, role: role === 'admin' ? 'admin' : 'user' },
     apps: {}
   };
 }
@@ -326,3 +333,4 @@ module.exports = {
   saveAdminConfig,
   setUserPolicy
 };
+

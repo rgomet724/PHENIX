@@ -3,7 +3,9 @@
   "version": "35.1.0",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test:syrius": "node --test test/syrius*.test.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -20,3 +22,4 @@
     "node": ">=20"
   }
 }
+
