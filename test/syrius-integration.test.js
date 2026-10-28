@@ -8,6 +8,7 @@ const os = require('node:os');
 const net = require('node:net');
 const { spawn } = require('node:child_process');
 const bcrypt = require('bcryptjs');
+const { createHash } = require('node:crypto');
 
 test('Intégration avec le serveur PHENIX, le portail ARGOS et l’administration centrale', async t => {
   const root = path.resolve(__dirname, '..');
@@ -51,8 +52,16 @@ test('Intégration avec le serveur PHENIX, le portail ARGOS et l’administratio
   assert.equal((await status.json()).user.id, 'integration-admin');
   const bootstrap = await fetch(`${origin}/syrius/api/bootstrap`, { headers: { cookie } });
   assert.equal((await bootstrap.json()).user.role, 'admin');
-  for (const asset of ['app.js', 'styles.css', 'icons.svg', 'favicon.svg', 'map-fallback.svg', 'radio-audio.js', 'audio-transport.js', 'audio-codec.js', 'audio-inbox.js', 'background-audio.js', 'ptt-control.js', 'branding.js', 'audio-worklet.js', 'manifest.webmanifest', 'sw.js', 'offline.html', 'icon-192.png', 'icon-512.png']) {
+  for (const asset of ['app.js', 'styles.css', 'icons.svg', 'favicon.svg', 'map-fallback.svg', 'radio-audio.js', 'radio-sounds.js', 'audio-transport.js', 'audio-codec.js', 'audio-inbox.js', 'background-audio.js', 'ptt-control.js', 'branding.js', 'audio-worklet.js', 'manifest.webmanifest', 'sw.js', 'offline.html', 'icon-192.png', 'icon-512.png']) {
     assert.equal((await fetch(`${origin}/syrius/${asset}`)).status, 200, asset);
+  }
+  for (const [asset, hash] of [
+    ['ptt.wav', '670a81f9c8036c673b0b801b7038e14e6a3b35ebf336f749c9ef34537160d4f6'],
+    ['alerte-code-rouge.mp3', '95507460492852c4bf9c91a4140f379c7c61e30b908b8edda3a95752ec99681a']
+  ]) {
+    const response = await fetch(`${origin}/syrius/sounds/${asset}`); assert.equal(response.status, 200);
+    assert.match(response.headers.get('content-type'), /audio\//);
+    assert.equal(createHash('sha256').update(Buffer.from(await response.arrayBuffer())).digest('hex'), hash, 'le fichier sonore validé est servi sans modification');
   }
   const manifest = await (await fetch(`${origin}/syrius/manifest.webmanifest`)).json();
   assert.equal(manifest.scope, '/syrius/'); assert.equal(manifest.display, 'standalone');

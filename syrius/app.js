@@ -9,7 +9,7 @@
   let desiredChannel = null, joining = false, view = 'console', activity = 'messages';
   let toastTimer, geoWatch = null, audioVolume = .8, muted = false;
   let holding = false, starting = false, transmitting = false, attempt = 0;
-  let grant = null, renewTimer, maxTalkTimer, stopping = null, preparingRadio = false;
+  let grant = null, renewTimer, maxTalkTimer, stopping = null, preparingRadio = false, cueController = null, sounds = null;
   let messageSignature = '', eventSignature = '', markerSignature = '';
   let installPrompt = null;
   let stateRevision = -1;
@@ -27,7 +27,7 @@
   const radio = new window.SyriusAudio({
     send: (packet, signal) => transport.send(packet, signal),
     finish: (floorId, sequence) => transport.finish(floorId, sequence),
-    onState: () => renderRadio(),
+    onState: () => { if (!radio.listening) sounds?.stop(); renderRadio(); },
     onInterrupted: () => { if (holding || transmitting) stopSpeaking(); },
     onError: error => { stopSpeaking(); toast(error.message, true); },
     onLevel: level => {
@@ -35,6 +35,7 @@
       $('mic-test-label').textContent = radio.monitoring ? level > .015 ? 'Votre voix est détectée' : 'Parlez pour tester le micro…' : 'Test local · aucune diffusion à la conférence';
     }
   });
+  sounds = new window.SyriusRadioSounds({ getContext: () => radio.context });
   const inbox = new window.SyriusAudioInbox({ clientId, getChannel: () => desiredChannel,
     onPacket: packet => radio.receive(packet), onChannelChange: () => radio.resetPlayback()
   });
@@ -89,6 +90,7 @@
   function showAuth(message) {
     connected = false; desiredChannel = null;
     source?.close(); source = null; stopSpeaking(); transport.close(); stopLocation(); radio.resetPlayback(); radio.disableMicrophone(); state = null;
+    sounds.reset();
     $('boot-screen').hidden = true; $('app-shell').hidden = true; $('auth-screen').hidden = false;
     if (message) showError('login-error', message);
   }
@@ -96,6 +98,7 @@
     try {
       const result = await request('/bootstrap'); csrfToken = result.csrfToken;
       state = result; selectedId = state.channels.find(channel => !channel.archived)?.id || null;
+      sounds.observeAlerts(state.alerts, null, true);
       callsign = callsign || state.user.name;
       $('boot-screen').hidden = true; $('auth-screen').hidden = true; $('app-shell').hidden = false;
       render(); connect();
@@ -119,10 +122,11 @@
       const currentFloor = state.channels.find(channel => channel.id === state.channelId)?.floor;
       if (previousChannel && !state.channelId && !desiredChannel) radio.resetPlayback();
       if (previousChannel && !state.channelId) { radio.pauseMicrophone(); transport.close(); }
-      if (transmitting && currentFloor?.clientId !== clientId) stopSpeaking();
+      if ((transmitting || grant) && currentFloor?.clientId !== clientId) stopSpeaking();
       if (geoWatch !== null && !state.channelId) stopLocation();
       if (state.user.role !== 'admin' && view === 'admin') setView('console');
       render();
+      sounds.observeAlerts(state.alerts, desiredChannel || state.channelId);
       if (!initialized) {
         initialized = true;
         const presence = { clientId, callsign, status: myStatus, audioCodecs: ['mulaw8'] };
@@ -318,7 +322,7 @@
     const listening = id ? radio.enableListening().catch(error => toast(error.message, true)) : Promise.resolve();
     joining = true; desiredChannel = id; stopLocation(); renderRadio();
     try {
-      await stopSpeaking(); radio.resetPlayback();
+      await stopSpeaking(); radio.resetPlayback(); sounds.stop();
       if (!id) { radio.pauseMicrophone(); transport.close(); }
       await request('/presence', { clientId, channelId: id, audioCodecs: ['mulaw8'] }); await listening;
       if (id) await transport.open();
@@ -360,19 +364,23 @@
     preparingRadio = true; background.userPaused = false; renderAudio();
     try {
       await Promise.all([radio.prepareMicrophone(), transport.open()]);
+      sounds.prepare();
       if (radio.ready) toast('Radio prête. Maintenez PTT pour parler.');
     }
     catch (error) { toast(microphoneError(error), true); }
     finally { preparingRadio = false; renderRadio(); }
   }
   function stopSpeaking() {
+    const wasTransmitting = transmitting, session = radio.session;
     holding = false; attempt++;
+    cueController?.abort(); cueController = null;
     clearInterval(renewTimer); clearTimeout(maxTalkTimer);
     transmitting = false;
     if (stopping) return stopping;
     if (!grant) { renderRadio(); return Promise.resolve(); }
     grant = null;
     stopping = radio.stopCapture().then(() => request('/floor', { clientId, action: 'release' }))
+      .then(() => { if (wasTransmitting && session && !session.failed && connected) return sounds.play('ptt'); })
       .catch(error => { if (connected && state) toast(error.message, true); })
       .finally(() => { stopping = null; renderRadio(); });
     renderRadio(); return stopping;
@@ -386,7 +394,13 @@
       const result = await request('/floor', { clientId, action: 'claim' });
       stateRevision = Math.max(stateRevision, result.revision ?? -1);
       if (!holding || currentAttempt !== attempt) { await request('/floor', { clientId, action: 'release' }); return; }
-      grant = result.floor; radio.startCapture(grant.id); transport.startFloor(grant.id); transmitting = true; renderRadio();
+      grant = result.floor;
+      const floorId = grant.id, channelId = state.channelId, controller = new AbortController(); cueController = controller;
+      await sounds.play('ptt', { signal: controller.signal });
+      if (cueController === controller) cueController = null;
+      if (!holding || currentAttempt !== attempt || grant?.id !== floorId) return;
+      if (!connected || state?.channelId !== channelId || desiredChannel !== channelId || !radio.ready) { await stopSpeaking(); return; }
+      radio.startCapture(floorId); transport.startFloor(floorId); transmitting = true; renderRadio();
       renewTimer = setInterval(() => request('/floor', { clientId, action: 'renew' }).catch(error => { stopSpeaking(); toast(error.message, true); }), 7000);
       maxTalkTimer = setTimeout(() => { stopSpeaking(); toast('Alternat libéré après 60 secondes.'); }, 60000);
       if (!result.recipients.length) toast('Vous êtes seul dans cette conférence. Connectez un second poste pour vous entendre.');
@@ -552,6 +566,7 @@
   }
   function updateVolume() {
     radio.setVolume(audioVolume, muted);
+    sounds.setVolume(audioVolume, muted);
     $('volume-value').textContent = muted ? '0' : Math.round(audioVolume * 100);
     $('mute-button').replaceChildren(icon(muted ? 'muted' : 'volume'));
     $('mute-button').setAttribute('aria-label', muted ? 'Rétablir le son' : 'Couper le son');
@@ -564,6 +579,16 @@
   $('prepare-radio').addEventListener('click', prepareRadio);
   $('audio-enable-mic').addEventListener('click', prepareRadio);
   $('speaker-test').addEventListener('click', () => radio.testSpeaker().catch(error => toast(error.message, true)));
+  async function testRadioSound(kind) {
+    if (holding || transmitting || stopping) return;
+    try {
+      background.userPaused = false;
+      await radio.enableListening();
+      if (!await sounds.play(kind)) toast(muted || !audioVolume ? 'Rétablissez le volume pour écouter ce son.' : 'Son indisponible. Réessayez dans quelques instants.', true);
+    } catch (error) { toast(error.message, true); }
+  }
+  $('ptt-sound-test').addEventListener('click', () => testRadioSound('ptt'));
+  $('alert-sound-test').addEventListener('click', () => testRadioSound('alert'));
   $('microphone-test').addEventListener('click', () => radio.testMicrophone().catch(error => toast(microphoneError(error), true)));
   $('disable-microphone').addEventListener('click', async () => { await stopSpeaking(); radio.disableMicrophone(); renderRadio(); });
   $('install-app').addEventListener('click', async () => {
