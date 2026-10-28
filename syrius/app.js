@@ -8,16 +8,26 @@
   let state = null, csrfToken = '', selectedId = null, source = null, connected = false;
   let desiredChannel = null, joining = false, view = 'console', activity = 'messages';
   let toastTimer, geoWatch = null, audioVolume = .8, muted = false;
-  let localStream = null, holding = false, starting = false, transmitting = false, attempt = 0;
-  let grant = null, renewTimer, maxTalkTimer;
+  let holding = false, starting = false, transmitting = false, attempt = 0;
+  let grant = null, renewTimer, maxTalkTimer, stopping = null, preparingRadio = false;
   let messageSignature = '', eventSignature = '', markerSignature = '';
-  const peerConnections = new Map(), pendingIce = new Map();
+  let installPrompt = null;
   const clientId = crypto.randomUUID();
   const readPreference = key => { try { return localStorage.getItem(`syrius.${key}`); } catch { return null; } };
   const savePreference = (key, value) => { try { localStorage.setItem(`syrius.${key}`, value); } catch { /* navigation privée */ } };
   let callsign = readPreference('callsign') || '', myStatus = readPreference('status') || 'available';
   const initials = name => String(name || '?').split(/[\s·]+/).filter(Boolean).slice(0, 2).map(word => word[0]).join('').toUpperCase();
   const time = value => new Date(value).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
+  const radio = new window.SyriusAudio({
+    send: (packet, signal) => request('/audio', { clientId, ...packet }, 'POST', signal),
+    onState: () => renderAudio(),
+    onInterrupted: () => { if (holding || transmitting) stopSpeaking(); },
+    onError: error => { stopSpeaking(); toast(error.message, true); },
+    onLevel: level => {
+      $('mic-meter').value = Math.min(1, level * 3);
+      $('mic-test-label').textContent = radio.monitoring ? level > .015 ? 'Votre voix est détectée' : 'Parlez pour tester le micro…' : 'Test local · aucune diffusion à la conférence';
+    }
+  });
 
   function element(tag, className, content) {
     const node = document.createElement(tag);
@@ -42,9 +52,9 @@
   }
   const run = fn => (...args) => Promise.resolve().then(() => fn(...args)).catch(error => toast(error.message, true));
   function showError(id, error) { $(id).textContent = error.message || error; $(id).hidden = false; }
-  async function request(route, body, method = 'POST') {
+  async function request(route, body, method = 'POST', signal) {
     const response = await fetch(`${API}${route}`, {
-      method: body === undefined ? 'GET' : method, credentials: 'same-origin',
+      method: body === undefined ? 'GET' : method, credentials: 'same-origin', signal,
       headers: body === undefined ? {} : { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
       body: body === undefined ? undefined : JSON.stringify(body)
     });
@@ -58,7 +68,7 @@
 
   function showAuth(message) {
     connected = false; desiredChannel = null;
-    source?.close(); source = null; stopSpeaking(); stopLocation(); closePeers(); state = null;
+    source?.close(); source = null; stopSpeaking(); stopLocation(); radio.resetPlayback(); radio.disableMicrophone(); state = null;
     $('boot-screen').hidden = true; $('app-shell').hidden = true; $('auth-screen').hidden = false;
     if (message) showError('login-error', message);
   }
@@ -75,25 +85,26 @@
     source?.close(); source = new EventSource(`${API}/stream?clientId=${encodeURIComponent(clientId)}`);
     let initialized = false;
     source.onopen = () => { connected = true; initialized = false; renderConnection(); };
-    source.onerror = () => { connected = false; stopSpeaking(); closePeers(); renderConnection(); renderRadio(); };
+    source.onerror = () => { connected = false; stopSpeaking(); radio.resetPlayback(); renderConnection(); renderRadio(); };
     source.addEventListener('expired', () => showAuth('Votre session ou votre accès SYRIUS a expiré.'));
-    source.addEventListener('signal', event => handleSignal(JSON.parse(event.data)).catch(error => {
-      if (error.status !== 409) toast('La liaison audio n’a pas pu être établie. Vérifiez le réseau et la configuration TURN.', true);
-    }));
+    source.addEventListener('audio', event => {
+      const packet = JSON.parse(event.data), channel = state?.channels.find(item => item.id === state.channelId);
+      if (packet.channelId !== state?.channelId || packet.floorId !== channel?.floor?.id || packet.from === clientId) return;
+      try { radio.receive(packet); } catch { toast('Un fragment audio n’a pas pu être lu. Vérifiez la connexion.', true); }
+    });
     source.addEventListener('state', event => {
-      const previousFloor = state?.channels.find(channel => channel.id === state.channelId)?.floor?.id;
+      const previousChannel = state?.channelId;
+      const previousFloor = state?.channels.find(channel => channel.id === previousChannel)?.floor?.id;
       state = JSON.parse(event.data);
       if (!state.channels.some(channel => channel.id === selectedId && !channel.archived)) selectedId = state.channels.find(channel => !channel.archived)?.id || null;
       if (!state.channels.some(channel => channel.id === desiredChannel && !channel.archived)) desiredChannel = null;
       const currentFloor = state.channels.find(channel => channel.id === state.channelId)?.floor;
-      if (previousFloor && previousFloor !== currentFloor?.id) closePeers();
+      if (previousChannel !== state.channelId || (currentFloor && previousFloor !== currentFloor.id)) radio.resetPlayback();
+      if (previousChannel && !state.channelId) radio.disableMicrophone();
       if (transmitting && currentFloor?.clientId !== clientId) stopSpeaking();
       if (geoWatch !== null && !state.channelId) stopLocation();
       if (state.user.role !== 'admin' && view === 'admin') setView('console');
       render();
-      if (transmitting && grant) {
-        state.peers.filter(peer => peer.clientId !== clientId && !peerConnections.has(peer.clientId)).forEach(peer => offerTo(peer.clientId, grant.id).catch(() => {}));
-      }
       if (!initialized) {
         initialized = true;
         const presence = { clientId, callsign, status: myStatus };
@@ -142,9 +153,10 @@
       copy.append(element('strong', '', channel.name), element('small', '', channel.id === state.channelId ? 'Conférence rejointe' : `${channel.participantCount} poste${channel.participantCount > 1 ? 's' : ''} en ligne`));
       button.append(symbol, copy, element('span', 'join-indicator'));
       button.addEventListener('click', run(async () => {
-        if (selectedId === channel.id) return;
+        if (selectedId === channel.id) { if (window.matchMedia('(max-width: 900px)').matches) setView('console'); return; }
         selectedId = channel.id; messageSignature = ''; eventSignature = ''; render();
         if (state.channelId) await joinChannel(channel.id);
+        if (window.matchMedia('(max-width: 900px)').matches) setView('console');
       }));
       return button;
     });
@@ -161,11 +173,13 @@
     $('call-member-count').textContent = channel?.participantCount || 0;
     $('floor-label').textContent = !connected ? 'Liaison interrompue' : !joined ? 'Canal disponible' : floor ? `${me ? 'Transmission' : 'Réception'} · ${floor.name}` : 'Écoute · canal disponible';
     $('floor-dot').className = `floor-dot${floor ? me ? ' live' : ' busy' : ''}`;
-    $('ptt-button').disabled = !connected || !joined || Boolean(floor && !me);
+    $('ptt-button').disabled = !connected || !joined || !radio.ready || Boolean(stopping) || Boolean(floor && !me);
     $('ptt-button').classList.toggle('transmitting', transmitting && me);
     $('ptt-button').classList.toggle('receiving', Boolean(floor && !me));
-    $('ptt-text').textContent = transmitting && me ? 'ÉMISSION' : floor && !me ? 'ÉCOUTE' : 'PTT';
-    $('ptt-hint').textContent = !joined ? 'Rejoignez une conférence' : transmitting ? 'Vous avez la parole' : floor && !me ? `${floor.name} a la parole` : 'Maintenir pour parler';
+    $('ptt-text').textContent = transmitting && me ? 'ÉMISSION' : floor && !me ? 'ÉCOUTE' : starting ? 'CONNEXION' : 'PTT';
+    $('ptt-hint').textContent = !joined ? 'Rejoignez une conférence' : stopping ? 'Fin d’émission…' : !radio.ready ? 'Activez la radio pour parler' : transmitting ? 'Vous avez la parole' : floor && !me ? `${floor.name} a la parole` : starting ? 'Prise de parole…' : 'Maintenir pour parler';
+    $('mobile-channel-name').textContent = channel?.name || 'Choisir une conférence';
+    $('mobile-channel-detail').textContent = joined ? `${channel.participantCount} poste${channel.participantCount > 1 ? 's' : ''} · conférence rejointe` : 'Touchez pour choisir votre groupe';
     $('join-channel').disabled = !connected || !channel || joining;
     $('join-channel').classList.toggle('joined', Boolean(joined));
     $('join-channel').textContent = joining ? 'Connexion…' : joined ? 'Quitter la conférence' : 'Rejoindre la conférence';
@@ -181,6 +195,18 @@
       const dot = element('span', 'presence-dot'); dot.style.background = peer.status === 'busy' ? '#d9a34f' : peer.status === 'away' ? '#bcc5d4' : '#35a779';
       row.append(avatar, copy, dot); return row;
     }) : [empty(joined ? 'Vous êtes le premier poste' : 'Participants de la conférence', joined ? 'Les autres postes apparaîtront à leur connexion.' : 'Rejoignez le groupe pour voir les postes connectés.', 'headset')]));
+    renderAudio();
+  }
+  function renderAudio() {
+    const joined = Boolean(state?.channelId && state.channelId === selectedId);
+    $('prepare-radio').hidden = radio.ready || !joined;
+    $('prepare-radio').disabled = preparingRadio || !connected;
+    $('prepare-radio').textContent = preparingRadio ? 'Autorisation du microphone…' : 'Activer le micro et le son';
+    $('audio-unlock').hidden = !joined || radio.listening;
+    $('audio-state').textContent = !joined ? 'Choisissez puis rejoignez une conférence' : !radio.listening ? 'Écoute à activer' : radio.ready ? 'Son activé · micro transmis pendant le PTT' : 'Écoute activée · microphone à activer';
+    $('audio-state').classList.toggle('ready', joined && radio.ready);
+    $('audio-connection-detail').textContent = connected ? 'Serveur connecté · audio relayé en HTTPS' : 'Serveur déconnecté · reconnexion en cours';
+    $('ptt-button').disabled = !connected || !joined || !radio.ready || Boolean(stopping) || Boolean(selectedChannel()?.floor && selectedChannel().floor.clientId !== clientId);
   }
   function renderActivity() {
     const channel = selectedChannel(); $('activity-channel').textContent = channel?.name || '';
@@ -236,7 +262,10 @@
       const archive = element('button', 'icon-button archiver'); archive.title = `${channel.archived ? 'Réouvrir' : 'Archiver'} ${channel.name}`; archive.setAttribute('aria-label', archive.title); archive.append(icon(channel.archived ? 'history' : 'archive'));
       archive.addEventListener('click', run(async () => { await request(`/channels/${channel.id}/archive`, { archived: !channel.archived }); toast(channel.archived ? 'Conférence réouverte.' : 'Conférence archivée. Vous pourrez la réouvrir depuis les archives.'); }));
       actions.append(edit, archive); actionsCell.append(actions);
-      row.append(titleCell, element('td', '', channel.memberIds.length ? `${channel.memberIds.length} membre${channel.memberIds.length > 1 ? 's' : ''} sélectionné${channel.memberIds.length > 1 ? 's' : ''}` : 'Tous les utilisateurs'), element('td', '', String(channel.participantCount)), status, actionsCell);
+      const audience = element('td', '', channel.memberIds.length ? `${channel.memberIds.length} membre${channel.memberIds.length > 1 ? 's' : ''} sélectionné${channel.memberIds.length > 1 ? 's' : ''}` : 'Tous les utilisateurs');
+      const count = element('td', '', String(channel.participantCount));
+      audience.dataset.label = 'Accès'; count.dataset.label = 'Participants'; status.dataset.label = 'État';
+      row.append(titleCell, audience, count, status, actionsCell);
       return row;
     });
     if (!rows.length) { const row = element('tr'), cell = element('td'); cell.colSpan = 5; cell.append(empty('Aucune conférence', 'Créez un groupe pour commencer.')); row.append(cell); rows.push(row); }
@@ -245,10 +274,13 @@
 
   function setView(next) {
     view = next; document.body.dataset.view = next;
-    document.querySelectorAll('[data-view]').forEach(button => button.classList.toggle('active', button.dataset.view === next));
+    document.querySelectorAll('button[data-view]').forEach(button => {
+      button.classList.toggle('active', button.dataset.view === next);
+      if (button.dataset.view === next) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
+    });
     $('admin-view').hidden = next !== 'admin'; $('console-view').hidden = next === 'admin';
     if (next === 'messages' || next === 'journal') setActivity(next);
-    if (next === 'console') requestAnimationFrame(drawMap);
+    if (next === 'console' || next === 'map') requestAnimationFrame(drawMap);
     if (state) renderAdmin();
   }
   function setActivity(next) {
@@ -259,8 +291,14 @@
   }
   async function joinChannel(id) {
     if (joining) return;
-    joining = true; desiredChannel = id; stopSpeaking(); stopLocation(); renderRadio();
-    try { await request('/presence', { clientId, channelId: id }); }
+    // L’écoute s’active sur le clic, avant la requête de présence.
+    const listening = id ? radio.enableListening().catch(error => toast(error.message, true)) : Promise.resolve();
+    joining = true; desiredChannel = id; stopLocation(); renderRadio();
+    try {
+      await stopSpeaking(); radio.resetPlayback();
+      if (!id) radio.disableMicrophone();
+      await request('/presence', { clientId, channelId: id }); await listening;
+    }
     catch (error) { desiredChannel = state.channelId; throw error; }
     finally { joining = false; renderRadio(); }
   }
@@ -288,88 +326,42 @@
     $('channel-dialog').showModal();
   }
 
-  // Alternat : le microphone n'est ouvert que pendant le maintien du PTT.
-  function closePeers() {
-    for (const item of peerConnections.values()) { item.pc.close(); item.audio?.remove(); }
-    peerConnections.clear(); pendingIce.clear();
+  // L’activation du micro est distincte du maintien du PTT : une demande
+  // d’autorisation du navigateur ne peut plus annuler la première émission.
+  function microphoneError(error) {
+    return error.name === 'NotAllowedError' ? 'Microphone refusé. Autorisez le micro dans les réglages du site, puis touchez « Activer le micro et le son ».' : error.name === 'NotFoundError' ? 'Aucun microphone détecté sur cet appareil.' : error.name === 'NotReadableError' ? 'Le microphone est utilisé par une autre application. Fermez-la puis réessayez.' : error.message;
+  }
+  async function prepareRadio() {
+    if (preparingRadio) return;
+    preparingRadio = true; renderAudio();
+    try { await radio.prepareMicrophone(); if (radio.ready) toast('Radio prête. Maintenez PTT pour parler.'); }
+    catch (error) { toast(microphoneError(error), true); }
+    finally { preparingRadio = false; renderRadio(); }
   }
   function stopSpeaking() {
     holding = false; attempt++;
     clearInterval(renewTimer); clearTimeout(maxTalkTimer);
-    localStream?.getTracks().forEach(track => track.stop()); localStream = null;
-    const owned = Boolean(grant); grant = null; transmitting = false;
-    if (owned) { closePeers(); request('/floor', { clientId, action: 'release' }).catch(() => {}); }
-    renderRadio();
+    transmitting = false;
+    if (stopping) return stopping;
+    if (!grant) { renderRadio(); return Promise.resolve(); }
+    grant = null;
+    stopping = radio.stopCapture().then(() => request('/floor', { clientId, action: 'release' }))
+      .catch(error => { if (connected && state) toast(error.message, true); })
+      .finally(() => { stopping = null; renderRadio(); });
+    renderRadio(); return stopping;
   }
   async function startSpeaking() {
-    if (starting || holding || !connected || state?.channelId !== selectedId) return;
-    starting = true; holding = true; const currentAttempt = ++attempt;
+    if (starting || holding || stopping || !connected || state?.channelId !== selectedId || !radio.ready) return;
+    starting = true; holding = true; const currentAttempt = ++attempt; renderRadio();
     try {
-      if (!navigator.mediaDevices?.getUserMedia || typeof RTCPeerConnection === 'undefined') throw new Error('L’audio nécessite un navigateur compatible et une connexion HTTPS.');
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: false });
-      if (!holding || currentAttempt !== attempt) { stream.getTracks().forEach(track => track.stop()); return; }
-      localStream = stream;
       const result = await request('/floor', { clientId, action: 'claim' });
-      if (!holding || currentAttempt !== attempt) { stream.getTracks().forEach(track => track.stop()); await request('/floor', { clientId, action: 'release' }); return; }
-      grant = result.floor; transmitting = true; renderRadio();
+      if (!holding || currentAttempt !== attempt) { await request('/floor', { clientId, action: 'release' }); return; }
+      grant = result.floor; radio.startCapture(grant.id); transmitting = true; renderRadio();
       renewTimer = setInterval(() => request('/floor', { clientId, action: 'renew' }).catch(error => { stopSpeaking(); toast(error.message, true); }), 7000);
       maxTalkTimer = setTimeout(() => { stopSpeaking(); toast('Alternat libéré après 60 secondes.'); }, 60000);
-      await Promise.all(result.recipients.map(id => offerTo(id, grant.id)));
-      if (!result.recipients.length) toast('Votre microphone est ouvert. Vous êtes actuellement seul dans cette conférence.');
-    } catch (error) {
-      stopSpeaking();
-      toast(error.name === 'NotAllowedError' ? 'Le microphone n’est pas autorisé. Autorisez-le dans votre navigateur pour parler.' : error.name === 'NotFoundError' ? 'Aucun microphone détecté sur ce poste.' : error.message, true);
-    } finally { starting = false; }
-  }
-  async function sendSignal(to, floorId, signal) { return request('/signal', { clientId, to, floorId, signal }); }
-  function makePeer(id, floorId) {
-    const old = peerConnections.get(id); if (old) { old.pc.close(); old.audio?.remove(); }
-    const pc = new RTCPeerConnection({ iceServers: state.iceServers });
-    const item = { pc, floorId, audio: null }; peerConnections.set(id, item);
-    pc.onicecandidate = event => { if (event.candidate) sendSignal(id, floorId, { type: 'ice', candidate: event.candidate.toJSON() }).catch(() => {}); };
-    pc.ontrack = event => {
-      if (peerConnections.get(id) !== item) return;
-      const audio = document.createElement('audio'); audio.autoplay = true; audio.playsInline = true;
-      audio.volume = muted ? 0 : audioVolume; audio.srcObject = event.streams[0] || new MediaStream([event.track]);
-      item.audio?.remove(); item.audio = audio; $('remote-audios').append(audio);
-      audio.play().catch(() => { $('audio-unlock').hidden = false; });
-    };
-    pc.onconnectionstatechange = () => {
-      if (pc.connectionState === 'failed') {
-        pc.close(); item.audio?.remove();
-        if (peerConnections.get(id) === item) peerConnections.delete(id);
-        toast('Liaison audio impossible sur ce réseau. Un relais TURN peut être nécessaire.', true);
-      }
-    };
-    return item;
-  }
-  async function offerTo(id, floorId) {
-    if (!localStream || !holding || grant?.id !== floorId || peerConnections.get(id)?.floorId === floorId) return;
-    const { pc } = makePeer(id, floorId);
-    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-    await pc.setLocalDescription(await pc.createOffer());
-    if (grant?.id === floorId) await sendSignal(id, floorId, { type: 'offer', sdp: pc.localDescription.sdp });
-  }
-  async function drainIce(id, item) {
-    const key = `${id}:${item.floorId}`, queued = pendingIce.get(key) || []; pendingIce.delete(key);
-    for (const candidate of queued) await item.pc.addIceCandidate(candidate);
-  }
-  async function handleSignal({ from, floorId, signal }) {
-    const currentFloor = state?.channels.find(channel => channel.id === state.channelId)?.floor;
-    if (currentFloor?.id !== floorId) return;
-    let item = peerConnections.get(from);
-    if (signal.type === 'ice') {
-      if (item?.floorId === floorId && item.pc.remoteDescription) await item.pc.addIceCandidate(signal.candidate);
-      else { const key = `${from}:${floorId}`, list = pendingIce.get(key) || []; if (list.length < 100) { list.push(signal.candidate); pendingIce.set(key, list); } }
-    } else if (signal.type === 'offer') {
-      if (currentFloor.clientId !== from) return;
-      item = makePeer(from, floorId);
-      await item.pc.setRemoteDescription({ type: 'offer', sdp: signal.sdp }); await drainIce(from, item);
-      await item.pc.setLocalDescription(await item.pc.createAnswer());
-      await sendSignal(from, floorId, { type: 'answer', sdp: item.pc.localDescription.sdp });
-    } else if (signal.type === 'answer' && item?.floorId === floorId) {
-      await item.pc.setRemoteDescription({ type: 'answer', sdp: signal.sdp }); await drainIce(from, item);
-    }
+      if (!result.recipients.length) toast('Vous êtes seul dans cette conférence. Connectez un second poste pour vous entendre.');
+    } catch (error) { stopSpeaking(); toast(microphoneError(error), true); }
+    finally { starting = false; renderRadio(); }
   }
 
   function stopLocation() { if (geoWatch !== null) navigator.geolocation?.clearWatch(geoWatch); geoWatch = null; }
@@ -449,15 +441,23 @@
       await bootstrap();
     } catch (error) { showError('login-error', error); } finally { button.disabled = false; }
   });
-  document.querySelectorAll('.rail [data-view]').forEach(button => button.addEventListener('click', () => setView(button.dataset.view)));
+  document.querySelectorAll('button[data-view]').forEach(button => button.addEventListener('click', () => {
+    setView(button.dataset.view); $('mobile-menu-dialog').close();
+  }));
   $('messages-tab').addEventListener('click', () => { setActivity('messages'); if (view === 'journal') setView('messages'); });
   $('journal-tab').addEventListener('click', () => { setActivity('journal'); if (view === 'messages') setView('journal'); });
   $('channel-search').addEventListener('input', () => state && renderChannels());
-  $('join-channel').addEventListener('click', run(() => joinChannel(state.channelId === selectedId ? null : selectedId)));
+  $('join-channel').addEventListener('click', () => joinChannel(state.channelId === selectedId ? null : selectedId).catch(error => toast(error.message, true)));
   $('new-channel').addEventListener('click', () => openChannel()); $('admin-new-channel').addEventListener('click', () => openChannel());
   $('show-archived').addEventListener('change', () => renderAdmin());
   $('channel-audience').addEventListener('change', () => { $('member-fieldset').hidden = $('channel-audience').value !== 'selected'; });
   document.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => $(button.dataset.close).close()));
+  $('audio-dialog').addEventListener('close', () => radio.stopMicrophoneTest());
+  $('mobile-menu-button').addEventListener('click', () => $('mobile-menu-dialog').showModal());
+  document.querySelectorAll('[data-open]').forEach(button => button.addEventListener('click', () => {
+    if (button.dataset.open !== 'mobile-menu-dialog') $('mobile-menu-dialog').close();
+    $(button.dataset.open).showModal();
+  }));
   $('channel-form').addEventListener('submit', async event => {
     event.preventDefault(); $('channel-form-error').hidden = true; const button = $('channel-submit'); button.disabled = true;
     try {
@@ -485,7 +485,7 @@
     } catch (error) { showError('profile-error', error); }
   });
   $('logout-button').addEventListener('click', run(async () => {
-    stopSpeaking(); await request('/logout', {});
+    await stopSpeaking(); await request('/logout', {});
     $('profile-dialog').close(); showAuth();
   }));
   $('help-button').addEventListener('click', () => $('help-dialog').showModal());
@@ -496,7 +496,7 @@
     catch (error) { toast(error.message, true); } finally { event.submitter.disabled = false; }
   });
   $('share-location').addEventListener('click', toggleLocation);
-  $('ptt-button').addEventListener('pointerdown', event => { if (event.button !== 0) return; event.preventDefault(); $('ptt-button').setPointerCapture(event.pointerId); startSpeaking(); });
+  $('ptt-button').addEventListener('pointerdown', event => { if (event.button !== 0 || $('ptt-button').disabled) return; event.preventDefault(); $('ptt-button').setPointerCapture(event.pointerId); startSpeaking(); });
   $('ptt-button').addEventListener('pointerup', stopSpeaking); $('ptt-button').addEventListener('pointercancel', stopSpeaking);
   $('ptt-button').addEventListener('lostpointercapture', () => { if (holding) stopSpeaking(); });
   $('ptt-button').addEventListener('contextmenu', event => event.preventDefault());
@@ -506,16 +506,36 @@
     event.preventDefault(); startSpeaking();
   });
   document.addEventListener('keyup', event => { if (event.code === 'Space' && holding) { event.preventDefault(); stopSpeaking(); } });
-  window.addEventListener('blur', stopSpeaking); document.addEventListener('visibilitychange', () => { if (document.hidden) stopSpeaking(); });
+  window.addEventListener('blur', stopSpeaking);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { stopSpeaking(); radio.disableMicrophone(); radio.resetPlayback(); }
+    else renderRadio();
+  });
   function updateVolume() {
-    for (const audio of $('remote-audios').querySelectorAll('audio')) audio.volume = muted ? 0 : audioVolume;
+    radio.setVolume(audioVolume, muted);
     $('volume-value').textContent = muted ? '0' : Math.round(audioVolume * 100);
     $('mute-button').replaceChildren(icon(muted ? 'muted' : 'volume'));
     $('mute-button').setAttribute('aria-label', muted ? 'Rétablir le son' : 'Couper le son');
   }
   $('volume-slider').addEventListener('input', event => { audioVolume = Number(event.target.value) / 100; muted = false; updateVolume(); });
   $('mute-button').addEventListener('click', () => { muted = !muted; updateVolume(); });
-  $('audio-unlock').addEventListener('click', run(async () => { await Promise.all([...$('remote-audios').querySelectorAll('audio')].map(audio => audio.play())); $('audio-unlock').hidden = true; }));
+  $('audio-unlock').addEventListener('click', () => radio.enableListening().catch(error => toast(error.message, true)));
+  $('prepare-radio').addEventListener('click', prepareRadio);
+  $('audio-enable-mic').addEventListener('click', prepareRadio);
+  $('speaker-test').addEventListener('click', () => radio.testSpeaker().catch(error => toast(error.message, true)));
+  $('microphone-test').addEventListener('click', () => radio.testMicrophone().catch(error => toast(microphoneError(error), true)));
+  $('disable-microphone').addEventListener('click', async () => { await stopSpeaking(); radio.disableMicrophone(); renderRadio(); });
+  $('install-app').addEventListener('click', async () => {
+    $('mobile-menu-dialog').close();
+    if (installPrompt) { await installPrompt.prompt(); installPrompt = null; }
+    else $('install-dialog').showModal();
+  });
+  window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); installPrompt = event; });
+  window.addEventListener('appinstalled', () => { installPrompt = null; toast('SYRIUS est installé sur votre appareil.'); });
+  if ('serviceWorker' in navigator && window.isSecureContext) {
+    navigator.serviceWorker.register('/syrius/sw.js', { scope: '/syrius/', updateViaCache: 'none' }).catch(() => {});
+  }
+  window.addEventListener('offline', () => { connected = false; stopSpeaking(); radio.resetPlayback(); renderRadio(); renderConnection(); });
   $('map-zoom-in').addEventListener('click', () => { zoom = Math.min(18, zoom + 1); drawMap(); });
   $('map-zoom-out').addEventListener('click', () => { zoom = Math.max(8, zoom - 1); drawMap(); });
   $('map-center').addEventListener('click', () => { const position = state?.peers.find(peer => peer.clientId === clientId)?.position; center = position || { lat: 46.781, lng: 4.854 }; zoom = 14; drawMap(); });

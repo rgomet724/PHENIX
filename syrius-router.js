@@ -29,19 +29,6 @@ function initialData() {
   };
 }
 
-function iceConfiguration() {
-  if (!process.env.SYRIUS_ICE_SERVERS) return [{ urls: 'stun:stun.cloudflare.com:3478' }];
-  const servers = JSON.parse(process.env.SYRIUS_ICE_SERVERS);
-  if (!Array.isArray(servers) || servers.length > 8) throw new Error('SYRIUS_ICE_SERVERS doit être un tableau de 8 serveurs maximum.');
-  for (const server of servers) {
-    const urls = Array.isArray(server.urls) ? server.urls : [server.urls];
-    if (!urls.length || urls.some(url => typeof url !== 'string' || !/^(stun|turn|turns):[^\s]+$/.test(url))) {
-      throw new Error('URL STUN/TURN invalide dans SYRIUS_ICE_SERVERS.');
-    }
-  }
-  return servers;
-}
-
 function mountSyrius(app, options) {
   const filename = options.dataFile || process.env.SYRIUS_DATA_FILE || path.join(path.dirname(process.env.PHENIX_DATA_FILE || '/var/data/data.json'), 'syrius.json');
   let data = initialData();
@@ -50,7 +37,6 @@ function mountSyrius(app, options) {
     data = JSON.parse(fs.readFileSync(filename, 'utf8'));
     if (!['channels', 'messages', 'events', 'alerts'].every(key => Array.isArray(data[key]))) throw new Error('Base SYRIUS invalide.');
   }
-  const iceServers = iceConfiguration();
   const clients = new Map();
   const floors = new Map();
   const api = express.Router();
@@ -111,7 +97,7 @@ function mountSyrius(app, options) {
       events: data.events.filter(item => ids.has(item.channelId)).slice(0, 150),
       alerts: data.alerts.filter(item => ids.has(item.channelId)).slice(0, 100),
       users: isAdmin(user) ? users().filter(item => access(item).enabled).map(identity) : [],
-      iceServers, appearance: appearanceFor('syrius')
+      audioTransport: 'https-pcm16', audioSampleRate: 16000, appearance: appearanceFor('syrius')
     };
   }
 
@@ -178,6 +164,8 @@ function mountSyrius(app, options) {
     next();
   });
   api.use(rateLimit({ windowMs: 60000, limit: 300, standardHeaders: 'draft-8', legacyHeaders: false,
+    keyGenerator: req => `${req.syriusUser.id}:${req.sessionID}`,
+    skip: req => req.path === '/audio',
     message: { error: 'Trop de requêtes. Réessayez dans une minute.' } }));
   const admin = (req, res, next) => isAdmin(req.syriusUser) ? next() : res.status(403).json({ error: 'Cette action est réservée aux administrateurs SYRIUS.' });
   function requireChannel(req, id, active = true) {
@@ -339,6 +327,40 @@ function mountSyrius(app, options) {
     send(target, 'signal', { from: client.id, floorId: floor.id, signal }); res.json({ ok: true });
   });
 
+  // Audio mono PCM16, par paquets de 200 ms maximum, sur la même liaison HTTPS
+  // que le site. Aucun TURN, port UDP public ou enregistrement sur disque.
+  api.post('/audio', rateLimit({ windowMs: 1000, limit: 40,
+    keyGenerator: req => `${req.syriusUser.id}:${req.sessionID}`,
+    standardHeaders: 'draft-8', legacyHeaders: false,
+    message: { error: 'Le flux audio est trop rapide. Relâchez le PTT puis réessayez.' }
+  }), (req, res) => {
+    const client = requireClient(req), channel = requireChannel(req, client.channelId);
+    const floor = floors.get(channel.id);
+    if (!floor || floor.clientId !== client.id || floor.id !== req.body.floorId || floor.expiresAt <= Date.now()) fail(409, 'La prise de parole audio est terminée.');
+    const { pcm, sequence, sampleRate } = req.body;
+    if (sampleRate !== 16000 || !Number.isInteger(sequence) || sequence < 0 || sequence > 5000 ||
+        typeof pcm !== 'string' || pcm.length < 4 || pcm.length > 8536 ||
+        !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(pcm)) fail(400, 'Paquet audio invalide.');
+    const bytes = Buffer.from(pcm, 'base64');
+    if (!bytes.length || bytes.length > 6400 || bytes.length % 2 || bytes.toString('base64') !== pcm) fail(400, 'Données audio invalides.');
+    if (client.audioFloorId !== floor.id) {
+      client.audioFloorId = floor.id; client.audioSequence = -1; client.audioSamples = 0;
+    }
+    if (sequence <= client.audioSequence) fail(409, 'Ce paquet audio a déjà été traité.');
+    if (client.audioSamples + bytes.length / 2 > ((Date.now() - floor.startedAt + 1500) / 1000) * 16000) fail(429, 'Le flux audio dépasse la cadence autorisée.');
+    client.audioSequence = sequence; client.audioSamples += bytes.length / 2;
+    const packet = { from: client.id, channelId: channel.id, floorId: floor.id, sequence, sampleRate, pcm };
+    let recipients = 0;
+    for (const target of clients.values()) {
+      const currentUser = userFor(target.user.id);
+      if (target.id === client.id || target.channelId !== channel.id || !currentUser || !usable(currentUser, channel) || options.passwordExpired?.(currentUser)) continue;
+      // Ne pas accumuler plusieurs secondes de son pour un poste déconnecté/lent.
+      if (target.res.writableLength > 128 * 1024) continue;
+      send(target, 'audio', packet); recipients++;
+    }
+    res.json({ ok: true, recipients });
+  });
+
   const watchdog = setInterval(() => {
     let changed = false;
     for (const [id, floor] of floors) if (floor.expiresAt <= Date.now()) { floors.delete(id); changed = true; }
@@ -352,8 +374,9 @@ function mountSyrius(app, options) {
   });
 
   app.use('/syrius', (req, res, next) => {
-    res.set('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://tile.openstreetmap.org; media-src 'self' blob:; connect-src 'self'; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+    res.set('Content-Security-Policy', "default-src 'self'; script-src 'self'; worker-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://tile.openstreetmap.org; media-src 'self' blob:; connect-src 'self'; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
     res.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.set('Permissions-Policy', 'microphone=(self), geolocation=(self)');
     next();
   });
   app.get(/^\/syrius$/, (req, res) => res.redirect(302, '/syrius/'));
