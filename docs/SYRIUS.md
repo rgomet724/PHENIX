@@ -31,26 +31,15 @@ La tuile SYRIUS est ajoutée à la réponse du portail ARGOS. Les tuiles déjà 
 
 Le profil permet de choisir l’indicatif et la disponibilité du poste. La déconnexion ferme la session PHENIX commune. Les alertes sont adressées aux utilisateurs de la conférence sur ce site.
 
-## Audio et hébergement
+## Audio et téléphone — version 2
 
-L’audio fonctionne entre navigateurs avec WebRTC ; les présences, l’attribution de la parole et la signalisation utilisent le serveur Express existant et SSE. Une seule émission est autorisée à la fois par conférence. Le maintien est limité à 60 secondes ; le serveur libère également un alternat sans renouvellement après 25 secondes. La perte de connexion, le changement de groupe, le masquage de la page et la perte de focus arrêtent le microphone local.
+Le son est maintenant relayé par le serveur Express en HTTPS, en PCM16 mono à 16 kHz. Les paquets de 160 ms utilisent des requêtes authentifiées et le flux SSE existant. Aucun relais TURN ni connexion directe entre appareils n’est nécessaire. Aucun audio n’est enregistré. Utiliser une seule instance Node pour les présences et alternats.
 
-Le déploiement doit fournir HTTPS. Le service conserve son état de présence dans un seul processus Node : utiliser une seule instance avec cette version. La limite est de 64 postes connectés, dont quatre au maximum par compte. L’audio est distribué directement du locuteur aux auditeurs ; ce fonctionnement est adapté à de petits groupes.
+Après avoir rejoint un groupe, toucher **Activer le micro et le son**, puis autoriser le microphone. Maintenir PTT pour parler. Dans **Audio**, les tests du haut-parleur et du microphone permettent de vérifier les autorisations ; le test micro reste local. Le microphone disponible est désactivé hors émission ; quitter le groupe ou masquer la page ferme sa capture. Une émission dure au maximum 60 secondes.
 
-Par défaut, `stun:stun.cloudflare.com:3478` aide les navigateurs à établir une liaison. Certains réseaux mobiles ou d’entreprise nécessitent un serveur TURN pour relayer l’audio. Le paramètre `SYRIUS_ICE_SERVERS` permet de fournir des serveurs STUN/TURN :
+Sur téléphone : navigation inférieure Radio, Groupes, Messages, Carte et Plus ; grand PTT et administration adaptée. **Plus → Installer sur mon téléphone** fournit l’installation sur l’écran d’accueil. Le manifeste ouvre l’application dans une fenêtre autonome. La connexion Internet et l’application visible sont nécessaires ; la réception écran verrouillé n’est pas garantie. Le service worker ne conserve que la page hors connexion, jamais les données de session ou les flux radio.
 
-```json
-[
-  { "urls": "stun:stun.cloudflare.com:3478" },
-  {
-    "urls": "turns:turn.example.net:5349",
-    "username": "identifiant-fourni-par-votre-service",
-    "credential": "mot-de-passe-fourni-par-votre-service"
-  }
-]
-```
-
-Cette valeur JSON s’enregistre dans les variables d’environnement de l’hébergeur, jamais dans le dépôt. Les identifiants TURN fournis sont nécessairement transmis aux navigateurs autorisés ; utiliser des identifiants dédiés au relais et les renouveler selon la politique du fournisseur. Ne pas y placer de clé d’administration. Références : [connectivité Cloudflare](https://developers.cloudflare.com/realtime/turn/), [signalisation WebRTC](https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API/Signaling_and_video_calling).
+Le relais utilise environ 43 ko/s par auditeur pendant une émission, hors en-têtes et TLS. La cadence et les files sont bornées pour éviter l’accumulation de son sur les connexions lentes. Cette architecture convient à de petits groupes.
 
 ## Données et carte
 

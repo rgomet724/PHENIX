@@ -74,7 +74,7 @@ test('SYRIUS : conférences, accès, persistance et signalisation entre deux pos
         }
       } catch (error) { if (error.name !== 'AbortError') throw error; }
     })();
-    const item = { next, close: () => controller.abort(), reading }; streams.push(item);
+    const item = { next, events, close: () => controller.abort(), reading }; streams.push(item);
     await next('state'); return item;
   }
   const adminClient = 'test-admin-radio-poste', alphaClient = 'test-alpha-radio-poste';
@@ -151,6 +151,38 @@ test('SYRIUS : conférences, accès, persistance et signalisation entre deux pos
     assert.equal((await call('/signal', { clientId: alphaClient, to: 'inexistant', floorId, signal: offer }, 'alpha')).status, 409);
     assert.equal((await call('/signal', { clientId: alphaClient, to: adminClient, floorId: 'ancienne-liaison', signal: offer }, 'alpha')).status, 409);
   });
+  await t.test('Le son HTTPS est relayé intact, sans écho ni fuite vers un autre groupe', async () => {
+    const bravoClient = 'test-bravo-radio-poste', bravoStream = await stream('bravo', bravoClient);
+    await call('/presence', { clientId: bravoClient, channelId: 'pm-general' }, 'bravo');
+    const pcm = Buffer.from([0x00, 0x40, 0x00, 0xc0, 0xff, 0x7f, 0x00, 0x80]).toString('base64');
+    const packet = { clientId: alphaClient, floorId, sequence: 0, sampleRate: 16000, pcm };
+    const sent = await call('/audio', packet, 'alpha');
+    assert.equal(sent.status, 200); assert.equal(sent.data.recipients, 1);
+    const received = await adminStream.next('audio');
+    assert.equal(received.pcm, pcm); assert.equal(received.floorId, floorId);
+    assert.equal(received.channelId, publicId); assert.equal(received.sequence, 0);
+    assert.equal((await call('/audio', packet, 'alpha')).status, 409, 'un paquet ne peut pas être rejoué');
+    assert.equal((await call('/audio', { ...packet, sequence: 1 }, 'bravo')).status, 409, 'un autre compte ne peut pas usurper le poste');
+    assert.equal((await call('/audio', { ...packet, clientId: adminClient, sequence: 1 })).status, 409, 'un auditeur ne peut pas émettre');
+    assert.equal((await call('/audio', { ...packet, sequence: 1, pcm: '<invalid>' }, 'alpha')).status, 400);
+    assert.equal((await call('/audio', { ...packet, sequence: 1, pcm: Buffer.alloc(6402).toString('base64') }, 'alpha')).status, 400);
+    assert.equal((await call('/audio', { ...packet, sequence: 1, pcm: 'AA==' }, 'alpha')).status, 400, 'un échantillon PCM16 doit avoir deux octets');
+    assert.equal((await call('/audio', { ...packet, sequence: 1, sampleRate: 48000 }, 'alpha')).status, 400);
+    assert.equal((await call('/audio', { ...packet, sequence: 1 }, 'alpha', 'POST', { 'x-csrf-token': '' })).status, 403);
+    await call('/presence', { clientId: bravoClient, status: 'away' }, 'bravo');
+    await bravoStream.next('state', value => value.peers.some(peer => peer.status === 'away'));
+    assert.ok(!bravoStream.events.some(event => event.type === 'audio'));
+    assert.ok(!alphaStream.events.some(event => event.type === 'audio'));
+    await call('/presence', { clientId: bravoClient, channelId: publicId }, 'bravo');
+    assert.equal((await call('/audio', { ...packet, sequence: 1 }, 'alpha')).data.recipients, 2);
+    assert.equal((await bravoStream.next('audio')).pcm, pcm, 'un poste rejoignant pendant une émission entend la suite');
+    await call('/floor', { clientId: alphaClient, action: 'release' }, 'alpha');
+    assert.equal((await call('/audio', { ...packet, sequence: 2 }, 'alpha')).status, 409, 'relâcher le PTT coupe la diffusion');
+    floorId = (await call('/floor', { clientId: alphaClient, action: 'claim' }, 'alpha')).data.floor.id;
+    assert.equal((await call('/audio', { ...packet, floorId, sequence: 0 }, 'alpha')).status, 200, 'l’émission suivante repart de zéro');
+    const saved = fs.readFileSync(filename, 'utf8'); assert.ok(!saved.includes(pcm), 'aucun audio n’est enregistré');
+    bravoStream.close();
+  });
   await t.test('La position est partagée uniquement dans le groupe rejoint ; une alerte peut être acquittée', async () => {
     assert.equal((await call('/presence', { clientId: alphaClient, position: { lat: 46.781, lng: 4.854 } }, 'alpha')).status, 200);
     const result = await adminStream.next('state', value => value.peers.some(peer => peer.position));
@@ -172,11 +204,12 @@ test('SYRIUS : conférences, accès, persistance et signalisation entre deux pos
   });
   await t.test('Un retrait de membre libère immédiatement sa prise de parole', async () => {
     await call('/presence', { clientId: alphaClient, channelId: privateId }, 'alpha');
-    await call('/floor', { clientId: alphaClient, action: 'claim' }, 'alpha');
+    const claim = await call('/floor', { clientId: alphaClient, action: 'claim' }, 'alpha');
     assert.equal((await call(`/channels/${privateId}`, { memberIds: ['bravo'] }, 'admin', 'PATCH')).status, 200);
     const revoked = await alphaStream.next('state', value => value.channelId === null && !value.channels.some(channel => channel.id === privateId));
     assert.equal(revoked.peers.length, 0);
     const admin = await call('/bootstrap'); assert.equal(admin.data.channels.find(channel => channel.id === privateId).floor, null);
+    assert.equal((await call('/audio', { clientId: alphaClient, floorId: claim.data.floor.id, sequence: 0, sampleRate: 16000, pcm: 'AAAAAA==' }, 'alpha')).status, 404);
   });
   await t.test('La désactivation centrale coupe un poste déjà connecté', async () => {
     const config = loadAdminConfig(true), user = users.find(user => user.id === 'alpha');

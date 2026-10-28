@@ -1,0 +1,18 @@
+{
+  "id": "/syrius/",
+  "name": "SYRIUS · Radio PHENIX",
+  "short_name": "SYRIUS",
+  "description": "Votre poste radio : conférences, alternat PTT et messages de votre équipe.",
+  "lang": "fr",
+  "start_url": "/syrius/?mobile=1",
+  "scope": "/syrius/",
+  "display": "standalone",
+  "background_color": "#f4f6fb",
+  "theme_color": "#253d91",
+  "orientation": "any",
+  "categories": ["communication", "productivity"],
+  "icons": [
+    { "src": "/syrius/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/syrius/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
