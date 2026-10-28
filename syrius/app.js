@@ -12,6 +12,7 @@
   let grant = null, renewTimer, maxTalkTimer, stopping = null, preparingRadio = false;
   let messageSignature = '', eventSignature = '', markerSignature = '';
   let installPrompt = null;
+  let stateRevision = -1;
   const clientId = crypto.randomUUID();
   const readPreference = key => { try { return localStorage.getItem(`syrius.${key}`); } catch { return null; } };
   const savePreference = (key, value) => { try { localStorage.setItem(`syrius.${key}`, value); } catch { /* navigation privée */ } };
@@ -20,6 +21,7 @@
   const time = value => new Date(value).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
   const transport = new window.SyriusAudioTransport({ clientId, request,
     onState: () => renderAudio(),
+    onAudio: receiveAudio,
     onLost: error => { if (holding || transmitting) { stopSpeaking(); toast(error.message, true); } }
   });
   const radio = new window.SyriusAudio({
@@ -33,6 +35,19 @@
       $('mic-test-label').textContent = radio.monitoring ? level > .015 ? 'Votre voix est détectée' : 'Parlez pour tester le micro…' : 'Test local · aucune diffusion à la conférence';
     }
   });
+  const inbox = new window.SyriusAudioInbox({ clientId, getChannel: () => desiredChannel,
+    onPacket: packet => radio.receive(packet), onChannelChange: () => radio.resetPlayback()
+  });
+  const background = new window.SyriusBackgroundAudio({
+    resume: () => { muted = false; updateVolume(); return Promise.all([radio.resumeExisting(), transport.open()]); },
+    stopTransmission: () => { stopSpeaking(); radio.pauseMicrophone(); },
+    pauseListening: () => { radio.context?.suspend().catch(() => {}); },
+    canResume: () => Boolean(connected && state?.channelId && radio.context),
+    getState: () => ({ active: Boolean(desiredChannel && radio.context), paused: !radio.listening || muted,
+      title: !connected ? 'Reconnexion radio…' : state?.channels.find(channel => channel.id === desiredChannel)?.name || 'Radio', artist: state?.appearance?.title || 'PHENIX' }),
+    onChange: () => renderAudio(), onError: error => toast(error.message, true)
+  });
+  background.enabled = readPreference('background-listening') !== 'false';
 
   function element(tag, className, content) {
     const node = document.createElement(tag);
@@ -89,22 +104,20 @@
   function connect() {
     source?.close(); source = new EventSource(`${API}/stream?clientId=${encodeURIComponent(clientId)}`);
     let initialized = false;
-    source.onopen = () => { connected = true; initialized = false; renderConnection(); };
-    source.onerror = () => { connected = false; stopSpeaking(); transport.close(); radio.resetPlayback(); renderConnection(); renderRadio(); };
+    source.onopen = () => { connected = true; initialized = false; stateRevision = -1; inbox.resetConnection(); renderConnection(); };
+    source.onerror = () => { connected = false; stopSpeaking(); transport.close(); renderConnection(); renderRadio(); };
     source.addEventListener('expired', () => showAuth('Votre session ou votre accès SYRIUS a expiré.'));
-    source.addEventListener('audio', event => {
-      const packet = JSON.parse(event.data), channel = state?.channels.find(item => item.id === state.channelId);
-      if (packet.channelId !== state?.channelId || packet.floorId !== channel?.floor?.id || packet.from === clientId) return;
-      try { radio.receive(packet); } catch { toast('Un fragment audio n’a pas pu être lu. Vérifiez la connexion.', true); }
-    });
+    source.addEventListener('audio', event => receiveAudio(JSON.parse(event.data)));
     source.addEventListener('state', event => {
       const previousChannel = state?.channelId;
-      const previousFloor = state?.channels.find(channel => channel.id === previousChannel)?.floor?.id;
-      state = JSON.parse(event.data);
+      const next = JSON.parse(event.data);
+      if (Number.isInteger(next.revision) && next.revision < stateRevision) return;
+      stateRevision = next.revision ?? stateRevision;
+      state = next;
       if (!state.channels.some(channel => channel.id === selectedId && !channel.archived)) selectedId = state.channels.find(channel => !channel.archived)?.id || null;
       if (!state.channels.some(channel => channel.id === desiredChannel && !channel.archived)) desiredChannel = null;
       const currentFloor = state.channels.find(channel => channel.id === state.channelId)?.floor;
-      if (previousChannel !== state.channelId || (currentFloor && previousFloor !== currentFloor.id)) radio.resetPlayback();
+      if (previousChannel && !state.channelId && !desiredChannel) radio.resetPlayback();
       if (previousChannel && !state.channelId) { radio.pauseMicrophone(); transport.close(); }
       if (transmitting && currentFloor?.clientId !== clientId) stopSpeaking();
       if (geoWatch !== null && !state.channelId) stopLocation();
@@ -112,11 +125,15 @@
       render();
       if (!initialized) {
         initialized = true;
-        const presence = { clientId, callsign, status: myStatus };
+        const presence = { clientId, callsign, status: myStatus, audioCodecs: ['mulaw8'] };
         if (desiredChannel) presence.channelId = desiredChannel;
-        request('/presence', presence).catch(error => toast(error.message, true));
+        request('/presence', presence).then(() => { if (state?.channelId && radio.context) transport.open(); }).catch(error => toast(error.message, true));
       }
     });
+  }
+  function receiveAudio(packet) {
+    if (!state) return;
+    try { inbox.receive(packet); } catch { toast('Un fragment audio n’a pas pu être lu. Vérifiez la connexion.', true); }
   }
 
   function render() {
@@ -207,6 +224,9 @@
     $('audio-state').textContent = !joined ? 'Choisissez puis rejoignez une conférence' : !radio.listening ? 'Écoute à activer' : radio.ready ? 'Son activé · micro transmis pendant le PTT' : 'Écoute activée · microphone à activer';
     $('audio-state').classList.toggle('ready', joined && radio.ready);
     $('audio-connection-detail').textContent = !connected ? 'Serveur déconnecté · reconnexion en cours' : transport.ready ? 'Connexion audio continue active' : 'Serveur connecté · liaison audio de secours HTTPS';
+    $('background-listening').checked = background.enabled;
+    $('audio-quality-detail').textContent = !joined ? 'Rejoignez une conférence pour écouter.' : muted ? 'Son coupé · rétablissez le volume pour écouter.' : !radio.listening ? 'Le téléphone a suspendu le son. Touchez « Activer l’écoute seule » pour reprendre.' : radio.jitter > .1 ? 'Délai réseau variable : la réserve audio s’adapte.' : 'Voix compressée · écoute active';
+    background.update();
     setPttDisabled(!connected || !joined || !radio.microphoneReady || preparingRadio || Boolean(stopping) || Boolean(selectedChannel()?.floor && selectedChannel().floor.clientId !== clientId));
   }
   function setPttDisabled(disabled) { $('ptt-button').setAttribute('aria-disabled', String(Boolean(disabled))); }
@@ -300,7 +320,8 @@
     try {
       await stopSpeaking(); radio.resetPlayback();
       if (!id) { radio.pauseMicrophone(); transport.close(); }
-      await request('/presence', { clientId, channelId: id }); await listening;
+      await request('/presence', { clientId, channelId: id, audioCodecs: ['mulaw8'] }); await listening;
+      if (id) await transport.open();
     }
     catch (error) { desiredChannel = state.channelId; throw error; }
     finally { joining = false; renderRadio(); }
@@ -336,7 +357,7 @@
   }
   async function prepareRadio() {
     if (preparingRadio) return;
-    preparingRadio = true; renderAudio();
+    preparingRadio = true; background.userPaused = false; renderAudio();
     try {
       await Promise.all([radio.prepareMicrophone(), transport.open()]);
       if (radio.ready) toast('Radio prête. Maintenez PTT pour parler.');
@@ -363,6 +384,7 @@
       await Promise.all([radio.enableListening(), transport.open()]);
       if (!holding || currentAttempt !== attempt) return;
       const result = await request('/floor', { clientId, action: 'claim' });
+      stateRevision = Math.max(stateRevision, result.revision ?? -1);
       if (!holding || currentAttempt !== attempt) { await request('/floor', { clientId, action: 'release' }); return; }
       grant = result.floor; radio.startCapture(grant.id); transport.startFloor(grant.id); transmitting = true; renderRadio();
       renewTimer = setInterval(() => request('/floor', { clientId, action: 'renew' }).catch(error => { stopSpeaking(); toast(error.message, true); }), 7000);
@@ -512,16 +534,12 @@
   });
   document.addEventListener('keyup', event => { if (['Space', 'Enter'].includes(event.code) && holding) { event.preventDefault(); stopSpeaking(); } });
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) { stopSpeaking(); radio.pauseMicrophone(); radio.resetPlayback(); }
-    else {
-      if (radio.microphoneReady) radio.enableListening().catch(() => renderRadio());
-      loadAppearance(); renderRadio();
-    }
+    if (!document.hidden) { loadAppearance(); transport.probe(); renderRadio(); }
   });
   // Reprendre le haut-parleur sur le premier geste après une suspension iOS,
   // en réutilisant le contexte et sans demander à nouveau le microphone.
   document.addEventListener('pointerdown', () => {
-    if (radio.context && !radio.listening) radio.enableListening().catch(() => {});
+    if (radio.context && !radio.listening && background.canAutoResume) radio.resumeExisting().catch(() => {});
   }, { capture: true });
   async function loadAppearance() {
     try {
@@ -537,10 +555,12 @@
     $('volume-value').textContent = muted ? '0' : Math.round(audioVolume * 100);
     $('mute-button').replaceChildren(icon(muted ? 'muted' : 'volume'));
     $('mute-button').setAttribute('aria-label', muted ? 'Rétablir le son' : 'Couper le son');
+    renderAudio();
   }
   $('volume-slider').addEventListener('input', event => { audioVolume = Number(event.target.value) / 100; muted = false; updateVolume(); });
   $('mute-button').addEventListener('click', () => { muted = !muted; updateVolume(); });
-  $('audio-unlock').addEventListener('click', () => radio.enableListening().catch(error => toast(error.message, true)));
+  $('audio-unlock').addEventListener('click', () => { background.userPaused = false; radio.resumeExisting().catch(error => toast(error.message, true)); });
+  $('background-listening').addEventListener('change', event => { background.enabled = event.target.checked; savePreference('background-listening', String(background.enabled)); background.update(); });
   $('prepare-radio').addEventListener('click', prepareRadio);
   $('audio-enable-mic').addEventListener('click', prepareRadio);
   $('speaker-test').addEventListener('click', () => radio.testSpeaker().catch(error => toast(error.message, true)));
@@ -556,7 +576,8 @@
   if ('serviceWorker' in navigator && window.isSecureContext) {
     navigator.serviceWorker.register('/syrius/sw.js', { scope: '/syrius/', updateViaCache: 'none' }).catch(() => {});
   }
-  window.addEventListener('offline', () => { connected = false; stopSpeaking(); transport.close(); radio.resetPlayback(); renderRadio(); renderConnection(); });
+  window.addEventListener('offline', () => { connected = false; stopSpeaking(); transport.close(); renderRadio(); renderConnection(); });
+  window.addEventListener('online', () => { if (state?.channelId) transport.open(); });
   $('map-zoom-in').addEventListener('click', () => { zoom = Math.min(18, zoom + 1); drawMap(); });
   $('map-zoom-out').addEventListener('click', () => { zoom = Math.max(8, zoom - 1); drawMap(); });
   $('map-center').addEventListener('click', () => { const position = state?.peers.find(peer => peer.clientId === clientId)?.position; center = position || { lat: 46.781, lng: 4.854 }; zoom = 14; drawMap(); });

@@ -138,3 +138,5 @@ body{background-color:var(--page-bg)}
  .brand-logo{max-width:76px;height:30px}.wordmark{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
  .brand-product>[data-brand-subtitle]{max-width:80px;font-size:7px}
 }
+
+.background-option{display:flex;align-items:flex-start;gap:10px;line-height:1.5;font-size:13px}.background-option input{width:21px;height:21px;min-width:21px;margin:0;accent-color:var(--blue)}

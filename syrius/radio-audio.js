@@ -1,37 +1,42 @@
 'use strict';
 
 (() => {
-  const SAMPLE_RATE = 16000;
-  const encode = samples => {
-    const bytes = new Uint8Array(samples.length * 2), view = new DataView(bytes.buffer);
-    samples.forEach((sample, index) => view.setInt16(index * 2, sample, true));
-    let value = ''; for (const byte of bytes) value += String.fromCharCode(byte);
-    return btoa(value);
-  };
-
   class SyriusAudio {
     constructor({ send, finish = async () => {}, onState = () => {}, onError = () => {}, onLevel = () => {}, onInterrupted = () => {} }) {
       this.send = send; this.finish = finish; this.onState = onState; this.onError = onError; this.onLevel = onLevel; this.onInterrupted = onInterrupted;
       this.context = null; this.stream = null; this.worklet = null; this.input = null;
       this.session = null; this.preparing = null; this.generation = 0; this.sequenceId = 0;
       this.playing = new Set(); this.playAt = 0; this.receivingFloor = null; this.receiveSequence = -1;
+      this.lastArrival = null; this.lastDuration = 0; this.jitter = 0;
+      this.quality = { underruns: 0, missing: 0, discarded: 0 };
       this.volume = .8; this.muted = false; this.monitoring = false;
     }
     get listening() { return this.context?.state === 'running'; }
-    get microphoneReady() { return Boolean(this.worklet && this.stream?.getAudioTracks().some(track => track.readyState === 'live')); }
+    get microphoneReady() { return this.context?.state !== 'closed' && Boolean(this.worklet && this.stream?.getAudioTracks().some(track => track.readyState === 'live')); }
     get ready() { return this.listening && this.microphoneReady; }
     changed() { this.onState({ ready: this.ready, listening: this.listening }); }
 
+    updateAudioType() {
+      try {
+        if (navigator.audioSession) {
+          const type = this.microphoneReady || this.microphoneRequested ? 'play-and-record' : 'playback';
+          if (navigator.audioSession.type !== type) navigator.audioSession.type = type;
+        }
+      } catch { /* API optionnelle, notamment sur Safari */ }
+    }
     // Appel direct depuis un clic : Safari/Chrome autorisent alors la sortie son.
     async enableListening() {
+      this.updateAudioType();
       if (!this.context || this.context.state === 'closed') {
+        this.input?.disconnect(); this.worklet?.disconnect(); this.silent?.disconnect();
+        this.input = null; this.worklet = null;
         const Context = window.AudioContext || window.webkitAudioContext;
         if (!Context) throw new Error('Ce navigateur ne prend pas en charge l’audio. Ouvrez SYRIUS dans Safari ou Chrome à jour.');
         this.context = new Context({ latencyHint: 'interactive' });
         this.output = this.context.createGain(); this.output.connect(this.context.destination);
         this.setVolume(this.volume, this.muted);
         this.context.onstatechange = () => {
-          if (!this.listening) this.onInterrupted();
+          if (!this.listening) { this.resetPlayback(); this.onInterrupted(); }
           this.changed();
         };
       }
@@ -51,8 +56,10 @@
       // Une autorisation micro peut interrompre le contexte sur iPhone.
       // Le reprendre une seconde fois après getUserMedia, sans rouvrir un micro
       // déjà disponible lorsque seule la lecture a été suspendue.
+      this.microphoneRequested = true;
       this.enableListening().catch(() => {});
-      const microphone = navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false });
+      const retained = this.stream?.getAudioTracks().some(track => track.readyState === 'live');
+      const microphone = retained ? Promise.resolve(this.stream) : navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false });
       this.preparing = (async () => {
         let acquired = null;
         try {
@@ -64,7 +71,8 @@
           await this.context.audioWorklet.addModule('/syrius/audio-worklet.js');
           if (generation !== this.generation) { acquired.getTracks().forEach(track => track.stop()); return; }
           const previousStream = this.stream, previousInput = this.input, previousWorklet = this.worklet, previousSilent = this.silent;
-          previousStream?.getTracks().forEach(track => track.stop()); previousInput?.disconnect(); previousWorklet?.disconnect(); previousSilent?.disconnect();
+          if (previousStream && previousStream !== acquired) previousStream.getTracks().forEach(track => track.stop());
+          previousInput?.disconnect(); previousWorklet?.disconnect(); previousSilent?.disconnect();
           this.stream = acquired;
           this.input = this.context.createMediaStreamSource(acquired);
           this.worklet = new AudioWorkletNode(this.context, 'syrius-microphone', { numberOfInputs: 1, numberOfOutputs: 1, channelCount: 1 });
@@ -85,9 +93,12 @@
         } catch (error) {
           acquired?.getTracks().forEach(track => track.stop());
           throw error;
-        } finally { this.preparing = null; this.changed(); }
+        } finally { this.preparing = null; this.microphoneRequested = false; this.updateAudioType(); this.changed(); }
       })();
       return this.preparing;
+    }
+    resumeExisting() {
+      return this.stream?.getAudioTracks().some(track => track.readyState === 'live') && !this.microphoneReady ? this.prepareMicrophone() : this.enableListening();
     }
     startCapture(floorId) {
       if (!this.ready || this.session) throw new Error('Activez la radio avant de maintenir le PTT.');
@@ -99,7 +110,7 @@
     queuePacket(session, samples) {
       if (session.failed || !samples.length) return;
       if (session.queue.length + session.inFlight >= 8) { this.fail(session, new Error('La connexion n’arrive plus à envoyer le son en direct. Relâchez puis réessayez.')); return; }
-      const packet = { floorId: session.floorId, sequence: session.sequence++, sampleRate: SAMPLE_RATE, pcm: encode(samples) };
+      const packet = { floorId: session.floorId, sequence: session.sequence++, ...window.SyriusVoiceCodec.encode(samples) };
       session.queue.push(packet);
       if (!session.sending) session.chain = this.pump(session);
     }
@@ -109,7 +120,7 @@
         while (session.queue.length && !session.failed) {
           // En secours HTTP, rassembler les fragments arrivés pendant le trajet
           // précédent : un aller-retour de 400 ms ne réduit plus la cadence à
-          // un seul fragment de 160 ms. En WSS, send résout dès la mise en file.
+          // un seul fragment de 120 ms. En WSS, send résout dès la mise en file.
           const packets = session.queue.splice(0, 4); session.inFlight = packets.length;
           const body = packets.length === 1 ? packets[0] : { floorId: session.floorId, packets };
           const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 3000);
@@ -151,7 +162,7 @@
       this.generation++; clearTimeout(this.monitorTimer); this.monitoring = false;
       this.stream?.getTracks().forEach(track => { track.enabled = false; track.stop(); });
       const previous = this.worklet, input = this.input, silent = this.silent;
-      this.stream = null;
+      this.stream = null; this.updateAudioType();
       this.stopCapture().finally(() => {
         input?.disconnect(); previous?.disconnect(); silent?.disconnect();
         if (this.worklet === previous) { this.worklet = null; this.input = null; }
@@ -171,26 +182,48 @@
     resetPlayback() {
       for (const node of this.playing) { try { node.stop(); } catch { /* déjà terminé */ } }
       this.playing.clear(); this.playAt = 0; this.receivingFloor = null; this.receiveSequence = -1;
+      this.lastArrival = null; this.lastDuration = 0; this.jitter = 0;
     }
     receive(packet) {
       if (!this.listening) { this.changed(); return; }
-      if (packet.sampleRate !== SAMPLE_RATE || typeof packet.pcm !== 'string' || packet.pcm.length > 8536) return;
-      if (this.receivingFloor !== packet.floorId) { this.resetPlayback(); this.receivingFloor = packet.floorId; }
-      if (!Number.isInteger(packet.sequence) || packet.sequence <= this.receiveSequence) return;
-      const bytes = atob(packet.pcm);
-      if (!bytes.length || bytes.length % 2 || bytes.length > 6400) return;
-      this.receiveSequence = packet.sequence;
-      const buffer = this.context.createBuffer(1, bytes.length / 2, SAMPLE_RATE), output = buffer.getChannelData(0);
-      for (let index = 0; index < output.length; index++) {
-        const value = bytes.charCodeAt(index * 2) | (bytes.charCodeAt(index * 2 + 1) << 8);
-        output[index] = (value > 32767 ? value - 65536 : value) / 32768;
+      if (typeof packet.pcm !== 'string' || packet.pcm.length > 8536) return;
+      if (this.receivingFloor !== packet.floorId) {
+        // Finir la dernière syllabe du locuteur précédent avant le suivant.
+        // Le changement de conférence est, lui, traité par resetPlayback().
+        this.receivingFloor = packet.floorId; this.receiveSequence = -1;
+        this.lastArrival = null; this.lastDuration = 0; this.jitter = 0;
       }
+      if (!Number.isInteger(packet.sequence) || packet.sequence <= this.receiveSequence) return;
+      const decoded = window.SyriusVoiceCodec.decode(packet);
+      if (this.receiveSequence >= 0) this.quality.missing += Math.max(0, packet.sequence - this.receiveSequence - 1);
+      this.receiveSequence = packet.sequence;
+      const buffer = this.context.createBuffer(1, decoded.samples.length, decoded.sampleRate);
+      buffer.getChannelData(0).set(decoded.samples);
       const now = this.context.currentTime;
-      if (this.playAt > now + .8) { this.resetPlayback(); this.receivingFloor = packet.floorId; this.receiveSequence = packet.sequence; }
+      if (this.lastArrival !== null) {
+        const variation = Math.min(.3, Math.abs(now - this.lastArrival - this.lastDuration));
+        this.jitter = .85 * this.jitter + .15 * variation;
+      }
+      // Une réserve s’adapte à la variation d’arrivée. Ne plus supprimer toutes
+      // les syllabes déjà reçues au premier lot dépassant 800 ms.
+      if (this.playAt > now + 1.6) {
+        for (const queued of [...this.playing]) if (queued.startAt > now + .01) {
+          try { queued.stop(); } catch { /* terminé */ }
+          queued.disconnect(); this.playing.delete(queued); this.quality.discarded++;
+        }
+        this.playAt = Math.max(now, ...[...this.playing].map(node => node.endAt));
+      }
+      const starting = this.playAt < now + .006;
+      if (starting && this.lastArrival !== null) this.quality.underruns++;
+      const reserve = starting ? Math.min(.32, .14 + 2 * this.jitter) : .006;
+      const start = Math.max(this.playAt, now + reserve);
       const node = this.context.createBufferSource(); node.buffer = buffer; node.connect(this.output);
+      const speed = this.playAt - now > .5 && node.playbackRate ? 1.03 : 1;
+      if (node.playbackRate) node.playbackRate.value = speed;
+      node.startAt = start; node.endAt = start + buffer.duration / speed;
       node.onended = () => { this.playing.delete(node); node.disconnect(); };
-      const start = Math.max(this.playAt, now + .07);
-      node.start(start); this.playAt = start + buffer.duration; this.playing.add(node);
+      node.start(start); this.playAt = node.endAt; this.playing.add(node);
+      this.lastArrival = now; this.lastDuration = buffer.duration;
     }
     async testSpeaker() {
       await this.enableListening();
