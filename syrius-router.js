@@ -6,6 +6,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const { WebSocketServer, WebSocket } = require('ws');
 const { appAccess, appearanceFor } = require('./central-config');
 
 const COLORS = ['#4264d7', '#7653b3', '#198b78', '#bd7c2e', '#bd4d68'];
@@ -39,6 +40,9 @@ function mountSyrius(app, options) {
   }
   const clients = new Map();
   const floors = new Map();
+  const audioTickets = new Map();
+  let socketServer = null, httpServer = null, socketHeartbeat = null;
+  const brandAssets = new Map();
   const api = express.Router();
   const users = () => options.loadPhenix().users || [];
   const access = user => appAccess(user, 'syrius');
@@ -97,8 +101,23 @@ function mountSyrius(app, options) {
       events: data.events.filter(item => ids.has(item.channelId)).slice(0, 150),
       alerts: data.alerts.filter(item => ids.has(item.channelId)).slice(0, 100),
       users: isAdmin(user) ? users().filter(item => access(item).enabled).map(identity) : [],
-      audioTransport: 'https-pcm16', audioSampleRate: 16000, appearance: appearanceFor('syrius')
+      audioTransport: socketServer ? 'wss-pcm16' : 'https-pcm16', audioSampleRate: 16000, appearance: branding()
     };
+  }
+
+  function branding() {
+    const { logoData, faviconData, backgroundData, ...settings } = appearanceFor('syrius');
+    // Les images se chargent séparément et restent hors du flux temps réel :
+    // une photo de fond ne doit pas retarder les paquets de parole.
+    for (const [kind, value] of [['logo', logoData], ['favicon', faviconData], ['background', backgroundData]]) {
+      let asset = brandAssets.get(kind);
+      if (!asset || asset.data !== value) {
+        asset = { data: value, url: value ? `/syrius/branding/${kind}?v=${crypto.createHash('sha256').update(value).digest('hex').slice(0, 16)}` : '' };
+        brandAssets.set(kind, asset);
+      }
+      settings[`${kind}Url`] = asset.url;
+    }
+    return settings;
   }
 
   function reconcile() {
@@ -180,6 +199,15 @@ function mountSyrius(app, options) {
     return client;
   }
 
+  api.post('/audio-link', (req, res) => {
+    const client = requireClient(req);
+    if (!socketServer) fail(503, 'La connexion audio continue est indisponible.');
+    for (const [key, ticket] of audioTickets) if (ticket.clientId === client.id || ticket.expiresAt < Date.now()) audioTickets.delete(key);
+    const ticket = crypto.randomBytes(32).toString('hex');
+    audioTickets.set(ticket, { clientId: client.id, sessionId: req.sessionID, expiresAt: Date.now() + 30000 });
+    res.json({ path: '/syrius/audio', ticket });
+  });
+
   api.get('/bootstrap', (req, res) => res.json({ ...snapshot(req.syriusUser), csrfToken: req.session.csrfToken }));
   api.post('/logout', (req, res, next) => {
     const sessionId = req.sessionID;
@@ -195,7 +223,7 @@ function mountSyrius(app, options) {
     const previous = clients.get(id);
     if (previous && (previous.user.id !== req.syriusUser.id || previous.sessionId !== req.sessionID)) return res.status(409).json({ error: 'Identifiant déjà utilisé.' });
     if (!previous && ([...clients.values()].filter(client => client.user.id === req.syriusUser.id).length >= 4 || clients.size >= 64)) return res.status(429).json({ error: 'Trop de postes connectés.' });
-    if (previous) { clients.delete(id); release(id); previous.res.end(); }
+    if (previous) { clients.delete(id); release(id); previous.audioSocket?.close(1008, 'Session remplacée'); previous.res.end(); }
     res.set({ 'Content-Type': 'text/event-stream', 'Connection': 'keep-alive', 'X-Accel-Buffering': 'no' });
     res.flushHeaders();
     const client = { id, res, sessionId: req.sessionID, user: req.syriusUser, callsign: nameOf(req.syriusUser), channelId: null, status: 'available', position: null };
@@ -212,7 +240,14 @@ function mountSyrius(app, options) {
       });
     }, 15000);
     heartbeat.unref();
-    res.once('close', () => { clearInterval(heartbeat); if (clients.get(id) === client) { clients.delete(id); release(id); broadcast(); } });
+    res.once('close', () => {
+      clearInterval(heartbeat);
+      if (clients.get(id) === client) {
+        clients.delete(id); release(id); client.audioSocket?.close(1008, 'Session terminée');
+        for (const [key, ticket] of audioTickets) if (ticket.clientId === id) audioTickets.delete(key);
+        broadcast();
+      }
+    });
     broadcast();
   });
 
@@ -327,39 +362,120 @@ function mountSyrius(app, options) {
     send(target, 'signal', { from: client.id, floorId: floor.id, signal }); res.json({ ok: true });
   });
 
-  // Audio mono PCM16, par paquets de 200 ms maximum, sur la même liaison HTTPS
-  // que le site. Aucun TURN, port UDP public ou enregistrement sur disque.
-  api.post('/audio', rateLimit({ windowMs: 1000, limit: 40,
-    keyGenerator: req => `${req.syriusUser.id}:${req.sessionID}`,
-    standardHeaders: 'draft-8', legacyHeaders: false,
-    message: { error: 'Le flux audio est trop rapide. Relâchez le PTT puis réessayez.' }
-  }), (req, res) => {
-    const client = requireClient(req), channel = requireChannel(req, client.channelId);
+  // Transport commun au flux continu WSS et au secours HTTPS par lots.
+  // Seul le titulaire de l’alternat peut envoyer vers les membres de son groupe.
+  function relayAudio(client, user, body) {
+    const channel = channelFor(client.channelId);
+    if (!channel || !usable(user, channel)) fail(404, 'Conférence introuvable.');
     const floor = floors.get(channel.id);
-    if (!floor || floor.clientId !== client.id || floor.id !== req.body.floorId || floor.expiresAt <= Date.now()) fail(409, 'La prise de parole audio est terminée.');
-    const { pcm, sequence, sampleRate } = req.body;
-    if (sampleRate !== 16000 || !Number.isInteger(sequence) || sequence < 0 || sequence > 5000 ||
-        typeof pcm !== 'string' || pcm.length < 4 || pcm.length > 8536 ||
-        !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(pcm)) fail(400, 'Paquet audio invalide.');
-    const bytes = Buffer.from(pcm, 'base64');
-    if (!bytes.length || bytes.length > 6400 || bytes.length % 2 || bytes.toString('base64') !== pcm) fail(400, 'Données audio invalides.');
-    if (client.audioFloorId !== floor.id) {
-      client.audioFloorId = floor.id; client.audioSequence = -1; client.audioSamples = 0;
-    }
-    if (sequence <= client.audioSequence) fail(409, 'Ce paquet audio a déjà été traité.');
-    if (client.audioSamples + bytes.length / 2 > ((Date.now() - floor.startedAt + 1500) / 1000) * 16000) fail(429, 'Le flux audio dépasse la cadence autorisée.');
-    client.audioSequence = sequence; client.audioSamples += bytes.length / 2;
-    const packet = { from: client.id, channelId: channel.id, floorId: floor.id, sequence, sampleRate, pcm };
+    if (!floor || floor.clientId !== client.id || floor.id !== body.floorId || floor.expiresAt <= Date.now()) fail(409, 'La prise de parole audio est terminée.');
+    const packets = body.packets === undefined ? [body] : body.packets;
+    if (!Array.isArray(packets) || !packets.length || packets.length > 4) fail(400, 'Lot audio invalide.');
+    let lastSequence = client.audioFloorId === floor.id ? client.audioSequence : -1;
+    let totalSamples = client.audioFloorId === floor.id ? client.audioSamples : 0;
+    const validated = packets.map(packet => {
+      const { pcm, sequence, sampleRate } = packet || {};
+      if (sampleRate !== 16000 || !Number.isInteger(sequence) || sequence < 0 || sequence > 5000 ||
+          (packet.floorId !== undefined && packet.floorId !== floor.id) ||
+          typeof pcm !== 'string' || pcm.length < 4 || pcm.length > 8536 ||
+          !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(pcm)) fail(400, 'Paquet audio invalide.');
+      const bytes = Buffer.from(pcm, 'base64');
+      if (!bytes.length || bytes.length > 6400 || bytes.length % 2 || bytes.toString('base64') !== pcm) fail(400, 'Données audio invalides.');
+      if (sequence <= lastSequence) fail(409, 'Ce paquet audio a déjà été traité.');
+      lastSequence = sequence; totalSamples += bytes.length / 2;
+      return { from: client.id, channelId: channel.id, floorId: floor.id, sequence, sampleRate, pcm };
+    });
+    if (totalSamples > ((Date.now() - floor.startedAt + 1500) / 1000) * 16000) fail(429, 'Le flux audio dépasse la cadence autorisée.');
+    client.audioFloorId = floor.id; client.audioSequence = lastSequence; client.audioSamples = totalSamples;
     let recipients = 0;
     for (const target of clients.values()) {
       const currentUser = userFor(target.user.id);
       if (target.id === client.id || target.channelId !== channel.id || !currentUser || !usable(currentUser, channel) || options.passwordExpired?.(currentUser)) continue;
-      // Ne pas accumuler plusieurs secondes de son pour un poste déconnecté/lent.
       if (target.res.writableLength > 128 * 1024) continue;
-      send(target, 'audio', packet); recipients++;
+      for (const packet of validated) send(target, 'audio', packet);
+      recipients++;
     }
-    res.json({ ok: true, recipients });
-  });
+    return { ok: true, recipients };
+  }
+
+  api.post('/audio', rateLimit({ windowMs: 1000, limit: 40,
+    keyGenerator: req => `${req.syriusUser.id}:${req.sessionID}`,
+    standardHeaders: 'draft-8', legacyHeaders: false,
+    message: { error: 'Le flux audio est trop rapide. Relâchez le PTT puis réessayez.' }
+  }), (req, res) => res.json(relayAudio(requireClient(req), req.syriusUser, req.body)));
+
+  function upgradeAudio(req, socket, head) {
+    let pathname;
+    try { pathname = new URL(req.url, 'http://localhost').pathname; } catch { return socket.destroy(); }
+    if (pathname !== '/syrius/audio') return;
+    let origin;
+    try { origin = new URL(req.headers.origin); } catch { /* origine obligatoire */ }
+    if (!origin || origin.host !== req.headers.host || !['http:', 'https:'].includes(origin.protocol) || socketServer.clients.size >= 128) {
+      socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n'); return;
+    }
+    socketServer.handleUpgrade(req, socket, head, ws => socketServer.emit('connection', ws));
+  }
+  function attachServer(server) {
+    if (httpServer) { if (httpServer !== server) throw new Error('Serveur audio déjà attaché.'); return; }
+    httpServer = server;
+    socketServer = new WebSocketServer({ noServer: true, maxPayload: 40000, perMessageDeflate: false });
+    server.on('upgrade', upgradeAudio);
+    socketServer.on('connection', ws => {
+      let client = null, windowStart = Date.now(), messageCount = 0;
+      ws.isAlive = true;
+      const authTimeout = setTimeout(() => ws.close(1008, 'Authentification requise'), 5000);
+      authTimeout.unref();
+      ws.on('error', () => {});
+      ws.on('pong', () => { ws.isAlive = true; });
+      ws.on('close', () => {
+        clearTimeout(authTimeout);
+        if (client?.audioSocket === ws) {
+          client.audioSocket = null;
+          if (clients.get(client.id) === client) { release(client.id); broadcast(); }
+        }
+      });
+      ws.on('message', (raw, binary) => {
+        try {
+          if (binary) fail(400, 'Format audio invalide.');
+          const body = JSON.parse(raw.toString());
+          if (!body || typeof body !== 'object') fail(400, 'Message audio invalide.');
+          if (Date.now() - windowStart >= 1000) { windowStart = Date.now(); messageCount = 0; }
+          if (++messageCount > 40) fail(429, 'Le flux audio est trop rapide.');
+          if (!client) {
+            const ticket = typeof body.ticket === 'string' && audioTickets.get(body.ticket);
+            if (body.type !== 'auth' || !ticket || ticket.expiresAt < Date.now() || ticket.clientId !== body.clientId) fail(401, 'Connexion audio non autorisée.');
+            audioTickets.delete(body.ticket);
+            const candidate = clients.get(ticket.clientId), user = candidate && userFor(candidate.user.id);
+            if (!candidate || candidate.sessionId !== ticket.sessionId || !user || !access(user).enabled || options.passwordExpired?.(user)) fail(401, 'Session audio terminée.');
+            client = candidate; clearTimeout(authTimeout);
+            const previous = client.audioSocket; client.audioSocket = ws; previous?.close(1000, 'Liaison remplacée');
+            ws.send(JSON.stringify({ type: 'ready' })); return;
+          }
+          const user = userFor(client.user.id);
+          if (clients.get(client.id) !== client || client.audioSocket !== ws || !user || !access(user).enabled || options.passwordExpired?.(user)) fail(401, 'Session audio terminée.');
+          if (body.type === 'audio') relayAudio(client, user, body);
+          else if (body.type === 'flush') {
+            const floor = floors.get(client.channelId);
+            const sequence = client.audioFloorId === body.floorId ? client.audioSequence : -1;
+            if (!floor || floor.clientId !== client.id || floor.id !== body.floorId || floor.expiresAt <= Date.now() || !Number.isInteger(body.sequence) || body.sequence !== sequence) fail(409, 'La transmission audio est terminée.');
+            // Accusé uniquement en fin de phrase, jamais entre les fragments.
+            ws.send(JSON.stringify({ type: 'flushed', floorId: body.floorId, sequence }));
+          } else fail(400, 'Commande audio invalide.');
+        } catch (error) {
+          if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'error', status: error.status || 400, error: error.status ? error.message : 'Message audio invalide.' }));
+          if (!client || error.status === 401 || error.status === 429 || !error.status) ws.close(1008, 'Liaison refusée');
+        }
+      });
+    });
+    socketHeartbeat = setInterval(() => {
+      for (const ws of socketServer.clients) {
+        if (!ws.isAlive) { ws.terminate(); continue; }
+        ws.isAlive = false; ws.ping();
+      }
+      for (const [key, ticket] of audioTickets) if (ticket.expiresAt < Date.now()) audioTickets.delete(key);
+    }, 15000);
+    socketHeartbeat.unref();
+  }
 
   const watchdog = setInterval(() => {
     let changed = false;
@@ -374,18 +490,33 @@ function mountSyrius(app, options) {
   });
 
   app.use('/syrius', (req, res, next) => {
-    res.set('Content-Security-Policy', "default-src 'self'; script-src 'self'; worker-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://tile.openstreetmap.org; media-src 'self' blob:; connect-src 'self'; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+    const socketOrigin = `wss://${req.get('host')}`;
+    res.set('Content-Security-Policy', `default-src 'self'; script-src 'self'; worker-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://tile.openstreetmap.org; media-src 'self' blob:; connect-src 'self' ${socketOrigin}; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`);
     res.set('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.set('Permissions-Policy', 'microphone=(self), geolocation=(self)');
     next();
   });
   app.get(/^\/syrius$/, (req, res) => res.redirect(302, '/syrius/'));
+  app.get('/syrius/branding', (req, res) => res.set('Cache-Control', 'no-store').json({ appearance: branding() }));
+  app.get('/syrius/branding/:kind', (req, res) => {
+    branding();
+    const asset = brandAssets.get(req.params.kind);
+    const match = asset?.data?.match(/^data:(image\/(?:png|jpeg|webp|gif|svg\+xml|x-icon|vnd\.microsoft\.icon));base64,([A-Za-z0-9+/=]+)$/);
+    if (!match) return res.status(404).end();
+    res.set({ 'Content-Type': match[1], 'Cache-Control': 'public, max-age=3600', 'Content-Security-Policy': "default-src 'none'; sandbox" });
+    res.send(Buffer.from(match[2], 'base64'));
+  });
   app.use('/syrius/api', api);
   app.use('/syrius', express.static(path.join(__dirname, 'syrius'), {
     etag: true, maxAge: 0,
     setHeaders: res => res.set('Cache-Control', 'no-cache')
   }));
-  return { close() { clearInterval(watchdog); for (const client of clients.values()) client.res.end(); }, snapshot };
+  return { attachServer, snapshot, refreshAppearance: broadcast, close() {
+    clearInterval(watchdog); clearInterval(socketHeartbeat); audioTickets.clear();
+    httpServer?.removeListener('upgrade', upgradeAudio);
+    if (socketServer) { for (const ws of socketServer.clients) ws.terminate(); socketServer.close(); }
+    for (const client of clients.values()) client.res.end();
+  } };
 }
 
 module.exports = { mountSyrius };

@@ -31,15 +31,23 @@ La tuile SYRIUS est ajoutée à la réponse du portail ARGOS. Les tuiles déjà 
 
 Le profil permet de choisir l’indicatif et la disponibilité du poste. La déconnexion ferme la session PHENIX commune. Les alertes sont adressées aux utilisateurs de la conférence sur ce site.
 
-## Audio et téléphone — version 2
+## Audio et téléphone — version 2.1
 
-Le son est maintenant relayé par le serveur Express en HTTPS, en PCM16 mono à 16 kHz. Les paquets de 160 ms utilisent des requêtes authentifiées et le flux SSE existant. Aucun relais TURN ni connexion directe entre appareils n’est nécessaire. Aucun audio n’est enregistré. Utiliser une seule instance Node pour les présences et alternats.
+Le son est relayé par le serveur Express, en PCM16 mono à 16 kHz. Les paquets de 160 ms partent sur une connexion WebSocket sécurisée continue, sans attendre un aller-retour réseau par fragment. Le serveur utilise le flux SSE existant pour l’écoute. Un secours HTTPS regroupe jusqu’à quatre fragments par requête pour conserver la cadence sur les connexions à latence élevée. Aucun relais TURN ni connexion directe entre appareils n’est nécessaire. Aucun audio n’est enregistré. Utiliser une seule instance Node pour les présences et alternats. Render accepte cette connexion WSS sur le même port que le site : aucune clé ni variable d’environnement supplémentaire n’est nécessaire.
 
-Après avoir rejoint un groupe, toucher **Activer le micro et le son**, puis autoriser le microphone. Maintenir PTT pour parler. Dans **Audio**, les tests du haut-parleur et du microphone permettent de vérifier les autorisations ; le test micro reste local. Le microphone disponible est désactivé hors émission ; quitter le groupe ou masquer la page ferme sa capture. Une émission dure au maximum 60 secondes.
+Après avoir rejoint un groupe, toucher **Activer le micro et le son**, puis autoriser le microphone. Le contexte audio est repris après l’autorisation et un micro déjà disponible est réutilisé lors d’une interruption de la lecture sur iPhone. Maintenir PTT pour parler. La surface PTT bloque la sélection de texte et le geste de loupe Safari, y compris quand le micro n’est pas encore prêt ; la messagerie reste sélectionnable. Dans **Audio**, les tests du haut-parleur et du microphone permettent de vérifier les autorisations ; le test micro reste local. Hors émission, le micro n’envoie aucun son. Sa piste déjà autorisée est conservée lors des pauses, changements de groupe et retours au premier plan pour éviter les demandes répétées. Le bouton « Désactiver mon microphone », la déconnexion ou la fermeture de la page arrêtent la piste. Safari ou iOS peut toujours révoquer l’accès ; le site ne peut pas mémoriser une autorisation à la place du navigateur. Une émission dure au maximum 60 secondes.
 
 Sur téléphone : navigation inférieure Radio, Groupes, Messages, Carte et Plus ; grand PTT et administration adaptée. **Plus → Installer sur mon téléphone** fournit l’installation sur l’écran d’accueil. Le manifeste ouvre l’application dans une fenêtre autonome. La connexion Internet et l’application visible sont nécessaires ; la réception écran verrouillé n’est pas garantie. Le service worker ne conserve que la page hors connexion, jamais les données de session ou les flux radio.
 
-Le relais utilise environ 43 ko/s par auditeur pendant une émission, hors en-têtes et TLS. La cadence et les files sont bornées pour éviter l’accumulation de son sur les connexions lentes. Cette architecture convient à de petits groupes.
+Le relais utilise environ 43 ko/s par auditeur pendant une émission, hors en-têtes et TLS. La cadence et les files sont bornées pour éviter l’accumulation de son sur les connexions lentes. Les tickets WSS sont à usage unique, liés à la session et au poste SSE, et expirent après 30 secondes. Le ticket est envoyé après l’ouverture du socket, jamais dans l’URL. Une confirmation de fin de phrase précède la libération du PTT ; aucun accusé par fragment ne bloque l’émission. Cette architecture convient à de petits groupes.
+
+## Apparence — administration centrale
+
+Les réglages restent dans **Administration centrale → Apparence → SYRIUS**. Le titre, le sous-titre, le logo, l’icône d’onglet, les couleurs et le fond y sont conservés. Les changements sont diffusés aux consoles SYRIUS ouvertes et s’appliquent aussi à la connexion. La couleur principale pilote l’en-tête et la navigation ; la secondaire pilote les actions et la carte PTT. Les couleurs propres aux conférences identifient les groupes dans le répertoire. La tuile SYRIUS ajoutée automatiquement à ARGOS reprend le logo et les couleurs du centre.
+
+Les images se chargent par des URL distinctes : elles ne sont pas répétées dans le flux de parole. Aucune page de modification de l’apparence n’est ajoutée à SYRIUS.
+
+Pour les confirmations Safari répétées, régler **Micro → Autoriser** dans les réglages de ce site. La reprise du haut-parleur utilise le premier geste après une suspension. [Réglages Safari — Apple](https://support.apple.com/fr-fr/guide/iphone/iphb01fc3c85/ios).
 
 ## Données et carte
 
@@ -56,8 +64,8 @@ npm ci
 npm run test:syrius
 ```
 
-Les tests utilisent exclusivement des comptes et répertoires temporaires. Ils vérifient l’authentification, les rôles, le contrôle CSRF et de l’origine, la création et le renommage, les groupes restreints, les présences, l’exclusivité PTT, la signalisation entre deux postes, les positions, les alertes, les archives, la révocation des droits et la persistance. Un test démarre le serveur PHENIX complet et contrôle l’intégration à ARGOS et au centre d’administration.
+Les tests utilisent exclusivement des comptes et répertoires temporaires. Ils couvrent aussi un envoi continu WSS réel entre deux postes de test, la confirmation de fin de phrase, les tickets à usage unique, le refus d’une autre origine, les lots HTTPS atomiques, une latence simulée de 400 ms, la reprise d’un contexte audio interrompu et les événements tactiles de maintien. Ils vérifient l’authentification, les rôles, le contrôle CSRF et de l’origine, la création et le renommage, les groupes restreints, les présences, l’exclusivité PTT, la signalisation entre deux postes, les positions, les alertes, les archives, la révocation des droits et la persistance. Un test démarre le serveur PHENIX complet et contrôle l’intégration à ARGOS et au centre d’administration.
 
-La vérification visuelle et un essai audio réel avec deux appareils restent à effectuer dans un navigateur : le service de prévisualisation de l’environnement de préparation était indisponible.
+La vérification visuelle Safari et un essai audible réel avec deux appareils restent à effectuer : le service de prévisualisation de l’environnement de préparation est indisponible. Les tests de gestes et de reprise iPhone utilisent des événements et contextes simulés ; ils ne remplacent pas un essai sur iOS.
 
 Cette console est indépendante du service officiel SYRIUS/RRF. Les communications ont lieu entre les comptes de ce site PHENIX.

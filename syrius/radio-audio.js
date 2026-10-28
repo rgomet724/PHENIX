@@ -10,15 +10,16 @@
   };
 
   class SyriusAudio {
-    constructor({ send, onState = () => {}, onError = () => {}, onLevel = () => {}, onInterrupted = () => {} }) {
-      this.send = send; this.onState = onState; this.onError = onError; this.onLevel = onLevel; this.onInterrupted = onInterrupted;
+    constructor({ send, finish = async () => {}, onState = () => {}, onError = () => {}, onLevel = () => {}, onInterrupted = () => {} }) {
+      this.send = send; this.finish = finish; this.onState = onState; this.onError = onError; this.onLevel = onLevel; this.onInterrupted = onInterrupted;
       this.context = null; this.stream = null; this.worklet = null; this.input = null;
       this.session = null; this.preparing = null; this.generation = 0; this.sequenceId = 0;
       this.playing = new Set(); this.playAt = 0; this.receivingFloor = null; this.receiveSequence = -1;
       this.volume = .8; this.muted = false; this.monitoring = false;
     }
     get listening() { return this.context?.state === 'running'; }
-    get ready() { return this.listening && Boolean(this.worklet && this.stream?.getAudioTracks().some(track => track.readyState === 'live')); }
+    get microphoneReady() { return Boolean(this.worklet && this.stream?.getAudioTracks().some(track => track.readyState === 'live')); }
+    get ready() { return this.listening && this.microphoneReady; }
     changed() { this.onState({ ready: this.ready, listening: this.listening }); }
 
     // Appel direct depuis un clic : Safari/Chrome autorisent alors la sortie son.
@@ -34,30 +35,36 @@
           this.changed();
         };
       }
-      await this.context.resume();
+      let timer;
+      try {
+        await Promise.race([this.context.resume(), new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Touchez « Activer l’écoute » pour reprendre le son.')), 3000); })]);
+      } finally { clearTimeout(timer); }
       this.changed();
       if (!this.listening) throw new Error('Touchez « Activer l’écoute » pour autoriser le haut-parleur.');
     }
     prepareMicrophone() {
       if (this.preparing) return this.preparing;
-      if (this.ready) return this.enableListening();
+      if (this.microphoneReady) return this.enableListening();
       const generation = this.generation;
       if (!navigator.mediaDevices?.getUserMedia || !window.isSecureContext) return Promise.reject(new Error('Le microphone nécessite une adresse HTTPS et Safari ou Chrome à jour.'));
       // Les deux demandes partent avant le premier await, pendant le geste utilisateur.
-      const listening = this.enableListening();
+      // Une autorisation micro peut interrompre le contexte sur iPhone.
+      // Le reprendre une seconde fois après getUserMedia, sans rouvrir un micro
+      // déjà disponible lorsque seule la lecture a été suspendue.
+      this.enableListening().catch(() => {});
       const microphone = navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false });
       this.preparing = (async () => {
         let acquired = null;
         try {
-          const results = await Promise.allSettled([listening, microphone]);
-          if (results[1].status === 'fulfilled') acquired = results[1].value;
-          const failure = results.find(result => result.status === 'rejected');
-          if (failure) throw failure.reason;
+          acquired = await microphone;
           if (generation !== this.generation) { acquired.getTracks().forEach(track => track.stop()); return; }
+          await this.enableListening();
           if (!this.context.audioWorklet || typeof AudioWorkletNode === 'undefined') throw new Error('Mettez votre navigateur à jour pour utiliser le microphone radio.');
           acquired.getAudioTracks().forEach(track => { track.enabled = false; });
           await this.context.audioWorklet.addModule('/syrius/audio-worklet.js');
           if (generation !== this.generation) { acquired.getTracks().forEach(track => track.stop()); return; }
+          const previousStream = this.stream, previousInput = this.input, previousWorklet = this.worklet, previousSilent = this.silent;
+          previousStream?.getTracks().forEach(track => track.stop()); previousInput?.disconnect(); previousWorklet?.disconnect(); previousSilent?.disconnect();
           this.stream = acquired;
           this.input = this.context.createMediaStreamSource(acquired);
           this.worklet = new AudioWorkletNode(this.context, 'syrius-microphone', { numberOfInputs: 1, numberOfOutputs: 1, channelCount: 1 });
@@ -70,7 +77,11 @@
             if (data.type === 'pcm') this.queuePacket(session, new Int16Array(data.samples));
             if (data.type === 'stopped') session.flushed?.();
           };
-          acquired.getAudioTracks().forEach(track => { track.onended = () => { this.onInterrupted(); this.changed(); }; });
+          acquired.getAudioTracks().forEach(track => {
+            track.onended = () => { this.onInterrupted(); this.changed(); };
+            track.onmute = () => { if (this.session) this.onInterrupted(); this.changed(); };
+            track.onunmute = () => this.changed();
+          });
         } catch (error) {
           acquired?.getTracks().forEach(track => track.stop());
           throw error;
@@ -81,21 +92,32 @@
     startCapture(floorId) {
       if (!this.ready || this.session) throw new Error('Activez la radio avant de maintenir le PTT.');
       clearTimeout(this.monitorTimer); this.monitoring = false;
-      this.session = { id: ++this.sequenceId, floorId, sequence: 0, pending: 0, chain: Promise.resolve(), failed: false, stop: null };
+      this.session = { id: ++this.sequenceId, floorId, sequence: 0, queue: [], inFlight: 0, sending: false, chain: Promise.resolve(), failed: false, stop: null };
       this.worklet.port.postMessage({ type: 'start', id: this.session.id });
       this.stream.getAudioTracks().forEach(track => { track.enabled = true; });
     }
     queuePacket(session, samples) {
       if (session.failed || !samples.length) return;
-      if (session.pending >= 6) { this.fail(session, new Error('Le réseau est trop lent pour transmettre. Relâchez puis réessayez.')); return; }
+      if (session.queue.length + session.inFlight >= 8) { this.fail(session, new Error('La connexion n’arrive plus à envoyer le son en direct. Relâchez puis réessayez.')); return; }
       const packet = { floorId: session.floorId, sequence: session.sequence++, sampleRate: SAMPLE_RATE, pcm: encode(samples) };
-      session.pending++;
-      session.chain = session.chain.then(async () => {
-        if (session.failed) return;
-        const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 2200);
-        try { await this.send(packet, controller.signal); }
-        finally { clearTimeout(timer); }
-      }).catch(error => this.fail(session, error)).finally(() => { session.pending--; });
+      session.queue.push(packet);
+      if (!session.sending) session.chain = this.pump(session);
+    }
+    async pump(session) {
+      session.sending = true;
+      try {
+        while (session.queue.length && !session.failed) {
+          // En secours HTTP, rassembler les fragments arrivés pendant le trajet
+          // précédent : un aller-retour de 400 ms ne réduit plus la cadence à
+          // un seul fragment de 160 ms. En WSS, send résout dès la mise en file.
+          const packets = session.queue.splice(0, 4); session.inFlight = packets.length;
+          const body = packets.length === 1 ? packets[0] : { floorId: session.floorId, packets };
+          const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 3000);
+          try { await this.send(body, controller.signal); }
+          finally { clearTimeout(timer); session.inFlight = 0; }
+        }
+      } catch (error) { this.fail(session, error); }
+      finally { session.sending = false; }
     }
     fail(session, error) {
       if (session.failed) return;
@@ -117,6 +139,10 @@
         // Le dernier fragment arrive avant l’accusé de fin du worklet. Ne libérer
         // l’alternat serveur qu’une fois les paquets déjà capturés expédiés.
         await session.chain;
+        if (!session.failed) {
+          try { await this.finish(session.floorId, session.sequence - 1); }
+          catch (error) { this.fail(session, error); }
+        }
         if (this.session === session) this.session = null;
       })();
       return session.stop;
@@ -132,6 +158,11 @@
         this.changed();
       });
       this.changed();
+    }
+    pauseMicrophone() {
+      // Conserver la piste déjà autorisée évite une nouvelle demande Safari au
+      // changement d’écran, au retour au premier plan ou après une reconnexion.
+      const stopped = this.stopCapture(); this.stopMicrophoneTest(); return stopped;
     }
     setVolume(value, muted = false) {
       this.volume = Math.max(0, Math.min(1, value)); this.muted = muted;

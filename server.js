@@ -1097,12 +1097,13 @@ mountCentralAdmin(app,{
   loadPhenix:load,
   savePhenix:save,
   sessionSecret:EFFECTIVE_SESSION_SECRET,
-  isProd:IS_PROD
+  isProd:IS_PROD,
+  onAppearanceChanged: appId => { if (appId === 'syrius') syrius.refreshAppearance(); }
 });
 
 // Console radio SYRIUS : comptes et droits du centre d'administration PHENIX.
 const { mountSyrius } = require('./syrius-router');
-mountSyrius(app, { loadPhenix: load, passwordExpired });
+const syrius = mountSyrius(app, { loadPhenix: load, passwordExpired });
 
 // Portail d'accès professionnel (isolé de PHENIX)
 const { mountPortal } = require('./portal-router');
@@ -1114,5 +1115,6 @@ app.use((err,req,res,next)=>{
   res.status(500).json({error:'Erreur interne du serveur'});
 });
 
-app.listen(PORT,'0.0.0.0',()=>console.log('PHENIX sécurisé prêt sur le port '+PORT));
+const server = app.listen(PORT,'0.0.0.0',()=>console.log('PHENIX sécurisé prêt sur le port '+PORT));
+syrius.attachServer(server);
 

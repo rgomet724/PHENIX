@@ -18,9 +18,14 @@
   let callsign = readPreference('callsign') || '', myStatus = readPreference('status') || 'available';
   const initials = name => String(name || '?').split(/[\s·]+/).filter(Boolean).slice(0, 2).map(word => word[0]).join('').toUpperCase();
   const time = value => new Date(value).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
-  const radio = new window.SyriusAudio({
-    send: (packet, signal) => request('/audio', { clientId, ...packet }, 'POST', signal),
+  const transport = new window.SyriusAudioTransport({ clientId, request,
     onState: () => renderAudio(),
+    onLost: error => { if (holding || transmitting) { stopSpeaking(); toast(error.message, true); } }
+  });
+  const radio = new window.SyriusAudio({
+    send: (packet, signal) => transport.send(packet, signal),
+    finish: (floorId, sequence) => transport.finish(floorId, sequence),
+    onState: () => renderRadio(),
     onInterrupted: () => { if (holding || transmitting) stopSpeaking(); },
     onError: error => { stopSpeaking(); toast(error.message, true); },
     onLevel: level => {
@@ -68,7 +73,7 @@
 
   function showAuth(message) {
     connected = false; desiredChannel = null;
-    source?.close(); source = null; stopSpeaking(); stopLocation(); radio.resetPlayback(); radio.disableMicrophone(); state = null;
+    source?.close(); source = null; stopSpeaking(); transport.close(); stopLocation(); radio.resetPlayback(); radio.disableMicrophone(); state = null;
     $('boot-screen').hidden = true; $('app-shell').hidden = true; $('auth-screen').hidden = false;
     if (message) showError('login-error', message);
   }
@@ -85,7 +90,7 @@
     source?.close(); source = new EventSource(`${API}/stream?clientId=${encodeURIComponent(clientId)}`);
     let initialized = false;
     source.onopen = () => { connected = true; initialized = false; renderConnection(); };
-    source.onerror = () => { connected = false; stopSpeaking(); radio.resetPlayback(); renderConnection(); renderRadio(); };
+    source.onerror = () => { connected = false; stopSpeaking(); transport.close(); radio.resetPlayback(); renderConnection(); renderRadio(); };
     source.addEventListener('expired', () => showAuth('Votre session ou votre accès SYRIUS a expiré.'));
     source.addEventListener('audio', event => {
       const packet = JSON.parse(event.data), channel = state?.channels.find(item => item.id === state.channelId);
@@ -100,7 +105,7 @@
       if (!state.channels.some(channel => channel.id === desiredChannel && !channel.archived)) desiredChannel = null;
       const currentFloor = state.channels.find(channel => channel.id === state.channelId)?.floor;
       if (previousChannel !== state.channelId || (currentFloor && previousFloor !== currentFloor.id)) radio.resetPlayback();
-      if (previousChannel && !state.channelId) radio.disableMicrophone();
+      if (previousChannel && !state.channelId) { radio.pauseMicrophone(); transport.close(); }
       if (transmitting && currentFloor?.clientId !== clientId) stopSpeaking();
       if (geoWatch !== null && !state.channelId) stopLocation();
       if (state.user.role !== 'admin' && view === 'admin') setView('console');
@@ -118,12 +123,7 @@
     if (!state) return;
     $('user-name').textContent = state.user.name; $('user-initials').textContent = initials(state.user.name);
     $('user-role').textContent = state.user.role === 'admin' ? 'Administrateur radio' : 'Opérateur radio';
-    if (state.appearance) {
-      document.documentElement.style.setProperty('--navy', state.appearance.primaryColor);
-      document.documentElement.style.setProperty('--blue', state.appearance.accentColor);
-      $('main-content').style.backgroundColor = state.appearance.backgroundColor;
-      document.querySelectorAll('.wordmark').forEach(node => { node.textContent = state.appearance.title === 'SYRIUS' ? 'syrius' : state.appearance.title; });
-    }
+    window.applySyriusAppearance(state.appearance);
     document.querySelectorAll('.admin-only').forEach(node => { node.hidden = state.user.role !== 'admin'; });
     $('my-callsign').textContent = callsign || state.user.name;
     $('my-status').textContent = STATUS[myStatus] || 'Disponible';
@@ -169,15 +169,16 @@
     const floor = joined ? channel.floor : null;
     const me = floor?.clientId === clientId;
     $('selected-channel-name').textContent = channel?.name || 'Aucune conférence ouverte';
-    $('call-card').style.setProperty('--channel-color', channel?.color || COLORS[0]);
+    $('call-card').style.setProperty('--channel-color', state.appearance?.accentColor || channel?.color || COLORS[0]);
     $('call-member-count').textContent = channel?.participantCount || 0;
     $('floor-label').textContent = !connected ? 'Liaison interrompue' : !joined ? 'Canal disponible' : floor ? `${me ? 'Transmission' : 'Réception'} · ${floor.name}` : 'Écoute · canal disponible';
     $('floor-dot').className = `floor-dot${floor ? me ? ' live' : ' busy' : ''}`;
-    $('ptt-button').disabled = !connected || !joined || !radio.ready || Boolean(stopping) || Boolean(floor && !me);
+    setPttDisabled(!connected || !joined || !radio.microphoneReady || preparingRadio || Boolean(stopping) || Boolean(floor && !me));
+    $('ptt-button').setAttribute('aria-pressed', String(transmitting && me));
     $('ptt-button').classList.toggle('transmitting', transmitting && me);
     $('ptt-button').classList.toggle('receiving', Boolean(floor && !me));
     $('ptt-text').textContent = transmitting && me ? 'ÉMISSION' : floor && !me ? 'ÉCOUTE' : starting ? 'CONNEXION' : 'PTT';
-    $('ptt-hint').textContent = !joined ? 'Rejoignez une conférence' : stopping ? 'Fin d’émission…' : !radio.ready ? 'Activez la radio pour parler' : transmitting ? 'Vous avez la parole' : floor && !me ? `${floor.name} a la parole` : starting ? 'Prise de parole…' : 'Maintenir pour parler';
+    $('ptt-hint').textContent = !joined ? 'Rejoignez une conférence' : stopping ? 'Fin d’émission…' : preparingRadio ? 'Activation de la radio…' : !radio.microphoneReady ? 'Activez la radio pour parler' : transmitting ? 'Vous avez la parole' : floor && !me ? `${floor.name} a la parole` : starting ? 'Prise de parole…' : !radio.listening ? 'Maintenir pour reprendre la radio' : 'Maintenir pour parler';
     $('mobile-channel-name').textContent = channel?.name || 'Choisir une conférence';
     $('mobile-channel-detail').textContent = joined ? `${channel.participantCount} poste${channel.participantCount > 1 ? 's' : ''} · conférence rejointe` : 'Touchez pour choisir votre groupe';
     $('join-channel').disabled = !connected || !channel || joining;
@@ -199,15 +200,17 @@
   }
   function renderAudio() {
     const joined = Boolean(state?.channelId && state.channelId === selectedId);
-    $('prepare-radio').hidden = radio.ready || !joined;
+    $('prepare-radio').hidden = (radio.ready && !preparingRadio) || !joined;
     $('prepare-radio').disabled = preparingRadio || !connected;
-    $('prepare-radio').textContent = preparingRadio ? 'Autorisation du microphone…' : 'Activer le micro et le son';
+    $('prepare-radio').textContent = preparingRadio ? 'Activation de la radio…' : 'Activer le micro et le son';
     $('audio-unlock').hidden = !joined || radio.listening;
     $('audio-state').textContent = !joined ? 'Choisissez puis rejoignez une conférence' : !radio.listening ? 'Écoute à activer' : radio.ready ? 'Son activé · micro transmis pendant le PTT' : 'Écoute activée · microphone à activer';
     $('audio-state').classList.toggle('ready', joined && radio.ready);
-    $('audio-connection-detail').textContent = connected ? 'Serveur connecté · audio relayé en HTTPS' : 'Serveur déconnecté · reconnexion en cours';
-    $('ptt-button').disabled = !connected || !joined || !radio.ready || Boolean(stopping) || Boolean(selectedChannel()?.floor && selectedChannel().floor.clientId !== clientId);
+    $('audio-connection-detail').textContent = !connected ? 'Serveur déconnecté · reconnexion en cours' : transport.ready ? 'Connexion audio continue active' : 'Serveur connecté · liaison audio de secours HTTPS';
+    setPttDisabled(!connected || !joined || !radio.microphoneReady || preparingRadio || Boolean(stopping) || Boolean(selectedChannel()?.floor && selectedChannel().floor.clientId !== clientId));
   }
+  function setPttDisabled(disabled) { $('ptt-button').setAttribute('aria-disabled', String(Boolean(disabled))); }
+  const pttDisabled = () => $('ptt-button').getAttribute('aria-disabled') === 'true';
   function renderActivity() {
     const channel = selectedChannel(); $('activity-channel').textContent = channel?.name || '';
     $('message-input').disabled = !channel || !connected; $('send-message').disabled = !channel || !connected;
@@ -296,7 +299,7 @@
     joining = true; desiredChannel = id; stopLocation(); renderRadio();
     try {
       await stopSpeaking(); radio.resetPlayback();
-      if (!id) radio.disableMicrophone();
+      if (!id) { radio.pauseMicrophone(); transport.close(); }
       await request('/presence', { clientId, channelId: id }); await listening;
     }
     catch (error) { desiredChannel = state.channelId; throw error; }
@@ -334,7 +337,10 @@
   async function prepareRadio() {
     if (preparingRadio) return;
     preparingRadio = true; renderAudio();
-    try { await radio.prepareMicrophone(); if (radio.ready) toast('Radio prête. Maintenez PTT pour parler.'); }
+    try {
+      await Promise.all([radio.prepareMicrophone(), transport.open()]);
+      if (radio.ready) toast('Radio prête. Maintenez PTT pour parler.');
+    }
     catch (error) { toast(microphoneError(error), true); }
     finally { preparingRadio = false; renderRadio(); }
   }
@@ -351,12 +357,14 @@
     renderRadio(); return stopping;
   }
   async function startSpeaking() {
-    if (starting || holding || stopping || !connected || state?.channelId !== selectedId || !radio.ready) return;
+    if (starting || holding || stopping || preparingRadio || !connected || state?.channelId !== selectedId || !radio.microphoneReady) return;
     starting = true; holding = true; const currentAttempt = ++attempt; renderRadio();
     try {
+      await Promise.all([radio.enableListening(), transport.open()]);
+      if (!holding || currentAttempt !== attempt) return;
       const result = await request('/floor', { clientId, action: 'claim' });
       if (!holding || currentAttempt !== attempt) { await request('/floor', { clientId, action: 'release' }); return; }
-      grant = result.floor; radio.startCapture(grant.id); transmitting = true; renderRadio();
+      grant = result.floor; radio.startCapture(grant.id); transport.startFloor(grant.id); transmitting = true; renderRadio();
       renewTimer = setInterval(() => request('/floor', { clientId, action: 'renew' }).catch(error => { stopSpeaking(); toast(error.message, true); }), 7000);
       maxTalkTimer = setTimeout(() => { stopSpeaking(); toast('Alternat libéré après 60 secondes.'); }, 60000);
       if (!result.recipients.length) toast('Vous êtes seul dans cette conférence. Connectez un second poste pour vous entendre.');
@@ -496,21 +504,34 @@
     catch (error) { toast(error.message, true); } finally { event.submitter.disabled = false; }
   });
   $('share-location').addEventListener('click', toggleLocation);
-  $('ptt-button').addEventListener('pointerdown', event => { if (event.button !== 0 || $('ptt-button').disabled) return; event.preventDefault(); $('ptt-button').setPointerCapture(event.pointerId); startSpeaking(); });
-  $('ptt-button').addEventListener('pointerup', stopSpeaking); $('ptt-button').addEventListener('pointercancel', stopSpeaking);
-  $('ptt-button').addEventListener('lostpointercapture', () => { if (holding) stopSpeaking(); });
-  $('ptt-button').addEventListener('contextmenu', event => event.preventDefault());
+  window.bindSyriusPtt({ button: $('ptt-button'), surface: $('ptt-button').closest('.ptt-wrap'), canStart: () => !pttDisabled(), start: startSpeaking, stop: stopSpeaking });
   document.addEventListener('keydown', event => {
-    if (event.code !== 'Space' || event.repeat || document.querySelector('dialog[open]') || /INPUT|TEXTAREA|SELECT|A/.test(event.target.tagName) || event.target.isContentEditable || $('ptt-button').disabled) return;
+    if (!['Space', 'Enter'].includes(event.code) || (event.code === 'Enter' && event.target !== $('ptt-button')) || event.repeat || document.querySelector('dialog[open]') || /INPUT|TEXTAREA|SELECT|A/.test(event.target.tagName) || event.target.isContentEditable || pttDisabled()) return;
     if (event.target.tagName === 'BUTTON' && event.target !== $('ptt-button')) return;
     event.preventDefault(); startSpeaking();
   });
-  document.addEventListener('keyup', event => { if (event.code === 'Space' && holding) { event.preventDefault(); stopSpeaking(); } });
-  window.addEventListener('blur', stopSpeaking);
+  document.addEventListener('keyup', event => { if (['Space', 'Enter'].includes(event.code) && holding) { event.preventDefault(); stopSpeaking(); } });
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) { stopSpeaking(); radio.disableMicrophone(); radio.resetPlayback(); }
-    else renderRadio();
+    if (document.hidden) { stopSpeaking(); radio.pauseMicrophone(); radio.resetPlayback(); }
+    else {
+      if (radio.microphoneReady) radio.enableListening().catch(() => renderRadio());
+      loadAppearance(); renderRadio();
+    }
   });
+  // Reprendre le haut-parleur sur le premier geste après une suspension iOS,
+  // en réutilisant le contexte et sans demander à nouveau le microphone.
+  document.addEventListener('pointerdown', () => {
+    if (radio.context && !radio.listening) radio.enableListening().catch(() => {});
+  }, { capture: true });
+  async function loadAppearance() {
+    try {
+      const response = await fetch('/syrius/branding', { cache: 'no-store' });
+      if (!response.ok) return;
+      const result = await response.json();
+      if (state) state.appearance = result.appearance;
+      window.applySyriusAppearance(result.appearance);
+    } catch { /* la liaison radio gère déjà l’état de connexion */ }
+  }
   function updateVolume() {
     radio.setVolume(audioVolume, muted);
     $('volume-value').textContent = muted ? '0' : Math.round(audioVolume * 100);
@@ -535,7 +556,7 @@
   if ('serviceWorker' in navigator && window.isSecureContext) {
     navigator.serviceWorker.register('/syrius/sw.js', { scope: '/syrius/', updateViaCache: 'none' }).catch(() => {});
   }
-  window.addEventListener('offline', () => { connected = false; stopSpeaking(); radio.resetPlayback(); renderRadio(); renderConnection(); });
+  window.addEventListener('offline', () => { connected = false; stopSpeaking(); transport.close(); radio.resetPlayback(); renderRadio(); renderConnection(); });
   $('map-zoom-in').addEventListener('click', () => { zoom = Math.min(18, zoom + 1); drawMap(); });
   $('map-zoom-out').addEventListener('click', () => { zoom = Math.max(8, zoom - 1); drawMap(); });
   $('map-center').addEventListener('click', () => { const position = state?.peers.find(peer => peer.clientId === clientId)?.position; center = position || { lat: 46.781, lng: 4.854 }; zoom = 14; drawMap(); });
@@ -548,5 +569,5 @@
   });
   new ResizeObserver(scheduleMap).observe($('tactical-map'));
   function tick() { $('clock').textContent = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Europe/Paris' }); }
-  tick(); setInterval(tick, 1000); document.body.dataset.view = 'console'; bootstrap();
+  tick(); setInterval(tick, 1000); document.body.dataset.view = 'console'; loadAppearance(); bootstrap();
 })();
