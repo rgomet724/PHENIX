@@ -7,6 +7,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { WebSocketServer, WebSocket } = require('ws');
+const voiceCodec = require('./syrius/audio-codec');
 const { appAccess, appearanceFor } = require('./central-config');
 
 const COLORS = ['#4264d7', '#7653b3', '#198b78', '#bd7c2e', '#bd4d68'];
@@ -43,6 +44,7 @@ function mountSyrius(app, options) {
   const audioTickets = new Map();
   let socketServer = null, httpServer = null, socketHeartbeat = null;
   const brandAssets = new Map();
+  let revision = 0;
   const api = express.Router();
   const users = () => options.loadPhenix().users || [];
   const access = user => appAccess(user, 'syrius');
@@ -91,7 +93,7 @@ function mountSyrius(app, options) {
     const visible = data.channels.filter(channel => allowed(user, channel) && (isAdmin(user) || !channel.archived));
     const ids = new Set(visible.map(channel => channel.id));
     return {
-      user: identity(user), clientId: client?.id || null, channelId: client?.channelId || null,
+      revision, user: identity(user), clientId: client?.id || null, channelId: client?.channelId || null,
       channels: visible.map(channel => ({ ...channel,
         participantCount: [...clients.values()].filter(peer => peer.channelId === channel.id && usable(peer.user, channel)).length,
         floor: floors.get(channel.id) || null
@@ -101,7 +103,7 @@ function mountSyrius(app, options) {
       events: data.events.filter(item => ids.has(item.channelId)).slice(0, 150),
       alerts: data.alerts.filter(item => ids.has(item.channelId)).slice(0, 100),
       users: isAdmin(user) ? users().filter(item => access(item).enabled).map(identity) : [],
-      audioTransport: socketServer ? 'wss-pcm16' : 'https-pcm16', audioSampleRate: 16000, appearance: branding()
+      audioTransport: socketServer ? 'wss-voice' : 'https-voice', audioSampleRate: 8000, audioCodecs: ['mulaw8', 'pcm16'], appearance: branding()
     };
   }
 
@@ -135,6 +137,7 @@ function mountSyrius(app, options) {
   }
 
   function broadcast() {
+    revision++;
     reconcile();
     for (const client of clients.values()) send(client, 'state', snapshot(client.user, client));
   }
@@ -259,6 +262,7 @@ function mountSyrius(app, options) {
     }
     if (req.body.callsign !== undefined) client.callsign = text(req.body.callsign, 40) || nameOf(client.user);
     if (['available', 'busy', 'away'].includes(req.body.status)) client.status = req.body.status;
+    if (Array.isArray(req.body.audioCodecs)) client.audioCodecs = req.body.audioCodecs.includes('mulaw8') ? ['mulaw8'] : [];
     if (Object.hasOwn(req.body, 'position')) {
       const position = req.body.position;
       if (position === null) client.position = null;
@@ -346,7 +350,7 @@ function mountSyrius(app, options) {
     const grant = floor || { clientId: client.id, userId: client.user.id, name: client.callsign, startedAt: Date.now(), id: crypto.randomUUID() };
     grant.expiresAt = Date.now() + LEASE_MS;
     floors.set(channel.id, grant);
-    broadcast(); res.json({ ok: true, floor: grant, recipients: peersFor(client.user, client).filter(peer => peer.clientId !== client.id).map(peer => peer.clientId) });
+    broadcast(); res.json({ ok: true, revision, floor: grant, recipients: peersFor(client.user, client).filter(peer => peer.clientId !== client.id).map(peer => peer.clientId) });
   });
 
   api.post('/signal', (req, res) => {
@@ -374,25 +378,33 @@ function mountSyrius(app, options) {
     let lastSequence = client.audioFloorId === floor.id ? client.audioSequence : -1;
     let totalSamples = client.audioFloorId === floor.id ? client.audioSamples : 0;
     const validated = packets.map(packet => {
-      const { pcm, sequence, sampleRate } = packet || {};
-      if (sampleRate !== 16000 || !Number.isInteger(sequence) || sequence < 0 || sequence > 5000 ||
+      const { pcm, sequence, sampleRate, codec } = packet || {};
+      const compressed = codec === 'mulaw8';
+      if ((codec && !['mulaw8', 'pcm16'].includes(codec)) || sampleRate !== (compressed ? 8000 : 16000) || !Number.isInteger(sequence) || sequence < 0 || sequence > 5000 ||
           (packet.floorId !== undefined && packet.floorId !== floor.id) ||
           typeof pcm !== 'string' || pcm.length < 4 || pcm.length > 8536 ||
           !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(pcm)) fail(400, 'Paquet audio invalide.');
       const bytes = Buffer.from(pcm, 'base64');
-      if (!bytes.length || bytes.length > 6400 || bytes.length % 2 || bytes.toString('base64') !== pcm) fail(400, 'Données audio invalides.');
+      if (!bytes.length || bytes.length > (compressed ? 1600 : 6400) || (!compressed && bytes.length % 2) || bytes.toString('base64') !== pcm) fail(400, 'Données audio invalides.');
       if (sequence <= lastSequence) fail(409, 'Ce paquet audio a déjà été traité.');
-      lastSequence = sequence; totalSamples += bytes.length / 2;
-      return { from: client.id, channelId: channel.id, floorId: floor.id, sequence, sampleRate, pcm };
+      lastSequence = sequence; totalSamples += compressed ? bytes.length * 2 : bytes.length / 2;
+      return { from: client.id, channelId: channel.id, floorId: floor.id, sequence, sampleRate, pcm, ...(codec ? { codec } : {}) };
     });
     if (totalSamples > ((Date.now() - floor.startedAt + 1500) / 1000) * 16000) fail(429, 'Le flux audio dépasse la cadence autorisée.');
     client.audioFloorId = floor.id; client.audioSequence = lastSequence; client.audioSamples = totalSamples;
-    let recipients = 0;
+    let recipients = 0, legacyPackets;
     for (const target of clients.values()) {
       const currentUser = userFor(target.user.id);
       if (target.id === client.id || target.channelId !== channel.id || !currentUser || !usable(currentUser, channel) || options.passwordExpired?.(currentUser)) continue;
-      if (target.res.writableLength > 128 * 1024) continue;
-      for (const packet of validated) send(target, 'audio', packet);
+      const useSocket = target.receiveAudio && target.audioSocket?.readyState === WebSocket.OPEN;
+      const pendingLimit = target.audioCodecs?.includes('mulaw8') ? 16000 : 64000;
+      if ((useSocket ? target.audioSocket.bufferedAmount : target.res.writableLength) > pendingLimit) continue;
+      const packets = target.audioCodecs?.includes('mulaw8') ? validated : (legacyPackets ||= validated.map(voiceCodec.legacy));
+      for (const packet of packets) {
+        const outgoing = { ...packet, serial: target.audioSerial = (target.audioSerial || 0) + 1 };
+        if (useSocket) target.audioSocket.send(JSON.stringify({ type: 'audio', ...outgoing }));
+        else send(target, 'audio', outgoing);
+      }
       recipients++;
     }
     return { ok: true, recipients };
@@ -430,7 +442,7 @@ function mountSyrius(app, options) {
       ws.on('close', () => {
         clearTimeout(authTimeout);
         if (client?.audioSocket === ws) {
-          client.audioSocket = null;
+          client.audioSocket = null; client.receiveAudio = false;
           if (clients.get(client.id) === client) { release(client.id); broadcast(); }
         }
       });
@@ -449,11 +461,14 @@ function mountSyrius(app, options) {
             if (!candidate || candidate.sessionId !== ticket.sessionId || !user || !access(user).enabled || options.passwordExpired?.(user)) fail(401, 'Session audio terminée.');
             client = candidate; clearTimeout(authTimeout);
             const previous = client.audioSocket; client.audioSocket = ws; previous?.close(1000, 'Liaison remplacée');
+            client.receiveAudio = body.receiveAudio === true;
+            if (Array.isArray(body.audioCodecs)) client.audioCodecs = body.audioCodecs.includes('mulaw8') ? ['mulaw8'] : [];
             ws.send(JSON.stringify({ type: 'ready' })); return;
           }
           const user = userFor(client.user.id);
           if (clients.get(client.id) !== client || client.audioSocket !== ws || !user || !access(user).enabled || options.passwordExpired?.(user)) fail(401, 'Session audio terminée.');
           if (body.type === 'audio') relayAudio(client, user, body);
+          else if (body.type === 'ping') ws.send(JSON.stringify({ type: 'pong' }));
           else if (body.type === 'flush') {
             const floor = floors.get(client.channelId);
             const sequence = client.audioFloorId === body.floorId ? client.audioSequence : -1;

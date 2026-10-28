@@ -1,13 +1,13 @@
 'use strict';
 
 // La cadence du matériel varie (44,1 / 48 kHz). Les paquets réseau sont toujours
-// du PCM16 mono à 16 kHz ; un paquet représente 160 ms de parole.
+// du PCM16 mono à 16 kHz ; un paquet représente 120 ms de parole.
 class SyriusMicrophone extends AudioWorkletProcessor {
   constructor() {
     super();
     this.id = null;
     this.ratio = sampleRate / 16000;
-    this.packet = new Int16Array(2560);
+    this.packet = new Int16Array(1920);
     this.offset = 0;
     this.sum = 0;
     this.weight = 0;

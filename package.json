@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "test:syrius": "node --test test/syrius*.test.js"
+    "test:syrius": "node --test test/syrius*.test.js",
+    "test:syrius:soak": "node --test test/syrius-soak.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

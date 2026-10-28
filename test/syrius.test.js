@@ -79,7 +79,7 @@ test('SYRIUS : conférences, accès, persistance et signalisation entre deux pos
     const item = { next, events, close: () => controller.abort(), reading }; streams.push(item);
     await next('state'); return item;
   }
-  async function audioSocket(who, clientId, reusedTicket) {
+  async function audioSocket(who, clientId, reusedTicket, features = {}) {
     const issued = reusedTicket ? { data: { ticket: reusedTicket } } : await call('/audio-link', { clientId }, who);
     if (!reusedTicket) assert.equal(issued.status, 200);
     const ws = new WebSocket(`${origin.replace('http:', 'ws:')}/syrius/audio`, { origin }); sockets.push(ws);
@@ -96,7 +96,7 @@ test('SYRIUS : conférences, accès, persistance et signalisation entre deux pos
       const waiter = { type, resolve, timer: setTimeout(() => reject(new Error(`Message WSS ${type} non reçu`)), 2000) }; waiters.push(waiter);
     });
     await new Promise((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject); });
-    ws.send(JSON.stringify({ type: 'auth', clientId, ticket: issued.data.ticket }));
+    ws.send(JSON.stringify({ type: 'auth', clientId, ticket: issued.data.ticket, ...features }));
     return { ws, next, events, ticket: issued.data.ticket, send: body => ws.send(JSON.stringify(body)) };
   }
   const adminClient = 'test-admin-radio-poste', alphaClient = 'test-alpha-radio-poste';
@@ -243,6 +243,36 @@ test('SYRIUS : conférences, accès, persistance et signalisation entre deux pos
     assert.equal((await call('/audio', { ...batch, packets: [{ ...packet, sequence: 4 }, { ...packet, sequence: 3 }] }, 'alpha')).status, 409);
     assert.equal((await call('/audio', { ...packet, clientId: alphaClient, sequence: 4 }, 'alpha')).status, 200, 'le lot rejeté ne consomme pas le numéro 4');
     assert.equal((await call('/audio', { ...batch, packets: Array(5).fill(packet) }, 'alpha')).status, 400);
+  });
+  await t.test('La voix compressée arrive directement en WSS, reste privée et conserve le secours SSE et les anciens postes', async () => {
+    await call('/floor', { clientId: alphaClient, action: 'release' }, 'alpha');
+    const claim = await call('/floor', { clientId: alphaClient, action: 'claim' }, 'alpha'); floorId = claim.data.floor.id;
+    assert.ok(Number.isInteger(claim.data.revision));
+    await adminStream.next('state', value => value.revision === claim.data.revision);
+    const listener = await audioSocket('admin', adminClient, null, { receiveAudio: true, audioCodecs: ['mulaw8'] }); await listener.next('ready');
+    const speaker = await audioSocket('alpha', alphaClient); await speaker.next('ready');
+    speaker.send({ type: 'ping' }); await speaker.next('pong');
+    const bravoClient = 'test-bravo-compatibility-radio', bravoStream = await stream('bravo', bravoClient);
+    await call('/presence', { clientId: bravoClient, channelId: 'pm-general' }, 'bravo');
+    const encoded = require('../syrius/audio-codec').encode(new Int16Array(2560).fill(12000));
+    speaker.send({ type: 'audio', floorId, sequence: 0, ...encoded });
+    const received = await listener.next('audio'); assert.equal(received.codec, 'mulaw8'); assert.equal(received.pcm, encoded.pcm);
+    await call('/presence', { clientId: adminClient, callsign: 'CENTRAL WSS' });
+    await adminStream.next('state', value => value.peers.some(peer => peer.name === 'CENTRAL WSS'));
+    assert.ok(!adminStream.events.some(event => event.type === 'audio' && event.data.floorId === floorId), 'aucun doublon audio sur SSE');
+    assert.ok(!bravoStream.events.some(event => event.type === 'audio' && event.data.floorId === floorId), 'aucune fuite vers un autre groupe');
+    await call('/presence', { clientId: bravoClient, channelId: publicId }, 'bravo');
+    speaker.send({ type: 'audio', floorId, sequence: 1, ...encoded });
+    const legacy = await bravoStream.next('audio', packet => packet.floorId === floorId && packet.sequence === 1);
+    assert.equal(legacy.codec, undefined); assert.equal(legacy.sampleRate, 16000); assert.equal(Buffer.from(legacy.pcm, 'base64').length, 5120);
+    assert.equal((await listener.next('audio')).sequence, 1);
+    const closed = new Promise(resolve => listener.ws.once('close', resolve)); listener.ws.close(); await closed;
+    speaker.send({ type: 'audio', floorId, sequence: 2, ...encoded });
+    const fallback = await adminStream.next('audio', packet => packet.floorId === floorId && packet.sequence === 2);
+    assert.equal(fallback.codec, 'mulaw8'); assert.ok(fallback.serial > received.serial);
+    speaker.send({ type: 'flush', floorId, sequence: 2 }); await speaker.next('flushed');
+    await call('/floor', { clientId: alphaClient, action: 'release' }, 'alpha');
+    speaker.ws.close(); bravoStream.close();
   });
   await t.test('La position est partagée uniquement dans le groupe rejoint ; une alerte peut être acquittée', async () => {
     assert.equal((await call('/presence', { clientId: alphaClient, position: { lat: 46.781, lng: 4.854 } }, 'alpha')).status, 200);
