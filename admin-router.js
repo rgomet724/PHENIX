@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const { normalizePortalApp } = require('./app-navigation');
 const {
   APPLICATIONS,
   NOTIFICATION_EVENTS,
@@ -117,7 +118,7 @@ function portalDefaults() {
     ],
     apps: [{
       id: 'app-phenix', categoryId: 'cat-operationnel', name: 'PHENIX',
-      description: 'Plateforme opérationnelle', url: '/', logoData: '', accentColor: '#0878df', order: 10
+      description: 'Plateforme opérationnelle', url: '/phenix/', logoData: '', accentColor: '#0878df', order: 10
     }]
   };
 }
@@ -144,7 +145,7 @@ function mountCentralAdmin(app, deps = {}) {
         schemaVersion: 2,
         users: Array.isArray(parsed.users) ? parsed.users : [],
         categories: Array.isArray(parsed.categories) ? parsed.categories : defaults.categories,
-        apps: Array.isArray(parsed.apps) ? parsed.apps : defaults.apps
+        apps: Array.isArray(parsed.apps) ? parsed.apps.map(normalizePortalApp) : defaults.apps
       };
     } catch (error) {
       console.error('[ADMIN] Lecture portal.json impossible:', error.message);
@@ -843,4 +844,5 @@ function mountCentralAdmin(app, deps = {}) {
 }
 
 module.exports = { mountCentralAdmin };
+
 

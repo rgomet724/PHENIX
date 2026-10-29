@@ -14,7 +14,8 @@ Ce patch ajoute une véritable page d’administration commune à PHENIX, au por
 - gestion des applications, catégories, liens, logos, couleurs et ordre d’affichage ;
 - personnalisation du titre, sous-titre, logo, fond, couleurs et icône d’onglet de chaque application ;
 - historique commun : administration, PHENIX, ATLAS et Arrêtés ;
-- navigation des tuiles dans la même fenêtre afin d’éviter la multiplication des fenêtres Web App.
+- ouverture des tuiles et liens d'applications dans un nouvel onglet ;
+- accueil ARGOS sur `https://pegase-2.onrender.com/` (ancien `/portail/` toujours accessible) et PHENIX sur `https://pegase-2.onrender.com/phenix/`.
 
 Les comptes et les données existantes ne sont pas supprimés. Les nouveaux réglages sont enregistrés sur le disque Render dans `/var/data/admin-center.json`.
 
@@ -43,6 +44,7 @@ Ne pas supprimer les autres fichiers déjà présents dans `public`, `portail` o
 
 - `admin-router.js`
 - `central-config.js`
+- `app-navigation.js`
 
 Dans `portail`, remplacer :
 
@@ -69,7 +71,7 @@ Il n’y a aucun changement à faire dans `package.json`, `package-lock.json` ou
 
 ## Vérification après déploiement
 
-1. Ouvrir `https://pegase-2.onrender.com/` et se connecter avec un compte PHENIX administrateur.
+1. Ouvrir `https://pegase-2.onrender.com/phenix/` et se connecter avec un compte PHENIX administrateur. L'adresse sans chemin ouvre désormais le portail ARGOS.
 2. Cliquer sur **Administration centrale**, ou ouvrir directement :
    `https://pegase-2.onrender.com/portail/administration/`
 3. Vérifier les onglets : Utilisateurs, Accès et rôles, Applications, Apparence, Historique et Sécurité.
@@ -82,3 +84,4 @@ Si une ancienne version reste affichée, effectuer `Ctrl + F5` une fois après l
 Dans **Sécurité**, choisir le nombre minimal de caractères souhaité. La valeur par défaut est 6 et la valeur minimale autorisée est 4.
 
 Dans **Accès et rôles**, sélectionner ensuite chaque utilisateur et régler séparément ses droits PHENIX, ARGOS, ATLAS et Arrêtés.
+

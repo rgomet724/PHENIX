@@ -8,6 +8,7 @@ const FileStore = require('session-file-store')(session);
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const { mountApplicationPages } = require('./app-navigation');
 const {
   appAccess,
   loadAdminConfig,
@@ -459,13 +460,7 @@ app.use('/api', (req,res,next)=>{
   next();
 });
 
-app.use(express.static(path.join(__dirname,'public'), {
-  etag:true,
-  maxAge:0,
-  setHeaders(res,filePath){
-    if(filePath.endsWith('.html')) res.setHeader('Cache-Control','no-store');
-  }
-}));
+mountApplicationPages(app);
 
 app.get('/api/status', (req,res)=>{
   const d=load();
@@ -1117,4 +1112,5 @@ app.use((err,req,res,next)=>{
 
 const server = app.listen(PORT,'0.0.0.0',()=>console.log('PHENIX sécurisé prêt sur le port '+PORT));
 syrius.attachServer(server);
+
 

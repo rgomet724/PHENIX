@@ -45,6 +45,22 @@ test('Intégration avec le serveur PHENIX, le portail ARGOS et l’administratio
     child.once('exit', code => { clearTimeout(timer); reject(new Error(`Serveur arrêté (${code}) : ${output}`)); });
   });
   const origin = `http://127.0.0.1:${port}`;
+  const home = await fetch(`${origin}/`);
+  assert.equal(home.status, 200);
+  assert.equal(home.url, `${origin}/`, 'ARGOS reste affiché à la racine');
+  assert.match(await home.text(), /<title>.*ARGOS/i);
+  assert.match(home.headers.get('cache-control'), /no-store/);
+  assert.match(await (await fetch(`${origin}/portail/`)).text(), /<title>.*ARGOS/i);
+  const phenixRedirect = await fetch(`${origin}/phenix?mode=test`, { redirect: 'manual' });
+  assert.equal(phenixRedirect.status, 302);
+  assert.equal(phenixRedirect.headers.get('location'), '/phenix/?mode=test');
+  const phenix = await fetch(`${origin}/phenix/`);
+  assert.equal(phenix.status, 200);
+  assert.match(await phenix.text(), /<title>PHENIX<\/title>/);
+  const phenixManifest = await (await fetch(`${origin}/manifest.json`)).json();
+  assert.equal(phenixManifest.start_url, '/phenix/');
+  assert.equal(phenixManifest.scope, '/phenix/');
+  assert.equal((await fetch(`${origin}/admin-theme.js`)).status, 200);
   const login = await fetch(`${origin}/syrius/api/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ login: 'integration-admin', password: 'integration-test-only' }) });
   assert.equal(login.status, 200);
   const cookie = login.headers.get('set-cookie').split(';')[0];
@@ -71,7 +87,9 @@ test('Intégration avec le serveur PHENIX, le portail ARGOS et l’administratio
   assert.match(permissions, /microphone=\(self\)/);
   const catalog = await fetch(`${origin}/portail/administration/api/catalog`, { headers: { cookie } });
   assert.equal(catalog.status, 200);
-  assert.ok((await catalog.json()).applications.some(app => app.id === 'syrius'));
+  const catalogData = await catalog.json();
+  assert.ok(catalogData.applications.some(app => app.id === 'syrius'));
+  assert.equal(catalogData.apps.find(app => app.id === 'app-phenix').url, '/phenix/');
   // Le réglage reste exclusivement dans le centre d’administration existant.
   const adminSession = await (await fetch(`${origin}/portail/administration/api/session`, { headers: { cookie } })).json();
   const streamController = new AbortController();
@@ -114,8 +132,9 @@ test('Intégration avec le serveur PHENIX, le portail ARGOS et l’administratio
   assert.equal(portalLogin.status, 200);
   const portal = await fetch(`${origin}/portail/api/portal`, { headers: { cookie: portalLogin.headers.get('set-cookie').split(';')[0] } });
   const portalData = await portal.json();
-  assert.ok(portalData.apps.some(app => app.url === '/'), JSON.stringify(portalData.apps));
+  assert.equal(portalData.apps.find(app => app.id === 'app-phenix').url, '/phenix/');
   assert.ok(portalData.apps.some(app => app.id === 'app-syrius' && app.url === '/syrius/'));
   const radioTile = portalData.apps.find(app => app.id === 'app-syrius');
   assert.equal(radioTile.name, 'Radio de test'); assert.equal(radioTile.logoData, logoData); assert.equal(radioTile.accentColor, '#a32478');
 });
+

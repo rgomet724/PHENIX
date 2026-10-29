@@ -76,8 +76,8 @@ function appCard(app) {
   const link = document.createElement('a');
   link.className = 'application-card';
   link.href = app.url;
-  // Navigation dans la même Web App : évite d’ouvrir une nouvelle fenêtre PWA à chaque tuile.
-  link.target = '_self';
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
   if (app.accentColor) link.style.borderLeft = `5px solid ${app.accentColor}`;
 
   const icon = document.createElement('div');
@@ -224,7 +224,7 @@ async function logout() {
 }
 
 function openAdmin() {
-  window.location.href = '/portail/administration/';
+  window.open('/portail/administration/', '_blank', 'noopener,noreferrer');
 }
 
 function closeAdmin() {
@@ -524,3 +524,4 @@ function bindEvents() {
 
 bindEvents();
 initialize();
+

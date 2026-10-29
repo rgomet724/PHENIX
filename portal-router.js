@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
+const { isPhenixAppUrl, normalizePortalApp } = require('./app-navigation');
 const { appAccess, appearanceFor, loadAdminConfig, policyForUser, portalAppAllowed } = require('./central-config');
 
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
@@ -144,7 +145,7 @@ function mountPortal(app) {
       apps: [
         {
           id: 'app-phenix', categoryId: 'cat-operationnel', name: 'PHENIX',
-          description: 'Plateforme opérationnelle', url: '/', logoData: '', order: 10
+          description: 'Plateforme opérationnelle', url: '/phenix/', logoData: '', order: 10
         }
       ]
     };
@@ -159,7 +160,7 @@ function mountPortal(app) {
         schemaVersion: 2,
         users: Array.isArray(parsed.users) ? parsed.users : [],
         categories: Array.isArray(parsed.categories) ? parsed.categories : base.categories,
-        apps: Array.isArray(parsed.apps) ? parsed.apps : base.apps
+        apps: Array.isArray(parsed.apps) ? parsed.apps.map(normalizePortalApp) : base.apps
       };
     } catch (err) {
       console.error('[PORTAIL] Lecture portal.json impossible:', err.message);
@@ -449,7 +450,7 @@ function mountPortal(app) {
         apps = apps.filter(item => {
           if (!portalAppAllowed(stored, item.id, config)) return false;
           const url = String(item.url || '');
-          if ((item.id === 'app-phenix' || url === '/') && !appAccess(stored, 'phenix', config).enabled) return false;
+          if ((item.id === 'app-phenix' || isPhenixAppUrl(url)) && !appAccess(stored, 'phenix', config).enabled) return false;
           if ((item.id === 'app-atlas' || url.startsWith('/portail/atlas')) && !appAccess(stored, 'atlas', config).enabled) return false;
           if ((item.id === 'app-arretes' || url.startsWith('/arretes') || url.includes('arretes-municipaux')) && !appAccess(stored, 'arretes', config).enabled) return false;
           if ((item.id === 'app-syrius' || url.startsWith('/syrius')) && !appAccess(stored, 'syrius', config).enabled) return false;
@@ -603,4 +604,5 @@ function mountPortal(app) {
 }
 
 module.exports = { mountPortal };
+
 

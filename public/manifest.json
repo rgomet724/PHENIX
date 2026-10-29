@@ -2,8 +2,8 @@
   "name": "PHENIX - Plateforme Hiérarchisée des Engagements et Interventions",
   "short_name": "PHENIX",
   "description": "Plateforme Hiérarchisée des Engagements et Interventions",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "/phenix/",
+  "scope": "/phenix/",
   "display": "standalone",
   "background_color": "#07111f",
   "theme_color": "#07111f",
@@ -23,3 +23,4 @@
     }
   ]
 }
+

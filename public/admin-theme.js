@@ -1,5 +1,14 @@
 'use strict';
 
+// Ce script est chargé après le script intégré de PHENIX.
+// La navigation reste disponible même si le chargement de l'apparence échoue.
+window.openArgosPortal = function openArgosPortal() {
+  window.open('/', '_blank', 'noopener,noreferrer');
+};
+window.openCentralAdmin = function openCentralAdmin() {
+  window.open('/portail/administration/', '_blank', 'noopener,noreferrer');
+};
+
 (async function applyCentralPhenixTheme() {
   try {
     const response = await fetch('/portail/administration/api/public/appearance/phenix', { cache: 'no-store' });
@@ -43,3 +52,4 @@
     console.warn('[PHENIX] Apparence centrale indisponible:', error.message);
   }
 })();
+
