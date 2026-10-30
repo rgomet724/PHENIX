@@ -61,6 +61,8 @@ test('Intégration avec le serveur PHENIX, le portail ARGOS et l’administratio
   assert.equal(phenixManifest.start_url, '/phenix/');
   assert.equal(phenixManifest.scope, '/phenix/');
   assert.equal((await fetch(`${origin}/admin-theme.js`)).status, 200);
+  assert.match(await (await fetch(`${origin}/dashboard/`)).text(), /ASTREINTE DIRECTION/);
+  assert.equal((await fetch(`${origin}/dashboard/api/state`)).status, 401);
   const login = await fetch(`${origin}/syrius/api/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ login: 'integration-admin', password: 'integration-test-only' }) });
   assert.equal(login.status, 200);
   const cookie = login.headers.get('set-cookie').split(';')[0];
@@ -89,6 +91,7 @@ test('Intégration avec le serveur PHENIX, le portail ARGOS et l’administratio
   assert.equal(catalog.status, 200);
   const catalogData = await catalog.json();
   assert.ok(catalogData.applications.some(app => app.id === 'syrius'));
+  assert.ok(catalogData.applications.some(app => app.id === 'dashboard' && app.roles.includes('superviseur')));
   assert.equal(catalogData.apps.find(app => app.id === 'app-phenix').url, '/phenix/');
   // Le réglage reste exclusivement dans le centre d’administration existant.
   const adminSession = await (await fetch(`${origin}/portail/administration/api/session`, { headers: { cookie } })).json();
@@ -134,6 +137,10 @@ test('Intégration avec le serveur PHENIX, le portail ARGOS et l’administratio
   const portalData = await portal.json();
   assert.equal(portalData.apps.find(app => app.id === 'app-phenix').url, '/phenix/');
   assert.ok(portalData.apps.some(app => app.id === 'app-syrius' && app.url === '/syrius/'));
+  assert.ok(portalData.apps.some(app => app.id === 'app-dashboard' && app.url === '/dashboard/'));
+  const serviceDashboard = await fetch(`${origin}/dashboard/api/state`, { headers: { cookie } });
+  assert.equal(serviceDashboard.status, 200);
+  assert.equal((await serviceDashboard.json()).user.canEdit, true);
   const radioTile = portalData.apps.find(app => app.id === 'app-syrius');
   assert.equal(radioTile.name, 'Radio de test'); assert.equal(radioTile.logoData, logoData); assert.equal(radioTile.accentColor, '#a32478');
 });

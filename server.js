@@ -1101,6 +1101,9 @@ const { mountSyrius } = require('./syrius-router');
 const syrius = mountSyrius(app, { loadPhenix: load, passwordExpired });
 
 // Portail d'accès professionnel (isolé de PHENIX)
+const { mountDashboard } = require('./dashboard-router');
+mountDashboard(app, { loadPhenix: load, savePhenix: save, passwordExpired });
+
 const { mountPortal } = require('./portal-router');
 mountPortal(app);
 

@@ -16,10 +16,16 @@ const APPLICATIONS = Object.freeze([
   { id: 'argos', name: 'Portail ARGOS', roles: ['admin', 'user'] },
   { id: 'atlas', name: 'ATLAS', roles: ['admin', 'superviseur', 'operateur', 'consultation'] },
   { id: 'arretes', name: 'Arrêtés', roles: ['admin', 'user'] },
-  { id: 'syrius', name: 'SYRIUS · Radio', roles: ['admin', 'user'] }
+  { id: 'syrius', name: 'SYRIUS · Radio', roles: ['admin', 'user'] },
+  { id: 'dashboard', name: 'Dashboard · Vie du service', roles: ['admin', 'superviseur', 'operateur', 'consultation'] }
 ]);
 
 const DEFAULT_APPEARANCE = Object.freeze({
+  dashboard: {
+    title: 'La vie du service', subtitle: 'Le point de rencontre de vos équipes',
+    primaryColor: '#123b53', accentColor: '#16877b', backgroundColor: '#f3f5f3',
+    logoData: '', faviconData: '', backgroundData: ''
+  },
   phenix: {
     title: 'PHENIX', subtitle: 'Plateforme Hiérarchisée des Engagements et Interventions',
     primaryColor: '#0758b6', accentColor: '#3b82f6', backgroundColor: '#07111f',
@@ -202,6 +208,7 @@ function defaultAccessForUser(user) {
     },
     arretes: { enabled: argosEnabled, role: role === 'admin' ? 'admin' : 'user' },
     syrius: { enabled: argosEnabled, role: role === 'admin' ? 'admin' : 'user' },
+    dashboard: { enabled: role === 'admin', role: ['admin', 'superviseur', 'operateur'].includes(role) ? role : 'consultation' },
     apps: {}
   };
 }
@@ -333,4 +340,5 @@ module.exports = {
   saveAdminConfig,
   setUserPolicy
 };
+
 

@@ -432,6 +432,14 @@ function mountPortal(app) {
     const config = loadAdminConfig();
     const categories = [...data.categories].sort((a, b) => Number(a.order || 0) - Number(b.order || 0) || String(a.name).localeCompare(String(b.name), 'fr'));
     let apps = [...data.apps];
+    if (!apps.some(item => item.id === 'app-dashboard' || /^\/dashboard(?:\/|$)/.test(String(item.url || '')))) {
+      const category = categories.find(item => item.id === 'cat-operationnel') || categories[0];
+      if (category) apps.push({
+        id: 'app-dashboard', categoryId: category.id, name: 'Dashboard · Vie du service',
+        description: 'Actualités, astreinte et prochaines réunions', url: '/dashboard/',
+        logoData: '', accentColor: '#16877b', order: 5
+      });
+    }
     // Ajoute SYRIUS aux portails existants sans réécrire leur configuration.
     if (!apps.some(item => item.id === 'app-syrius' || /^\/syrius(?:\/|$)/.test(String(item.url || '')))) {
       const category = categories.find(item => item.id === 'cat-operationnel') || categories[0];
@@ -454,6 +462,7 @@ function mountPortal(app) {
           if ((item.id === 'app-atlas' || url.startsWith('/portail/atlas')) && !appAccess(stored, 'atlas', config).enabled) return false;
           if ((item.id === 'app-arretes' || url.startsWith('/arretes') || url.includes('arretes-municipaux')) && !appAccess(stored, 'arretes', config).enabled) return false;
           if ((item.id === 'app-syrius' || url.startsWith('/syrius')) && !appAccess(stored, 'syrius', config).enabled) return false;
+          if ((item.id === 'app-dashboard' || /^\/dashboard(?:\/|$)/.test(url)) && !appAccess(stored, 'dashboard', config).enabled) return false;
           return true;
         });
       }
