@@ -39,7 +39,7 @@ Les réunions indiquent titre, début, fin facultative, lieu, ordre du jour et l
 - `dashboard.json` et `dashboard.json.backup` : contenus, mise en page, auteurs, version et historique interne des modifications.
 - `dashboard-media/` : photos privées, servies après contrôle du droit Dashboard.
 - Répertoire : `DASHBOARD_DATA_DIR`, sinon `PORTAL_DATA_DIR`, sinon le dossier de `PHENIX_DATA_FILE` (par défaut `/var/data`). Ce répertoire doit être sur le stockage persistant en production.
-- Photos JPEG, PNG et WebP uniquement, 2 Mo maximum après optimisation côté navigateur. Pas de SVG. Quota de 1 000 fichiers ou 200 Mo. Les médias ne sont pas supprimés automatiquement du stockage lorsqu’un bloc ou une publication est retiré ; leur conservation doit être incluse dans la politique d’exploitation et de sauvegarde.
+- Photos JPEG, PNG et WebP uniquement, 2 Mo maximum. Les fichiers de 1 Mo ou moins sont envoyés directement. Les grandes photos JPEG sont réduites et restent en JPEG ; les PNG et WebP sont réduits en PNG pour conserver leur transparence. La préparation est limitée à 10 secondes et l’envoi à 30 secondes, avec progression et annulation à la fermeture du formulaire. Pas de SVG. Quota de 1 000 fichiers ou 200 Mo. Les médias ne sont pas supprimés automatiquement du stockage lorsqu’un bloc ou une publication est retiré ; leur conservation doit être incluse dans la politique d’exploitation et de sauvegarde.
 - Maximum : 60 blocs, 100 éléments par bloc de réunions/liens et 500 publications.
 - Aucune exécution de HTML saisi dans les textes ; les liens autorisent seulement les protocoles HTTP/HTTPS et les chemins internes.
 - Contrôles d’origine, jetons anti-CSRF, limitation des requêtes et contrôle des rôles côté serveur.

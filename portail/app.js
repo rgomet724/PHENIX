@@ -223,6 +223,19 @@ async function logout() {
   showLogin();
 }
 
+async function requestForgotPassword() {
+  const value = prompt('Indiquez votre identifiant. La demande sera transmise à l’administration centrale.', el('loginInput').value.trim());
+  if (value === null || !value.trim()) return;
+  const button = el('forgotPasswordBtn'), message = el('passwordResetMessage');
+  const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 15000);
+  message.textContent = ''; message.classList.remove('error'); setBusy(button, true, 'Envoi de la demande…');
+  try {
+    await api('/portail/api/password-reset/request', { method: 'POST', body: JSON.stringify({ login: value.trim().slice(0, 80) }), signal: controller.signal });
+    message.textContent = 'Si cet identifiant existe, la demande a été transmise à l’administration centrale.';
+  } catch (error) { message.textContent = error.message; message.classList.add('error'); }
+  finally { clearTimeout(timer); setBusy(button, false); }
+}
+
 function openAdmin() {
   window.open('/portail/administration/', '_blank', 'noopener,noreferrer');
 }
@@ -505,6 +518,7 @@ function handleAdminAction(event) {
 
 function bindEvents() {
   el('loginForm').addEventListener('submit', login);
+  el('forgotPasswordBtn').addEventListener('click', requestForgotPassword);
   el('logoutBtn').addEventListener('click', logout);
   el('adminOpenBtn').addEventListener('click', openAdmin);
   el('adminCloseBtn').addEventListener('click', closeAdmin);

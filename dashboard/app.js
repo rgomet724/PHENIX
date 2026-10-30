@@ -43,6 +43,7 @@ const fullDate = value => format(value, { day: 'numeric', month: 'long', year: '
 const time = value => format(value, { hour: '2-digit', minute: '2-digit' });
 const boardSnapshot = () => structuredClone({ settings: state.data.settings, duty: state.data.duty, blocks: state.data.blocks });
 let toastTimer, slideTimer, dragId = '', modalGeneration = 0, resizing = null;
+const photoUploads = new Map();
 
 function toast(message, error = false) {
   clearTimeout(toastTimer);
@@ -70,7 +71,7 @@ async function api(route, options = {}) {
 
 function showLogin(message = '') {
   if (state.presenting) stopPresentation();
-  if ($('modal').open) $('modal').close();
+  if ($('modal').open) { modalGeneration++; abortPhotos(); $('modal').close(); }
   $('app').classList.add('hidden'); $('login-screen').classList.remove('hidden'); $('login-error').textContent = message;
   $('board').replaceChildren(); state.user = null; state.data = null; state.editing = false; state.dirty = false;
 }
@@ -99,7 +100,8 @@ function render() {
   document.body.classList.remove('font-system', 'font-serif', 'font-rounded', 'font-mono'); document.body.classList.add(`font-${s.font}`);
   const title = s.title || appearance.title || 'La vie du service';
   $('page-title').textContent = title; document.title = `${title} · Dashboard`;
-  $('page-subtitle').textContent = s.subtitle || appearance.subtitle || 'Le point de rencontre de vos équipes';
+  const subtitle = s.subtitle || appearance.subtitle || '';
+  $('page-subtitle').textContent = subtitle; $('page-subtitle').classList.toggle('hidden', !subtitle);
   const logo = s.logo || appearance.logoData;
   $('page-logo').classList.toggle('hidden', !logo); if (logo) $('page-logo').src = logo; else $('page-logo').removeAttribute('src');
   const backgroundImage = s.backgroundImage || appearance.backgroundData;
@@ -116,7 +118,7 @@ function render() {
   $('duty-phone').classList.toggle('hidden', !d.phone); $('duty-phone').textContent = d.phone;
   const phone = d.phone.replace(/[^0-9+*#]/g, ''); $('duty-phone').href = phone ? `tel:${phone}` : '#';
   $('duty-note').textContent = d.note;
-  $('updated').textContent = state.data.updatedAt ? `Mis à jour le ${fullDate(state.data.updatedAt)}${state.data.updatedBy?.name ? ` par ${state.data.updatedBy.name}` : ''}` : 'Votre espace partagé · Prêt à être personnalisé';
+  $('updated').textContent = state.data.updatedAt ? `Mis à jour le ${fullDate(state.data.updatedAt)}${state.data.updatedBy?.name ? ` par ${state.data.updatedBy.name}` : ''}` : 'Aucune modification enregistrée';
   renderBoard(); renderInspector(); updateSaveStatus(); updateClock();
 }
 
@@ -158,7 +160,7 @@ function meetingHtml(item, blockId, detail = false) {
 function renderBlockBody(block) {
   if (block.kind === 'news') {
     const posts = sortedPosts();
-    if (!posts.length) return `<div class="card-content">${empty('news', 'Le service a des choses à partager.', 'Un moment d’équipe, une nouvelle, une photo… Donnez vie à cet espace avec votre première publication.', 'new-post', 'Créer une publication', 'news-empty')}</div>`;
+    if (!posts.length) return `<div class="card-content">${empty('news', 'Aucune publication', 'Les publications du service apparaîtront ici.', 'new-post', 'Créer une publication', 'news-empty')}</div>`;
     const shown = state.presenting ? [posts[state.slide % posts.length]] : posts.slice(0, 3);
     return `<div class="card-content">${shown.map((post, index) => postHtml(post, index > 0)).join('')}${!state.presenting && posts.length > 3 ? actionButton('all-posts', `Voir les ${posts.length} publications`, 'arrow') : ''}</div>`;
   }
@@ -166,11 +168,11 @@ function renderBlockBody(block) {
     const items = [...block.items].sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
     const future = items.filter(item => Date.parse(item.end || item.start) >= Date.now() - 3600000);
     const shown = state.editing ? items : future.slice(0, 5);
-    return `<div class="card-content"><div class="meetings">${shown.length ? shown.map(item => meetingHtml(item, block.id)).join('') : empty('meetings', 'Votre prochain rendez-vous ?', 'Retrouvez ici les dates, horaires et lieux des prochaines réunions.', state.user.canEdit ? 'add-meeting' : '', 'Ajouter une réunion')}</div>${items.length && !state.presenting ? `<div style="margin-top:18px">${actionButton('all-meetings', 'Tout l’agenda', 'arrow')}</div>` : ''}</div>`;
+    return `<div class="card-content"><div class="meetings">${shown.length ? shown.map(item => meetingHtml(item, block.id)).join('') : empty('meetings', 'Aucune réunion programmée', 'Les prochaines réunions apparaîtront ici.', state.user.canEdit ? 'add-meeting' : '', 'Ajouter une réunion')}</div>${items.length && !state.presenting ? `<div style="margin-top:18px">${actionButton('all-meetings', 'Tout l’agenda', 'arrow')}</div>` : ''}</div>`;
   }
-  if (block.kind === 'text') return `<div class="card-content"><div class="text-body" ${state.editing ? 'contenteditable="plaintext-only" role="textbox" aria-label="Texte du bloc" data-field="body" data-placeholder="Écrivez votre information ici…"' : ''}>${esc(block.body)}</div></div>`;
-  if (block.kind === 'image') return `<div class="image-content">${block.image ? `<img src="${esc(block.image)}" alt="${esc(block.caption || block.title)}" data-action="view-photo"><p class="image-caption">${esc(block.caption)}</p>` : empty('image', 'Une image vaut mille mots.', 'Ajoutez une photo, une affiche ou le visuel de votre prochain événement.', 'edit-content', 'Choisir une photo')}</div>`;
-  return `<div class="card-content"><div class="links-list">${block.items.length ? block.items.map(item => `<a class="useful-link" href="${esc(item.url)}" target="_blank" rel="noopener noreferrer"><span>${esc(item.label)}</span>${icon('external')}</a>`).join('') : empty('links', 'Les bons liens, à portée de main.', 'Rassemblez les ressources utiles à votre équipe.', 'edit-content', 'Ajouter des liens')}</div></div>`;
+  if (block.kind === 'text') return `<div class="card-content"><div class="text-body" ${state.editing ? 'contenteditable="plaintext-only" role="textbox" aria-label="Texte du bloc" data-field="body" data-placeholder="Texte de l’information"' : ''}>${esc(block.body)}</div></div>`;
+  if (block.kind === 'image') return `<div class="image-content">${block.image ? `<img src="${esc(block.image)}" alt="${esc(block.caption || block.title)}" data-action="view-photo"><p class="image-caption">${esc(block.caption)}</p>` : empty('image', 'Aucune photo', 'Ajoutez une photo ou une affiche.', 'edit-content', 'Choisir une photo')}</div>`;
+  return `<div class="card-content"><div class="links-list">${block.items.length ? block.items.map(item => `<a class="useful-link" href="${esc(item.url)}" target="_blank" rel="noopener noreferrer"><span>${esc(item.label)}</span>${icon('external')}</a>`).join('') : empty('links', 'Aucun lien', 'Les liens du service apparaîtront ici.', 'edit-content', 'Ajouter des liens')}</div></div>`;
 }
 
 function renderBoard() {
@@ -179,7 +181,7 @@ function renderBoard() {
     const editor = state.editing ? `<div class="block-tools"><span class="drag-handle" title="Glisser pour déplacer" aria-hidden="true">${icon('grip')}</span><span class="block-kind">${esc(names[block.kind])}</span><div class="tools-right"><button data-action="move-up" title="Déplacer avant" aria-label="Déplacer ce bloc avant">${icon('up')}</button><button data-action="move-down" title="Déplacer après" aria-label="Déplacer ce bloc après">${icon('down')}</button><button data-action="duplicate" title="Dupliquer" aria-label="Dupliquer ce bloc">${icon('copy')}</button><button data-action="delete-block" title="Supprimer" aria-label="Supprimer ce bloc">${icon('trash')}</button></div></div>` : '';
     const tools = state.user.canEdit && !state.presenting ? block.kind === 'news' ? actionButton('new-post', 'Publier', 'plus') : block.kind === 'meetings' ? actionButton('add-meeting', 'Ajouter', 'plus') : state.editing ? actionButton('edit-content', 'Modifier', 'edit') : '' : '';
     return `<section class="board-card${state.selected === block.id ? ' selected' : ''}${block.hidden ? ' is-hidden' : ''}" data-block="${esc(block.id)}" data-kind="${block.kind}" style="--width:${Number(block.width)};--height:${Number(block.minHeight)}px;--card-bg:${esc(block.background)};--card-color:${esc(block.color)};--text-size:${Number(block.fontSize)}px;--align:${esc(block.align)};--weight:${block.bold ? 650 : 400};--italic:${block.italic ? 'italic' : 'normal'}">${editor}<div class="card-heading"><div class="card-title-group"><span class="card-title-icon">${icon(block.kind)}</span><h2 ${state.editing ? 'contenteditable="plaintext-only" role="textbox" aria-label="Titre du bloc" data-field="title"' : ''}>${esc(block.title)}</h2></div>${tools}</div>${renderBlockBody(block)}${state.editing ? '<span class="resize-handle" title="Glisser pour redimensionner le bloc" aria-hidden="true"></span>' : ''}</section>`;
-  }).join('') : `<div class="no-blocks">${empty('layout', 'Une page à votre image.', 'Ajoutez des blocs pour composer votre tableau de bord.', state.user.canEdit ? 'add-block' : '', 'Ajouter un bloc')}</div>`;
+  }).join('') : `<div class="no-blocks">${empty('layout', 'Aucun bloc', 'Ajoutez un bloc depuis le mode édition.', state.user.canEdit ? 'add-block' : '', 'Ajouter un bloc')}</div>`;
 }
 
 function selectedBlock() { return state.data?.blocks.find(block => block.id === state.selected); }
@@ -237,34 +239,19 @@ function showConflict(message) {
   $('reload-version').onclick = () => { if (state.dirty && !confirm('Recharger et abandonner les modifications non enregistrées ?')) return; state.editing = false; state.dirty = false; closeModal(); loadState().catch(error => toast(error.message, true)); };
 }
 
-function openModal(title, html, kicker = 'VOTRE ESPACE') {
+function abortPhotos() { for (const controller of photoUploads.values()) controller.abort(); photoUploads.clear(); }
+function openModal(title, html, kicker = 'DASHBOARD') {
+  abortPhotos();
   modalGeneration++; $('modal-title').textContent = title; $('modal-kicker').textContent = kicker; $('modal-body').innerHTML = html;
   if (!$('modal').open) $('modal').showModal();
   return modalGeneration;
 }
-function closeModal() { modalGeneration++; $('modal').close(); $('modal-body').replaceChildren(); }
+function closeModal() { modalGeneration++; abortPhotos(); $('modal').close(); $('modal-body').replaceChildren(); }
 function formError(error) { const box = $('modal-error'); if (box) box.textContent = error.message; else toast(error.message, true); }
 const buttons = (submit = 'Enregistrer') => `<p id="modal-error" class="modal-error" role="alert"></p><div class="modal-actions"><button type="button" class="button secondary" data-close>Annuler</button><button type="submit" class="button primary">${esc(submit)}</button></div>`;
 
 function photoPicker(current, id = 'photo') {
   return `<div class="photo-picker"><span class="empty-icon">${icon('image')}</span><label>Choisir une photo<input id="${id}" type="file" accept="image/jpeg,image/png,image/webp"><small>JPEG, PNG ou WebP · La photo est optimisée avant l’envoi.</small></label></div><span id="${id}-status" class="photo-status"></span><img id="${id}-preview" class="photo-preview${current ? '' : ' hidden'}"${current ? ` src="${esc(current)}"` : ''} alt="Aperçu de la photo"><button id="${id}-remove" class="remove-photo${current ? '' : ' hidden'}" type="button">Retirer cette photo</button>`;
-}
-
-async function optimizePhoto(file) {
-  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new Error('Choisissez une photo JPEG, PNG ou WebP.');
-  if (file.size > 20 * 1024 * 1024) throw new Error('La photo d’origine doit faire moins de 20 Mo.');
-  const url = URL.createObjectURL(file);
-  try {
-    const image = new Image(); image.src = url; await image.decode();
-    if (!image.width || !image.height || image.width * image.height > 100000000) throw new Error('Les dimensions de cette photo ne sont pas prises en charge.');
-    const ratio = Math.min(1, 1600 / Math.max(image.width, image.height));
-    const canvas = document.createElement('canvas'); canvas.width = Math.round(image.width * ratio); canvas.height = Math.round(image.height * ratio);
-    const context = canvas.getContext('2d'); if (!context) throw new Error('Votre navigateur ne peut pas préparer cette photo.');
-    context.drawImage(image, 0, 0, canvas.width, canvas.height);
-    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', .86));
-    if (!blob || blob.size > 2 * 1024 * 1024) throw new Error('Cette photo reste trop volumineuse. Choisissez une image plus petite.');
-    return blob;
-  } finally { URL.revokeObjectURL(url); }
 }
 
 function bindPhoto(current, setValue, id = 'photo') {
@@ -273,18 +260,30 @@ function bindPhoto(current, setValue, id = 'photo') {
   $(id + '-remove').onclick = () => { update(''); $(id).value = ''; };
   $(id).onchange = async () => {
     const file = $(id).files[0]; if (!file) return;
+    const controller = new AbortController(); photoUploads.set(id, controller);
     const form = $(id).closest('form'); const submit = form?.querySelector('button[type=submit]');
     if (form) form.dataset.uploads = String(Number(form.dataset.uploads || 0) + 1);
     $(id).disabled = true;
     if (submit) submit.disabled = true;
-    $(id + '-status').textContent = 'Préparation de la photo…';
+    $(id + '-status').textContent = '';
     try {
-      const blob = await optimizePhoto(file);
-      const result = await api('/media', { method: 'POST', body: blob, headers: { 'Content-Type': blob.type } });
+      const result = await DashboardPhotos.uploadPhoto(file, {
+        csrf: state.csrf, signal: controller.signal,
+        onStatus: progress => {
+          if (generation !== modalGeneration) return;
+          $(id + '-status').textContent = progress.stage === 'prepare' ? 'Préparation de la photo…' : progress.stage === 'saving' ? 'Enregistrement de la photo…' : progress.stage === 'done' ? 'Photo prête.' : `Envoi de la photo… ${progress.percent ?? 0} %`;
+        }
+      });
       if (generation !== modalGeneration) return;
       update(result.url); $(id + '-status').textContent = 'Photo prête.';
-    } catch (error) { if (generation === modalGeneration) { $(id + '-status').textContent = ''; formError(error); } }
+    } catch (error) {
+      if (generation === modalGeneration && error.name !== 'AbortError') {
+        if (error.status === 401 || error.code === 'ACCESS_DISABLED') showLogin(error.message);
+        else { $(id + '-status').textContent = ''; $(id).value = ''; formError(error); }
+      }
+    }
     finally {
+      if (photoUploads.get(id) === controller) photoUploads.delete(id);
       if (generation === modalGeneration) {
         $(id).disabled = false;
         if (form) form.dataset.uploads = String(Math.max(0, Number(form.dataset.uploads || 0) - 1));
@@ -297,7 +296,7 @@ function bindPhoto(current, setValue, id = 'photo') {
 function postEditor(post = null) {
   if (!state.user.canEdit) return;
   let image = post?.image || '';
-  openModal(post ? 'Modifier la publication' : 'Une nouvelle à partager ?', `<form id="post-form" class="modal-form"><label>Titre<input id="post-title" value="${esc(post?.title || '')}" required maxlength="180" placeholder="Quoi de neuf dans le service ?"></label><label>Votre publication<textarea id="post-body" rows="5" maxlength="10000" placeholder="Racontez, informez, partagez…">${esc(post?.body || '')}</textarea></label>${photoPicker(image)}<label class="check-label"><input id="post-pinned" type="checkbox"${post?.pinned ? ' checked' : ''}>Épingler cette publication à la une</label><p class="form-note">${post ? `Auteur d’origine : ${esc(post.createdBy.name)}. Votre nom apparaîtra comme auteur de la modification.` : `La publication sera signée ${esc(state.user.name)} et visible par les personnes ayant accès au Dashboard.`}</p>${buttons(post ? 'Enregistrer la publication' : 'Publier')}</form>`, 'VIE DU SERVICE');
+  openModal(post ? 'Modifier la publication' : 'Nouvelle publication', `<form id="post-form" class="modal-form"><label>Titre<input id="post-title" value="${esc(post?.title || '')}" required maxlength="180" placeholder="Titre de la publication"></label><label>Votre publication<textarea id="post-body" rows="5" maxlength="10000" placeholder="Texte de la publication">${esc(post?.body || '')}</textarea></label>${photoPicker(image)}<label class="check-label"><input id="post-pinned" type="checkbox"${post?.pinned ? ' checked' : ''}>Épingler cette publication à la une</label><p class="form-note">${post ? `Auteur d’origine : ${esc(post.createdBy.name)}. Votre nom apparaîtra comme auteur de la modification.` : `La publication sera signée ${esc(state.user.name)} et visible par les personnes ayant accès au Dashboard.`}</p>${buttons(post ? 'Enregistrer la publication' : 'Publier')}</form>`, 'VIE DU SERVICE');
   bindPhoto(image, value => { image = value; });
   $('post-form').onsubmit = async event => {
     event.preventDefault(); const submit = event.submitter; submit.disabled = true;
@@ -305,7 +304,7 @@ function postEditor(post = null) {
       const result = await api(post ? `/posts/${encodeURIComponent(post.id)}` : '/posts', { method: post ? 'PUT' : 'POST', body: { revision: state.data.revision, title: $('post-title').value, body: $('post-body').value, image, pinned: $('post-pinned').checked } });
       state.data.revision = result.revision;
       if (post) state.data.posts = state.data.posts.map(item => item.id === post.id ? result.post : item); else state.data.posts.unshift(result.post);
-      closeModal(); renderBoard(); toast(post ? 'La publication est mise à jour.' : 'Votre publication est partagée avec le service.');
+      closeModal(); renderBoard(); toast(post ? 'La publication est mise à jour.' : 'Publication enregistrée.');
     } catch (error) { if (error.status === 409) showConflict(error.message); else formError(error); }
     finally { if (submit.isConnected) submit.disabled = false; }
   };
@@ -333,7 +332,7 @@ function fromParisInput(value) {
 
 function meetingEditor(block, item = null) {
   beginEdit(); selectBlock(block.id);
-  openModal(item ? 'Modifier la réunion' : 'Un prochain rendez-vous', `<form id="meeting-form" class="modal-form"><label>Intitulé<input id="meeting-title" value="${esc(item?.title || '')}" required maxlength="160" placeholder="Réunion de service, point d’équipe…"></label><div class="form-row"><label>Début · heure de Paris<input id="meeting-start" type="datetime-local" value="${toLocalInput(item?.start)}" required></label><label>Fin · facultative<input id="meeting-end" type="datetime-local" value="${toLocalInput(item?.end)}"></label></div><label>Lieu<input id="meeting-location" value="${esc(item?.location || '')}" maxlength="300" placeholder="Salle, bâtiment ou visioconférence"></label><label>Informations / ordre du jour<textarea id="meeting-description" maxlength="2000">${esc(item?.description || '')}</textarea></label><label>Lien de visioconférence ou document<input id="meeting-url" value="${esc(item?.url || '')}" maxlength="1500" placeholder="https://…"><small>Facultatif. Les liens s’ouvrent dans un nouvel onglet.</small></label><p class="form-note">La réunion sera visible après l’enregistrement de la page.</p>${buttons('Appliquer à la page')}</form>`, 'AGENDA DU SERVICE');
+  openModal(item ? 'Modifier la réunion' : 'Nouvelle réunion', `<form id="meeting-form" class="modal-form"><label>Intitulé<input id="meeting-title" value="${esc(item?.title || '')}" required maxlength="160" placeholder="Réunion de service, point d’équipe…"></label><div class="form-row"><label>Début · heure de Paris<input id="meeting-start" type="datetime-local" value="${toLocalInput(item?.start)}" required></label><label>Fin · facultative<input id="meeting-end" type="datetime-local" value="${toLocalInput(item?.end)}"></label></div><label>Lieu<input id="meeting-location" value="${esc(item?.location || '')}" maxlength="300" placeholder="Salle, bâtiment ou visioconférence"></label><label>Informations / ordre du jour<textarea id="meeting-description" maxlength="2000">${esc(item?.description || '')}</textarea></label><label>Lien de visioconférence ou document<input id="meeting-url" value="${esc(item?.url || '')}" maxlength="1500" placeholder="https://…"><small>Facultatif. Les liens s’ouvrent dans un nouvel onglet.</small></label><p class="form-note">La réunion sera visible après l’enregistrement de la page.</p>${buttons('Appliquer à la page')}</form>`, 'AGENDA DU SERVICE');
   $('meeting-form').onsubmit = event => {
     event.preventDefault();
     try {
@@ -379,7 +378,7 @@ function showAgenda(block) {
 function blockPalette() {
   beginEdit();
   const descriptions = { news: 'Publications, photos et nom de leur auteur.', meetings: 'Dates, horaires, lieux et ordre du jour.', text: 'Une information libre, à votre façon.', image: 'Une photo, une affiche ou un visuel.', links: 'Tous les raccourcis utiles à l’équipe.' };
-  openModal('Que souhaitez-vous ajouter ?', `<div class="block-palette">${Object.entries(names).map(([kind, label]) => `<button class="palette-item" data-add-kind="${kind}"><span>${icon(kind)}</span><strong>${label}</strong><small>${descriptions[kind]}</small></button>`).join('')}</div>`, 'COMPOSEZ VOTRE PAGE');
+  openModal('Ajouter un bloc', `<div class="block-palette">${Object.entries(names).map(([kind, label]) => `<button class="palette-item" data-add-kind="${kind}"><span>${icon(kind)}</span><strong>${label}</strong><small>${descriptions[kind]}</small></button>`).join('')}</div>`, 'MISE EN PAGE');
   document.querySelectorAll('[data-add-kind]').forEach(button => { button.onclick = () => {
     if (state.data.blocks.length >= 60) return toast('Votre page peut contenir au maximum 60 blocs.', true);
     const kind = button.dataset.addKind, block = { id: crypto.randomUUID(), kind, title: names[kind], width: kind === 'news' ? 8 : 4, minHeight: 240, hidden: false, background: '#ffffff', color: '#193b4d', fontSize: 16, align: 'left', bold: false, italic: false, body: '', image: '', caption: '', items: [] };
@@ -394,11 +393,11 @@ function editContent(block) {
   if (block.kind === 'news') return postEditor();
   if (block.kind === 'meetings') return showAgenda(block);
   if (block.kind === 'text') {
-    openModal('Votre information', `<form id="text-form" class="modal-form"><label>Titre<input id="text-title" maxlength="120" value="${esc(block.title)}" required></label><label>Texte<textarea id="text-body" rows="9" maxlength="15000" placeholder="Votre information, vos consignes, votre message…">${esc(block.body)}</textarea></label><p class="form-note">La taille, les couleurs et l’alignement se règlent dans les propriétés du bloc.</p>${buttons('Appliquer au bloc')}</form>`);
+    openModal('Modifier le texte', `<form id="text-form" class="modal-form"><label>Titre<input id="text-title" maxlength="120" value="${esc(block.title)}" required></label><label>Texte<textarea id="text-body" rows="9" maxlength="15000" placeholder="Modifier le texte, vos consignes, votre message…">${esc(block.body)}</textarea></label><p class="form-note">La taille, les couleurs et l’alignement se règlent dans les propriétés du bloc.</p>${buttons('Appliquer au bloc')}</form>`);
     $('text-form').onsubmit = event => { event.preventDefault(); change(() => { block.title = $('text-title').value; block.body = $('text-body').value; }); closeModal(); };
   } else if (block.kind === 'image') {
     let image = block.image;
-    openModal('Ajouter un visuel', `<form id="image-form" class="modal-form"><label>Titre<input id="image-title" value="${esc(block.title)}" maxlength="120" required></label>${photoPicker(image)}<label>Légende<textarea id="image-caption" maxlength="500" rows="2">${esc(block.caption)}</textarea></label>${buttons('Appliquer au bloc')}</form>`);
+    openModal('Photo / affiche', `<form id="image-form" class="modal-form"><label>Titre<input id="image-title" value="${esc(block.title)}" maxlength="120" required></label>${photoPicker(image)}<label>Légende<textarea id="image-caption" maxlength="500" rows="2">${esc(block.caption)}</textarea></label>${buttons('Appliquer au bloc')}</form>`);
     bindPhoto(image, value => { image = value; });
     $('image-form').onsubmit = event => { event.preventDefault(); change(() => { block.title = $('image-title').value; block.image = image; block.caption = $('image-caption').value; }); closeModal(); };
   } else if (block.kind === 'links') linksEditor(block);
@@ -406,7 +405,7 @@ function editContent(block) {
 
 function linksEditor(block) {
   let items = structuredClone(block.items);
-  openModal('Les ressources de votre équipe', `<form id="links-form" class="modal-form"><label>Titre du bloc<input id="links-title" value="${esc(block.title)}" maxlength="120" required></label><div id="links-rows"></div><div class="form-row"><label>Nom du lien<input id="new-link-label" maxlength="120" placeholder="Nom de la ressource"></label><label>Adresse<input id="new-link-url" maxlength="1500" placeholder="https://…"></label></div><button id="append-link" class="button secondary" type="button">${icon('plus')}Ajouter ce lien</button><p class="form-note">Les liens s’ouvrent dans un nouvel onglet.</p>${buttons('Appliquer au bloc')}</form>`);
+  openModal('Liens utiles', `<form id="links-form" class="modal-form"><label>Titre du bloc<input id="links-title" value="${esc(block.title)}" maxlength="120" required></label><div id="links-rows"></div><div class="form-row"><label>Nom du lien<input id="new-link-label" maxlength="120" placeholder="Nom de la ressource"></label><label>Adresse<input id="new-link-url" maxlength="1500" placeholder="https://…"></label></div><button id="append-link" class="button secondary" type="button">${icon('plus')}Ajouter ce lien</button><p class="form-note">Les liens s’ouvrent dans un nouvel onglet.</p>${buttons('Appliquer au bloc')}</form>`);
   const list = () => { $('links-rows').innerHTML = items.map(item => `<div class="link-edit-row"><div><b>${esc(item.label)}</b><small>${esc(item.url)}</small></div><button type="button" data-remove-link="${esc(item.id)}">Supprimer</button></div>`).join(''); document.querySelectorAll('[data-remove-link]').forEach(button => { button.onclick = () => { items = items.filter(item => item.id !== button.dataset.removeLink); list(); }; }); };
   const append = () => {
     const label = $('new-link-label').value.trim(), url = $('new-link-url').value.trim();
@@ -422,7 +421,7 @@ function linksEditor(block) {
 function appearanceEditor() {
   beginEdit(); const settings = state.data.settings, appearance = state.appearance;
   let logo = settings.logo, backgroundImage = settings.backgroundImage;
-  openModal('Une page à votre image', `<form id="appearance-form" class="modal-form"><label>Titre de la page<input id="setting-title" value="${esc(settings.title || appearance.title || 'La vie du service')}" maxlength="120"></label><label>Sous-titre<input id="setting-subtitle" value="${esc(settings.subtitle || appearance.subtitle || '')}" maxlength="240"></label><div class="form-row"><label>Couleur principale<input id="setting-accent" type="color" value="${esc(settings.accent || appearance.accentColor || '#16877b')}"></label><label>Fond de page<input id="setting-background" type="color" value="${esc(settings.background || appearance.backgroundColor || '#f3f5f3')}"></label></div><label>Police<select id="setting-font">${[['system', 'Moderne'], ['serif', 'Éditoriale'], ['rounded', 'Arrondie'], ['mono', 'Machine à écrire']].map(([value, label]) => `<option value="${value}"${settings.font === value ? ' selected' : ''}>${label}</option>`).join('')}</select></label><label>Logo de la page</label>${photoPicker(logo, 'logo-photo')}<label>Image de fond</label>${photoPicker(backgroundImage, 'background-photo')}<div class="form-row"><label>Défilement des publications en vue écran<select id="setting-seconds">${[8, 12, 20, 30, 60, 120].map(v => `<option value="${v}"${v === settings.displaySeconds ? ' selected' : ''}>Toutes les ${v} secondes</option>`).join('')}</select></label><label class="check-label"><input id="setting-clock" type="checkbox"${settings.showClock ? ' checked' : ''}>Afficher l’heure</label></div>${buttons('Appliquer à la page')}</form>`, 'PERSONNALISATION');
+  openModal('Paramètres de la page', `<form id="appearance-form" class="modal-form"><label>Titre de la page<input id="setting-title" value="${esc(settings.title || appearance.title || 'La vie du service')}" maxlength="120"></label><label>Sous-titre<input id="setting-subtitle" value="${esc(settings.subtitle || appearance.subtitle || '')}" maxlength="240"></label><div class="form-row"><label>Couleur principale<input id="setting-accent" type="color" value="${esc(settings.accent || appearance.accentColor || '#16877b')}"></label><label>Fond de page<input id="setting-background" type="color" value="${esc(settings.background || appearance.backgroundColor || '#f3f5f3')}"></label></div><label>Police<select id="setting-font">${[['system', 'Moderne'], ['serif', 'Éditoriale'], ['rounded', 'Arrondie'], ['mono', 'Machine à écrire']].map(([value, label]) => `<option value="${value}"${settings.font === value ? ' selected' : ''}>${label}</option>`).join('')}</select></label><label>Logo de la page</label>${photoPicker(logo, 'logo-photo')}<label>Image de fond</label>${photoPicker(backgroundImage, 'background-photo')}<div class="form-row"><label>Défilement des publications en vue écran<select id="setting-seconds">${[8, 12, 20, 30, 60, 120].map(v => `<option value="${v}"${v === settings.displaySeconds ? ' selected' : ''}>Toutes les ${v} secondes</option>`).join('')}</select></label><label class="check-label"><input id="setting-clock" type="checkbox"${settings.showClock ? ' checked' : ''}>Afficher l’heure</label></div>${buttons('Appliquer à la page')}</form>`, 'PERSONNALISATION');
   bindPhoto(logo, value => { logo = value; }, 'logo-photo'); bindPhoto(backgroundImage, value => { backgroundImage = value; }, 'background-photo');
   $('appearance-form').onsubmit = event => { event.preventDefault(); change(() => { Object.assign(settings, { title: $('setting-title').value, subtitle: $('setting-subtitle').value, accent: $('setting-accent').value, background: $('setting-background').value, font: $('setting-font').value, logo, backgroundImage, showClock: $('setting-clock').checked, displaySeconds: Number($('setting-seconds').value) }); }, false); closeModal(); render(); };
 }
@@ -514,7 +513,7 @@ $('add-block').onclick = blockPalette; $('page-settings').onclick = appearanceEd
 $('undo').onclick = () => { const previous = state.history.pop(); if (!previous) return; Object.assign(state.data, previous); state.selected = state.data.blocks.some(item => item.id === state.selected) ? state.selected : state.data.blocks[0]?.id; dirty(); render(); };
 $('close-modal').onclick = closeModal;
 $('modal').addEventListener('click', event => { if (event.target.closest('[data-close]')) closeModal(); else handleAction(event).catch(error => toast(error.message, true)); });
-$('modal').addEventListener('cancel', () => { modalGeneration++; });
+$('modal').addEventListener('cancel', () => { modalGeneration++; abortPhotos(); });
 $('board').addEventListener('click', event => { if (state.editing) { const card = event.target.closest('[data-block]'); if (card) selectBlock(card.dataset.block); } handleAction(event).catch(error => toast(error.message, true)); });
 $('board').addEventListener('focusin', event => { if (state.editing && event.target.matches('[contenteditable]')) remember(); });
 $('board').addEventListener('input', event => { if (!state.editing || !event.target.dataset.field) return; const block = state.data.blocks.find(item => item.id === event.target.closest('[data-block]').dataset.block); if (block) { block[event.target.dataset.field] = event.target.innerText.slice(0, event.target.dataset.field === 'title' ? 120 : 15000); dirty(); } });

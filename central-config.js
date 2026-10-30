@@ -22,7 +22,7 @@ const APPLICATIONS = Object.freeze([
 
 const DEFAULT_APPEARANCE = Object.freeze({
   dashboard: {
-    title: 'La vie du service', subtitle: 'Le point de rencontre de vos équipes',
+    title: 'La vie du service', subtitle: '',
     primaryColor: '#123b53', accentColor: '#16877b', backgroundColor: '#f3f5f3',
     logoData: '', faviconData: '', backgroundData: ''
   },
@@ -127,6 +127,7 @@ function migrate(value) {
   for (const app of APPLICATIONS) {
     const defaults = DEFAULT_APPEARANCE[app.id];
     const current = data.appearance[app.id] && typeof data.appearance[app.id] === 'object' ? data.appearance[app.id] : {};
+    if (app.id === 'dashboard' && current.subtitle === 'Le point de rencontre de vos équipes') current.subtitle = '';
     data.appearance[app.id] = {
       title: cleanText(current.title, 80, defaults.title),
       subtitle: cleanText(current.subtitle, 160, defaults.subtitle),

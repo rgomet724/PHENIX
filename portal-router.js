@@ -104,7 +104,7 @@ function phenixPasswordExpired(user) {
   return !Number.isFinite(changed) || (Date.now() - changed) >= PHENIX_PASSWORD_MAX_AGE_MS;
 }
 
-function mountPortal(app) {
+function mountPortal(app, deps = {}) {
   const IS_PROD = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
   const ADMIN_LOGIN = String(process.env.PORTAL_ADMIN_LOGIN || 'admin').trim() || 'admin';
   const ADMIN_PASSWORD = String(process.env.PORTAL_ADMIN_PASSWORD || '');
@@ -359,6 +359,12 @@ function mountPortal(app) {
   });
 
   router.get('/me', (req, res) => res.json({ user: currentUser(req) || null }));
+
+  // Les demandes ARGOS arrivent dans la même file d’administration que celles de PHENIX.
+  router.post('/password-reset/request', deps.passwordResetLimiter || ((req, res, next) => next()), (req, res, next) => {
+    if (typeof deps.requestPasswordReset !== 'function') return res.status(503).json({ error: 'Le service de récupération est indisponible. Contactez un administrateur.' });
+    try { deps.requestPasswordReset(req, res); } catch (error) { next(error); }
+  });
 
   router.post('/login', async (req, res, next) => {
     try {

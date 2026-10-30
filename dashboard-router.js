@@ -28,7 +28,7 @@ function initialData() {
   const meetings = newBlock('meetings', 'Prochaines réunions', 4);
   meetings.minHeight = 400;
   const information = newBlock('text', 'À retenir', 4);
-  information.body = 'Un espace pour les informations utiles, les consignes du quotidien et les nouvelles de votre service.';
+  information.body = '';
   information.background = '#e8f2ed';
   const links = newBlock('links', 'Vos accès utiles', 4);
   links.items = [{ id: crypto.randomUUID(), label: 'Portail ARGOS', url: '/' }, { id: crypto.randomUUID(), label: 'PHENIX', url: '/phenix/' }];
@@ -74,6 +74,11 @@ function mountDashboard(app, deps = {}) {
     try {
       const data = JSON.parse(fs.readFileSync(filename, 'utf8'));
       if (data.schemaVersion !== 1 || !Number.isInteger(data.revision) || !Array.isArray(data.blocks) || !Array.isArray(data.posts) || !data.settings || !data.duty) throw new Error('Structure invalide');
+      // Retire uniquement les textes fournis par l’ancien modèle, en conservant les contenus personnalisés.
+      if (data.settings.subtitle === 'Le point de rencontre de vos équipes') data.settings.subtitle = '';
+      for (const block of data.blocks) {
+        if (block.kind === 'text' && block.body === 'Un espace pour les informations utiles, les consignes du quotidien et les nouvelles de votre service.') block.body = '';
+      }
       return data;
     } catch (error) {
       console.error('[DASHBOARD] Lecture impossible :', error.message);

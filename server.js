@@ -497,21 +497,28 @@ const passwordResetLimiter=rateLimit({
   windowMs:15*60*1000,max:5,standardHeaders:true,legacyHeaders:false,
   message:{error:'Trop de demandes. Réessayez dans quelques minutes.'}
 });
-app.post('/api/password-reset/request', passwordResetLimiter, (req,res)=>{
+function requestPasswordReset(req,res){
+  const origin=req.get('origin');
+  if(origin){
+    try{ if(new URL(origin).host!==req.get('host')) return res.status(403).json({error:'Origine refusée'}); }
+    catch{ return res.status(403).json({error:'Origine refusée'}); }
+  }
   const d=load(); const login=normalizeLogin(req.body&&req.body.login);
-  const u=d.users.find(x=>String(x.login||'')===login && normalizedRole(x.role)!=='dashboard');
+  const u=d.users.find(x=>String(x.login||'').toLocaleLowerCase('fr-FR')===login.toLocaleLowerCase('fr-FR') && normalizedRole(x.role)!=='dashboard');
+  const source=req.originalUrl.startsWith('/portail/')?'ARGOS':'PHENIX';
   if(u){
     const recent=(d.passwordResetRequests||[]).find(x=>x.userId===u.id&&x.status==='pending'&&(Date.now()-new Date(x.createdAt).getTime())<60*60*1000);
     if(!recent){
-      const r={id:crypto.randomUUID(),userId:u.id,login:u.login,displayName:u.displayName,status:'pending',createdAt:new Date().toISOString(),requestIp:requestIp(req),deviceName:String(req.get('x-phenix-device-name')||'').slice(0,100),deviceId:String(req.get('x-phenix-device-id')||'').slice(0,80)};
+      const r={id:crypto.randomUUID(),userId:u.id,login:u.login,displayName:u.displayName,status:'pending',source,createdAt:new Date().toISOString(),requestIp:requestIp(req),deviceName:String(req.get('x-phenix-device-name')||'').slice(0,100),deviceId:String(req.get('x-phenix-device-id')||'').slice(0,80)};
       d.passwordResetRequests.unshift(r); d.passwordResetRequests=d.passwordResetRequests.slice(0,500);
-      audit(d,req,'Demande de mot de passe oublié pour '+u.login,'Sécurité / comptes'); save(d);
+      audit(d,req,'Demande de mot de passe oublié depuis '+source+' pour '+u.login,'Sécurité / comptes'); save(d);
       pushRealtimeEvent(d.users.filter(x=>x.role==='admin').map(x=>x.id),{type:'password-reset-request',id:r.id,displayName:r.displayName,createdAt:r.createdAt});
     }
   }
   // Réponse volontairement générique pour ne pas révéler les identifiants existants.
   res.json({ok:true,message:'Si cet identifiant existe, la demande a été transmise à un administrateur PHENIX.'});
-});
+}
+app.post('/api/password-reset/request', passwordResetLimiter, requestPasswordReset);
 app.post('/api/admin/password-resets/:id/complete', needLogin, needAdmin, (req,res)=>{
   const d=load(); const r=(d.passwordResetRequests||[]).find(x=>x.id===req.params.id&&x.status==='pending');
   if(!r) return res.status(404).json({error:'Demande introuvable'});
@@ -1105,7 +1112,7 @@ const { mountDashboard } = require('./dashboard-router');
 mountDashboard(app, { loadPhenix: load, savePhenix: save, passwordExpired });
 
 const { mountPortal } = require('./portal-router');
-mountPortal(app);
+mountPortal(app, { requestPasswordReset, passwordResetLimiter });
 
 app.use((err,req,res,next)=>{
   console.error('[PHENIX]',err && err.stack ? err.stack : err);

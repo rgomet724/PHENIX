@@ -48,7 +48,9 @@ test('Intégration avec le serveur PHENIX, le portail ARGOS et l’administratio
   const home = await fetch(`${origin}/`);
   assert.equal(home.status, 200);
   assert.equal(home.url, `${origin}/`, 'ARGOS reste affiché à la racine');
-  assert.match(await home.text(), /<title>.*ARGOS/i);
+  const homeHtml = await home.text();
+  assert.match(homeHtml, /<title>.*ARGOS/i);
+  assert.match(homeHtml, /id="forgotPasswordBtn"/);
   assert.match(home.headers.get('cache-control'), /no-store/);
   assert.match(await (await fetch(`${origin}/portail/`)).text(), /<title>.*ARGOS/i);
   const phenixRedirect = await fetch(`${origin}/phenix?mode=test`, { redirect: 'manual' });
@@ -67,7 +69,33 @@ test('Intégration avec le serveur PHENIX, le portail ARGOS et l’administratio
   assert.equal(login.status, 200);
   const cookie = login.headers.get('set-cookie').split(';')[0];
   const status = await fetch(`${origin}/api/status`, { headers: { cookie } });
-  assert.equal((await status.json()).user.id, 'integration-admin');
+  const sessionStatus = await status.json();
+  assert.equal(sessionStatus.user.id, 'integration-admin');
+  // Le bouton ARGOS utilise la même file de traitement que PHENIX, y compris
+  // lorsqu’une session PHENIX existe déjà dans le navigateur.
+  const resetRequest = async (login, extra = {}) => {
+    const response = await fetch(`${origin}/portail/api/password-reset/request`, {
+      method: 'POST', headers: { cookie, 'content-type': 'application/json', ...extra }, body: JSON.stringify({ login })
+    });
+    return { response, data: await response.json() };
+  };
+  const unknownReset = await resetRequest('unknown-user');
+  const knownReset = await resetRequest('integration-admin');
+  assert.equal(knownReset.response.status, 200);
+  assert.deepEqual(unknownReset.data, knownReset.data, 'la réponse ne révèle pas si le compte existe');
+  assert.equal((await resetRequest('INTEGRATION-ADMIN')).response.status, 200);
+  assert.equal((await resetRequest('integration-admin', { origin: 'https://outside.example' })).response.status, 403);
+  const oldReset = await fetch(`${origin}/api/password-reset/request`, {
+    method: 'POST', headers: { cookie, 'content-type': 'application/json', 'x-csrf-token': sessionStatus.csrfToken }, body: JSON.stringify({ login: 'integration-admin' })
+  });
+  assert.equal(oldReset.status, 200, 'le bouton PHENIX reste compatible'); await oldReset.json();
+  const pending = await fetch(`${origin}/portail/administration/api/password-resets`, { headers: { cookie } });
+  assert.equal(pending.status, 200);
+  const requests = (await pending.json()).requests;
+  assert.equal(requests.filter(item => item.login === 'integration-admin').length, 1, 'la demande ARGOS est visible sans doublon dans l’administration');
+  assert.equal(requests.some(item => item.login === 'unknown-user'), false);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(directory, 'data.json'), 'utf8')).passwordResetRequests[0].source, 'ARGOS');
+  assert.equal((await fetch(`${origin}/portail/administration/api/password-resets`)).status, 403);
   const bootstrap = await fetch(`${origin}/syrius/api/bootstrap`, { headers: { cookie } });
   assert.equal((await bootstrap.json()).user.role, 'admin');
   for (const asset of ['app.js', 'styles.css', 'icons.svg', 'favicon.svg', 'map-fallback.svg', 'radio-audio.js', 'radio-sounds.js', 'audio-transport.js', 'audio-codec.js', 'audio-inbox.js', 'background-audio.js', 'ptt-control.js', 'branding.js', 'audio-worklet.js', 'manifest.webmanifest', 'sw.js', 'offline.html', 'icon-192.png', 'icon-512.png']) {
