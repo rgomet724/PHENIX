@@ -2,8 +2,8 @@
 
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-const state = { data: null, user: null, appearance: {}, csrf: '', editing: false, dirty: false, selected: '', original: null, history: [], presenting: false, slide: 0, saving: false };
-const names = { news: 'Publications', meetings: 'Réunions', text: 'Texte libre', image: 'Photo', links: 'Liens utiles' };
+const state = { data: null, user: null, appearance: {}, csrf: '', editing: false, dirty: false, selected: '', original: null, history: [], presenting: false, slide: 0, saving: false, pageId: '', nextPageAt: 0, nextSlideAt: 0, rotationPaused: false };
+const names = { duty: 'Astreinte direction', news: 'Publications', meetings: 'Réunions', text: 'Texte libre', image: 'Photo', links: 'Liens utiles' };
 const paths = {
   grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
   layout: '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M15 9v12"/>',
@@ -35,14 +35,14 @@ const paths = {
   pin: '<path d="m9 3 9 9-4 1-3 4-4-4-4-4 4-3zM8 16l-5 5"/>',
   download: '<path d="M12 3v12m-5-5 5 5 5-5M4 15v6h16v-6"/>'
 };
-const icon = name => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${paths[name] || paths.grid}</svg>`;
+const icon = name => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${paths[name === 'duty' ? 'phone' : name] || paths.grid}</svg>`;
 const initials = name => String(name || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase();
 const format = (value, options) => new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', ...options }).format(new Date(value));
 const shortDate = value => format(value, { day: 'numeric', month: 'short' });
 const fullDate = value => format(value, { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 const time = value => format(value, { hour: '2-digit', minute: '2-digit' });
-const boardSnapshot = () => structuredClone({ settings: state.data.settings, duty: state.data.duty, blocks: state.data.blocks });
-let toastTimer, slideTimer, dragId = '', modalGeneration = 0, resizing = null;
+const boardSnapshot = () => structuredClone({ settings: state.data.settings, duty: state.data.duty, pages: state.data.pages, blocks: state.data.blocks });
+let toastTimer, dragId = '', modalGeneration = 0, resizing = null;
 const photoUploads = new Map();
 
 function toast(message, error = false) {
@@ -74,6 +74,7 @@ function showLogin(message = '') {
   if ($('modal').open) { modalGeneration++; abortPhotos(); $('modal').close(); }
   $('app').classList.add('hidden'); $('login-screen').classList.remove('hidden'); $('login-error').textContent = message;
   $('board').replaceChildren(); state.user = null; state.data = null; state.editing = false; state.dirty = false;
+  state.pageId = ''; state.nextPageAt = 0; state.nextSlideAt = 0;
 }
 
 async function loadState(initial = false) {
@@ -109,22 +110,103 @@ function render() {
   document.querySelector('link[rel="icon"]').href = appearance.faviconData || '/dashboard/favicon.svg';
   $('user-name').textContent = state.user.name; $('avatar').textContent = initials(state.user.name);
   $('edit-page').classList.toggle('hidden', !state.user.canEdit || state.editing);
-  $('edit-duty').classList.toggle('hidden', !state.user.canEdit);
   $('admin-link').classList.toggle('hidden', !state.user.centralAdmin);
   $('edit-toolbar').classList.toggle('hidden', !state.editing); $('inspector').classList.toggle('hidden', !state.editing);
   $('workspace').classList.toggle('editing', state.editing);
-  const d = state.data.duty;
-  $('duty-label').textContent = d.label || 'ASTREINTE DIRECTION'; $('duty-name').textContent = d.name || 'Astreinte à renseigner';
-  $('duty-phone').classList.toggle('hidden', !d.phone); $('duty-phone').textContent = d.phone;
-  const phone = d.phone.replace(/[^0-9+*#]/g, ''); $('duty-phone').href = phone ? `tel:${phone}` : '#';
-  $('duty-note').textContent = d.note;
   $('updated').textContent = state.data.updatedAt ? `Mis à jour le ${fullDate(state.data.updatedAt)}${state.data.updatedBy?.name ? ` par ${state.data.updatedBy.name}` : ''}` : 'Aucune modification enregistrée';
-  renderBoard(); renderInspector(); updateSaveStatus(); updateClock();
+  renderPageBar(); renderBoard(); renderInspector(); updateSaveStatus(); updateClock();
 }
 
 function updateClock() {
   $('today').textContent = format(Date.now(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   $('clock').textContent = state.data?.settings.showClock ? `${time(Date.now())} · Paris` : '';
+}
+
+function currentPageBlocks() { return DashboardPages.pageBlocks(state.data, state.pageId, state.editing); }
+
+function renderPageBar() {
+  const pages = state.data.pages;
+  if (!pages.some(page => page.id === state.pageId)) state.pageId = pages[0].id;
+  if (!state.nextPageAt) state.nextPageAt = Date.now() + DashboardPages.PAGE_INTERVAL_MS;
+  const blocks = currentPageBlocks();
+  if (!blocks.some(block => block.id === state.selected)) state.selected = blocks[0]?.id || '';
+  $('page-tabs').innerHTML = pages.map((page, index) => `<button type="button" role="tab" aria-selected="${page.id === state.pageId}" class="page-tab${page.id === state.pageId ? ' active' : ''}" data-page="${esc(page.id)}"><span>${index + 1}</span>${esc(page.title)}</button>`).join('');
+  $('previous-page').disabled = pages.length < 2; $('next-page').disabled = pages.length < 2;
+  $('manage-pages').classList.toggle('hidden', !state.user.canEdit || state.presenting);
+  updateRotationStatus();
+}
+
+function setCurrentPage(id, manual = true) {
+  if (!state.data.pages.some(page => page.id === id)) return;
+  state.pageId = id; state.selected = '';
+  if (manual) { state.nextPageAt = Date.now() + DashboardPages.PAGE_INTERVAL_MS; state.slide = 0; }
+  renderPageBar(); renderBoard(); renderInspector();
+  window.scrollTo({ top: 0, behavior: manual ? 'smooth' : 'auto' });
+}
+
+function updateRotationStatus(now = Date.now()) {
+  if (!state.data) return;
+  const paused = state.rotationPaused || state.editing || $('modal').open;
+  const remaining = Math.max(0, Math.ceil((state.nextPageAt - now) / 1000));
+  const index = state.data.pages.findIndex(page => page.id === state.pageId) + 1;
+  $('rotation-status').textContent = state.editing ? 'Défilement suspendu · édition' : paused ? 'Défilement en pause' : state.data.pages.length < 2 ? '1 page' : `${index} / ${state.data.pages.length} · prochaine page ${String(Math.floor(remaining / 60)).padStart(2, '0')}:${String(remaining % 60).padStart(2, '0')}`;
+  $('toggle-rotation').textContent = state.rotationPaused ? 'Reprendre' : 'Pause';
+  $('toggle-rotation').setAttribute('aria-pressed', String(state.rotationPaused));
+  $('toggle-rotation').classList.toggle('hidden', state.editing || state.data.pages.length < 2 && !state.presenting);
+}
+
+function rotationTick() {
+  if (!state.data || !state.user) return;
+  const now = Date.now(), paused = state.rotationPaused || state.editing || state.saving || $('modal').open || document.hidden || Boolean(resizing);
+  const next = DashboardPages.rotationStep(state.data.pages, state.pageId, state.nextPageAt, now, paused);
+  state.nextPageAt = next.nextAt;
+  if (next.changed) setCurrentPage(next.pageId, false);
+  if (paused || !state.nextSlideAt) state.nextSlideAt = now + (state.data.settings.displaySeconds || 20) * 1000;
+  if (!paused && state.presenting && now >= state.nextSlideAt) {
+    state.slide++; state.nextSlideAt = now + (state.data.settings.displaySeconds || 20) * 1000; renderBoard();
+  }
+  updateRotationStatus(now);
+}
+
+function pagesManager() {
+  beginEdit();
+  openModal('Pages du dashboard', `<div id="page-manager-list" class="page-manager-list">${state.data.pages.map((page, index) => `<div class="page-manager-row" data-managed-page="${esc(page.id)}"><span class="page-number">${index + 1}</span><label><span class="sr-only">Nom de la page ${index + 1}</span><input data-page-name value="${esc(page.title)}" maxlength="80" required></label><div class="page-manager-actions"><button type="button" class="icon-button" data-page-op="up" title="Déplacer avant" aria-label="Déplacer la page avant"${index === 0 ? ' disabled' : ''}>${icon('up')}</button><button type="button" class="icon-button" data-page-op="down" title="Déplacer après" aria-label="Déplacer la page après"${index === state.data.pages.length - 1 ? ' disabled' : ''}>${icon('down')}</button><button type="button" class="icon-button" data-page-op="copy" title="Dupliquer la page" aria-label="Dupliquer cette page">${icon('copy')}</button><button type="button" class="icon-button danger" data-page-op="delete" title="Supprimer la page" aria-label="Supprimer cette page"${state.data.pages.length === 1 ? ' disabled' : ''}>${icon('trash')}</button></div></div>`).join('')}</div><form id="add-page-form" class="add-page-form"><label>Nouvelle page<input id="new-page-title" value="Page ${state.data.pages.length + 1}" maxlength="80" required></label><button class="button secondary" type="submit">${icon('plus')}Ajouter une page</button></form><p class="form-note">Les pages défilent toutes les minutes. Le défilement est suspendu pendant la modification. Enregistrez la page pour partager vos changements.</p><div class="modal-actions"><button class="button primary" type="button" data-close>Terminer</button></div>`, 'MISE EN PAGE');
+  $('add-page-form').onsubmit = event => {
+    event.preventDefault(); if (state.data.pages.length >= 20) return toast('Le dashboard peut contenir au maximum 20 pages.', true);
+    const title = $('new-page-title').value.trim(); if (!title) return;
+    change(() => { const page = { id: crypto.randomUUID(), title }; state.data.pages.push(page); state.pageId = page.id; state.selected = ''; });
+    closeModal(); toast('Page ajoutée. Vous pouvez y ajouter des blocs.');
+  };
+  $('page-manager-list').addEventListener('change', event => {
+    if (!event.target.matches('[data-page-name]')) return;
+    const page = state.data.pages.find(item => item.id === event.target.closest('[data-managed-page]').dataset.managedPage);
+    const title = event.target.value.trim(); if (!title) { event.target.value = page.title; return; }
+    change(() => { page.title = title; });
+  });
+  $('page-manager-list').addEventListener('click', event => {
+    const operation = event.target.closest('[data-page-op]')?.dataset.pageOp; if (!operation) return;
+    const id = event.target.closest('[data-managed-page]').dataset.managedPage;
+    const page = state.data.pages.find(item => item.id === id), index = state.data.pages.indexOf(page);
+    if (operation === 'delete') {
+      if (state.data.pages.length < 2) return;
+      const target = state.data.pages.find(item => item.id !== id);
+      if (!confirm(`Supprimer « ${page.title} » ? Ses blocs seront déplacés vers « ${target.title} ».`)) return;
+      change(() => { state.data.blocks.forEach(block => { if (block.pageId === id) block.pageId = target.id; }); state.data.pages.splice(index, 1); if (state.pageId === id) state.pageId = target.id; });
+    } else if (operation === 'copy') {
+      const blocks = DashboardPages.pageBlocks(state.data, id, true);
+      if (state.data.pages.length >= 20 || state.data.blocks.length + blocks.length > 120) return toast('La limite de pages ou de blocs est atteinte.', true);
+      change(() => {
+        const copy = { id: crypto.randomUUID(), title: `${page.title} · Copie`.slice(0, 80) };
+        state.data.pages.splice(index + 1, 0, copy);
+        state.data.blocks.push(...blocks.map(block => ({ ...structuredClone(block), id: crypto.randomUUID(), pageId: copy.id, items: block.items.map(item => ({ ...item, id: crypto.randomUUID() })) })));
+        state.pageId = copy.id;
+      });
+    } else {
+      const destination = index + (operation === 'up' ? -1 : 1); if (destination < 0 || destination >= state.data.pages.length) return;
+      change(() => { state.data.pages.splice(index, 1); state.data.pages.splice(destination, 0, page); });
+    }
+    pagesManager();
+  });
 }
 
 function actionButton(action, label, symbol, extra = '') {
@@ -146,7 +228,7 @@ function postHtml(post, compact = false, detail = false) {
   return `<article class="post${compact ? ' compact' : ''}" data-post="${esc(post.id)}">
     ${post.image ? `<img class="post-photo" src="${esc(post.image)}" alt="${esc(post.title)}" loading="lazy" data-action="view-photo">` : ''}
     ${post.pinned ? `<span class="pin">${icon('pin')} À LA UNE</span>` : ''}
-    <h3>${esc(post.title)}</h3>${body ? `<p>${esc(body)}</p>` : ''}${shortened ? actionButton('read-post', 'Lire la suite', 'arrow') : ''}
+    <h3>${detail ? esc(post.title) : `<button class="post-title-button" data-action="read-post" type="button">${esc(post.title)}</button>`}</h3>${body ? `<p>${esc(body)}</p>` : ''}${shortened ? actionButton('read-post', 'Lire la suite', 'arrow') : ''}
     <div class="post-meta"><span class="author-avatar">${esc(initials(post.createdBy?.name))}</span><b>${esc(post.createdBy?.name || 'Auteur non renseigné')}</b><i class="post-dot"></i><span>${esc(shortDate(post.createdAt))} à ${esc(time(post.createdAt))}</span>${edit ? `<div class="post-actions"><button data-action="edit-post">Modifier</button><button data-action="delete-post">Supprimer</button></div>` : ''}</div>
     ${post.updatedAt ? `<div class="post-edited">Modifié le ${esc(fullDate(post.updatedAt))}${post.updatedBy?.name ? ` par ${esc(post.updatedBy.name)}` : ''}</div>` : ''}
   </article>`;
@@ -158,11 +240,17 @@ function meetingHtml(item, blockId, detail = false) {
 }
 
 function renderBlockBody(block) {
+  if (block.kind === 'duty') {
+    const duty = state.data.duty, phone = duty.phone.replace(/[^0-9+*#]/g, '');
+    return `<div class="duty-card-body"><div class="duty-card-icon">${icon('phone')}</div><strong>${esc(duty.name || 'Astreinte à renseigner')}</strong>${duty.phone ? `<a href="${phone ? `tel:${esc(phone)}` : '#'}">${esc(duty.phone)}</a>` : '<span class="duty-missing">Aucun numéro renseigné</span>'}${duty.note ? `<p>${esc(duty.note)}</p>` : ''}</div>`;
+  }
   if (block.kind === 'news') {
-    const posts = sortedPosts();
+    const posts = sortedPosts().filter(post => !block.postId || post.id === block.postId);
     if (!posts.length) return `<div class="card-content">${empty('news', 'Aucune publication', 'Les publications du service apparaîtront ici.', 'new-post', 'Créer une publication', 'news-empty')}</div>`;
-    const shown = state.presenting ? [posts[state.slide % posts.length]] : posts.slice(0, 3);
-    return `<div class="card-content">${shown.map((post, index) => postHtml(post, index > 0)).join('')}${!state.presenting && posts.length > 3 ? actionButton('all-posts', `Voir les ${posts.length} publications`, 'arrow') : ''}</div>`;
+    const limit = block.postId ? 1 : block.newsLimit;
+    const offset = state.presenting && !block.postId ? state.slide % posts.length : 0;
+    const shown = [...posts.slice(offset), ...posts.slice(0, offset)].slice(0, limit);
+    return `<div class="card-content">${shown.map((post, index) => postHtml(post, index > 0)).join('')}${!state.presenting && posts.length > limit ? actionButton('all-posts', `Voir les ${posts.length} publications`, 'arrow') : ''}</div>`;
   }
   if (block.kind === 'meetings') {
     const items = [...block.items].sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
@@ -176,11 +264,11 @@ function renderBlockBody(block) {
 }
 
 function renderBoard() {
-  const blocks = state.data.blocks.filter(block => state.editing || !block.hidden);
+  const blocks = DashboardPages.pageBlocks(state.data, state.pageId, state.editing);
   $('board').innerHTML = blocks.length ? blocks.map(block => {
     const editor = state.editing ? `<div class="block-tools"><span class="drag-handle" title="Glisser pour déplacer" aria-hidden="true">${icon('grip')}</span><span class="block-kind">${esc(names[block.kind])}</span><div class="tools-right"><button data-action="move-up" title="Déplacer avant" aria-label="Déplacer ce bloc avant">${icon('up')}</button><button data-action="move-down" title="Déplacer après" aria-label="Déplacer ce bloc après">${icon('down')}</button><button data-action="duplicate" title="Dupliquer" aria-label="Dupliquer ce bloc">${icon('copy')}</button><button data-action="delete-block" title="Supprimer" aria-label="Supprimer ce bloc">${icon('trash')}</button></div></div>` : '';
-    const tools = state.user.canEdit && !state.presenting ? block.kind === 'news' ? actionButton('new-post', 'Publier', 'plus') : block.kind === 'meetings' ? actionButton('add-meeting', 'Ajouter', 'plus') : state.editing ? actionButton('edit-content', 'Modifier', 'edit') : '' : '';
-    return `<section class="board-card${state.selected === block.id ? ' selected' : ''}${block.hidden ? ' is-hidden' : ''}" data-block="${esc(block.id)}" data-kind="${block.kind}" style="--width:${Number(block.width)};--height:${Number(block.minHeight)}px;--card-bg:${esc(block.background)};--card-color:${esc(block.color)};--text-size:${Number(block.fontSize)}px;--align:${esc(block.align)};--weight:${block.bold ? 650 : 400};--italic:${block.italic ? 'italic' : 'normal'}">${editor}<div class="card-heading"><div class="card-title-group"><span class="card-title-icon">${icon(block.kind)}</span><h2 ${state.editing ? 'contenteditable="plaintext-only" role="textbox" aria-label="Titre du bloc" data-field="title"' : ''}>${esc(block.title)}</h2></div>${tools}</div>${renderBlockBody(block)}${state.editing ? '<span class="resize-handle" title="Glisser pour redimensionner le bloc" aria-hidden="true"></span>' : ''}</section>`;
+    const tools = state.user.canEdit && !state.presenting ? block.kind === 'news' ? actionButton('new-post', 'Publier', 'plus') : block.kind === 'duty' ? actionButton('edit-duty', 'Modifier', 'edit') : block.kind === 'meetings' ? actionButton('add-meeting', 'Ajouter', 'plus') : state.editing ? actionButton('edit-content', 'Modifier', 'edit') : '' : '';
+    return `<section class="board-card${state.selected === block.id ? ' selected' : ''}${block.hidden ? ' is-hidden' : ''}" data-block="${esc(block.id)}" data-kind="${block.kind}" data-fixed="${block.fixedHeight}" data-images-hidden="${block.imageHeight === 0}" style="--post-image-height:${Number(block.imageHeight)}px;--post-image-width:${Number(block.imageWidth)}%;--post-image-fit:${esc(block.imageFit)};--width:${Number(block.width)};--height:${Number(block.minHeight)}px;--card-bg:${esc(block.background)};--card-color:${esc(block.color)};--text-size:${Number(block.fontSize)}px;--align:${esc(block.align)};--weight:${block.bold ? 650 : 400};--italic:${block.italic ? 'italic' : 'normal'}">${editor}<div class="card-heading"><div class="card-title-group"><span class="card-title-icon">${icon(block.kind)}</span><h2 ${state.editing ? 'contenteditable="plaintext-only" role="textbox" aria-label="Titre du bloc" data-field="title"' : ''}>${esc(block.title)}</h2></div>${tools}</div>${renderBlockBody(block)}${state.editing ? '<span class="resize-handle" title="Glisser pour redimensionner le bloc" aria-hidden="true"></span>' : ''}</section>`;
   }).join('') : `<div class="no-blocks">${empty('layout', 'Aucun bloc', 'Ajoutez un bloc depuis le mode édition.', state.user.canEdit ? 'add-block' : '', 'Ajouter un bloc')}</div>`;
 }
 
@@ -192,11 +280,16 @@ function selectBlock(id) {
   renderInspector();
 }
 
+function mediaProperties(block) {
+  if (!['news', 'image'].includes(block.kind)) return '';
+  return `<hr>${block.kind === 'news' ? `<label>Publication affichée<select data-prop="postId"><option value="">Automatique · dernières publications</option>${block.postId && !state.data.posts.some(post => post.id === block.postId) ? `<option value="${esc(block.postId)}" selected>Publication supprimée</option>` : ''}${sortedPosts().map(post => `<option value="${esc(post.id)}"${block.postId === post.id ? ' selected' : ''}>${esc(post.title)}</option>`).join('')}</select></label><label>Nombre de publications<select data-prop="newsLimit"${block.postId ? ' disabled' : ''}>${[1, 2, 3, 4, 5].map(value => `<option value="${value}"${value === block.newsLimit ? ' selected' : ''}>${value} publication${value > 1 ? 's' : ''}</option>`).join('')}</select></label>` : ''}<label>Hauteur des photos <span class="size-readout">${block.imageHeight ? `${block.imageHeight} px` : 'Masquées'}</span><input data-prop="imageHeight" type="range" min="0" max="600" step="20" value="${block.imageHeight}"></label><label>Largeur des photos <span class="size-readout">${block.imageWidth} %</span><input data-prop="imageWidth" type="range" min="25" max="100" step="5" value="${block.imageWidth}"></label><label>Affichage de l’image<select data-prop="imageFit"><option value="contain"${block.imageFit === 'contain' ? ' selected' : ''}>Image entière</option><option value="cover"${block.imageFit === 'cover' ? ' selected' : ''}>Remplir et recadrer</option></select></label>`;
+}
+
 function renderInspector() {
   if (!state.editing) return;
   const block = selectedBlock();
   if (!block) { $('inspector-fields').innerHTML = '<p class="inspector-note">Cliquez sur un bloc de la page. Vous pourrez le redimensionner, changer ses couleurs ou modifier son contenu.</p>'; return; }
-  $('inspector-fields').innerHTML = `<label>Titre du bloc<input data-prop="title" value="${esc(block.title)}" maxlength="120"></label><div class="compact-mobile"><label>Largeur<select data-prop="width">${[[3, '1/4 de page'], [4, '1/3 de page'], [6, '1/2 page'], [8, '2/3 de page'], [9, '3/4 de page'], [12, 'Pleine largeur']].map(([v, label]) => `<option value="${v}"${v === block.width ? ' selected' : ''}>${label}</option>`).join('')}</select></label><label>Hauteur minimale <span class="size-readout">${block.minHeight} px</span><input data-prop="minHeight" type="range" min="160" max="1200" step="20" value="${block.minHeight}"></label></div><div class="property-row"><label>Fond<input type="color" data-prop="background" value="${esc(block.background)}"></label><label>Texte<input type="color" data-prop="color" value="${esc(block.color)}"></label></div>${block.kind === 'text' ? `<label>Taille du texte <span class="size-readout">${block.fontSize} px</span><input type="range" data-prop="fontSize" min="12" max="60" value="${block.fontSize}"></label><label>Alignement<select data-prop="align">${[['left', 'À gauche'], ['center', 'Centré'], ['right', 'À droite']].map(([value, label]) => `<option value="${value}"${value === block.align ? ' selected' : ''}>${label}</option>`).join('')}</select></label><div class="property-row"><label class="check-label"><input type="checkbox" data-prop="bold"${block.bold ? ' checked' : ''}>Gras</label><label class="check-label"><input type="checkbox" data-prop="italic"${block.italic ? ' checked' : ''}>Italique</label></div>` : ''}<hr><label class="check-label"><input type="checkbox" data-prop="hidden"${block.hidden ? ' checked' : ''}>Masquer en consultation</label><button class="button secondary small full" data-inspector-action="content">${icon('edit')}Modifier le contenu</button><div class="property-row" style="margin-top:9px"><button class="button secondary small" data-inspector-action="duplicate">${icon('copy')}Dupliquer</button><button class="button secondary small danger" data-inspector-action="delete">${icon('trash')}Supprimer</button></div><p class="inspector-note">Glissez la poignée du bloc pour le déplacer, ou utilisez ses flèches. Sur téléphone, les blocs s’affichent les uns sous les autres.</p>`;
+  $('inspector-fields').innerHTML = `<label>Page<select data-prop="pageId">${state.data.pages.map(page => `<option value="${esc(page.id)}"${page.id === block.pageId ? ' selected' : ''}>${esc(page.title)}</option>`).join('')}</select></label><label>Titre du bloc<input data-prop="title" value="${esc(block.title)}" maxlength="120"></label><div class="compact-mobile"><label>Largeur<select data-prop="width">${[[3, '1/4 de page'], [4, '1/3 de page'], [6, '1/2 page'], [8, '2/3 de page'], [9, '3/4 de page'], [12, 'Pleine largeur']].map(([v, label]) => `<option value="${v}"${v === block.width ? ' selected' : ''}>${label}</option>`).join('')}</select></label><label>Hauteur du bloc <span class="size-readout">${block.minHeight} px</span><input data-prop="minHeight" type="range" min="160" max="1200" step="20" value="${block.minHeight}"></label></div><label class="check-label"><input type="checkbox" data-prop="fixedHeight"${block.fixedHeight ? ' checked' : ''}>Hauteur fixe (contenu défilant)</label><div class="property-row"><label>Fond<input type="color" data-prop="background" value="${esc(block.background)}"></label><label>Texte<input type="color" data-prop="color" value="${esc(block.color)}"></label></div>${block.kind === 'text' ? `<label>Taille du texte <span class="size-readout">${block.fontSize} px</span><input type="range" data-prop="fontSize" min="12" max="60" value="${block.fontSize}"></label><label>Alignement<select data-prop="align">${[['left', 'À gauche'], ['center', 'Centré'], ['right', 'À droite']].map(([value, label]) => `<option value="${value}"${value === block.align ? ' selected' : ''}>${label}</option>`).join('')}</select></label><div class="property-row"><label class="check-label"><input type="checkbox" data-prop="bold"${block.bold ? ' checked' : ''}>Gras</label><label class="check-label"><input type="checkbox" data-prop="italic"${block.italic ? ' checked' : ''}>Italique</label></div>` : ''}${mediaProperties(block)}<hr><label class="check-label"><input type="checkbox" data-prop="hidden"${block.hidden ? ' checked' : ''}>Masquer en consultation</label><button class="button secondary small full" data-inspector-action="content">${icon('edit')}Modifier le contenu</button><div class="property-row" style="margin-top:9px"><button class="button secondary small" data-inspector-action="duplicate">${icon('copy')}Dupliquer</button><button class="button secondary small danger" data-inspector-action="delete">${icon('trash')}Supprimer</button></div><p class="inspector-note">Glissez la poignée du bloc pour le déplacer, ou utilisez ses flèches. Sur téléphone, les blocs s’affichent les uns sous les autres.</p>`;
 }
 
 function updateSaveStatus() {
@@ -205,14 +298,14 @@ function updateSaveStatus() {
 }
 function remember() { state.history.push(boardSnapshot()); if (state.history.length > 35) state.history.shift(); }
 function dirty() { state.dirty = true; updateSaveStatus(); }
-function change(callback, redraw = true) { remember(); callback(); dirty(); if (redraw) { renderBoard(); renderInspector(); } }
+function change(callback, redraw = true) { remember(); callback(); dirty(); if (redraw) { renderPageBar(); renderBoard(); renderInspector(); } }
 
 function beginEdit() {
   if (!state.user?.canEdit) return;
   if (state.presenting) stopPresentation();
   if (state.editing) return;
   state.original = boardSnapshot(); state.history = []; state.editing = true; state.dirty = false;
-  state.selected = state.data.blocks[0]?.id || ''; render();
+  state.selected = DashboardPages.pageBlocks(state.data, state.pageId, true)[0]?.id || ''; render();
 }
 
 function cancelEdit() {
@@ -310,10 +403,10 @@ function postEditor(post = null) {
   };
 }
 
-function dutyEditor() {
-  beginEdit(); const d = state.data.duty;
+function dutyEditor(block = null) {
+  beginEdit(); if (block) selectBlock(block.id); const d = state.data.duty;
   openModal('Astreinte direction', `<form id="duty-form" class="modal-form"><label>Libellé<input id="duty-title" value="${esc(d.label)}" maxlength="80" required></label><label>Nom ou service<input id="duty-person" value="${esc(d.name)}" maxlength="160" placeholder="Nom du responsable d’astreinte"></label><label>Téléphone<input id="duty-number" type="tel" value="${esc(d.phone)}" maxlength="60" placeholder="Numéro à joindre"></label><label>Précisions<textarea id="duty-details" maxlength="500" placeholder="Période d’astreinte, horaires, consignes…">${esc(d.note)}</textarea></label><p class="form-note">Ce changement sera partagé lorsque vous enregistrerez la page.</p>${buttons('Appliquer à la page')}</form>`, 'CONTACT DU SERVICE');
-  $('duty-form').onsubmit = event => { event.preventDefault(); change(() => { state.data.duty = { label: $('duty-title').value, name: $('duty-person').value, phone: $('duty-number').value, note: $('duty-details').value }; }, false); closeModal(); render(); };
+  $('duty-form').onsubmit = event => { event.preventDefault(); change(() => { const oldLabel = state.data.duty.label; state.data.duty = { label: $('duty-title').value, name: $('duty-person').value, phone: $('duty-number').value, note: $('duty-details').value }; state.data.blocks.filter(item => item.kind === 'duty' && item.title === oldLabel).forEach(item => { item.title = state.data.duty.label; }); }, false); closeModal(); render(); };
 }
 
 function toLocalInput(value) {
@@ -377,11 +470,11 @@ function showAgenda(block) {
 
 function blockPalette() {
   beginEdit();
-  const descriptions = { news: 'Publications, photos et nom de leur auteur.', meetings: 'Dates, horaires, lieux et ordre du jour.', text: 'Une information libre, à votre façon.', image: 'Une photo, une affiche ou un visuel.', links: 'Tous les raccourcis utiles à l’équipe.' };
+  const descriptions = { duty: 'Responsable, téléphone et précisions.', news: 'Publications, photos et nom de leur auteur.', meetings: 'Dates, horaires, lieux et ordre du jour.', text: 'Une information libre, à votre façon.', image: 'Une photo, une affiche ou un visuel.', links: 'Tous les raccourcis utiles à l’équipe.' };
   openModal('Ajouter un bloc', `<div class="block-palette">${Object.entries(names).map(([kind, label]) => `<button class="palette-item" data-add-kind="${kind}"><span>${icon(kind)}</span><strong>${label}</strong><small>${descriptions[kind]}</small></button>`).join('')}</div>`, 'MISE EN PAGE');
   document.querySelectorAll('[data-add-kind]').forEach(button => { button.onclick = () => {
-    if (state.data.blocks.length >= 60) return toast('Votre page peut contenir au maximum 60 blocs.', true);
-    const kind = button.dataset.addKind, block = { id: crypto.randomUUID(), kind, title: names[kind], width: kind === 'news' ? 8 : 4, minHeight: 240, hidden: false, background: '#ffffff', color: '#193b4d', fontSize: 16, align: 'left', bold: false, italic: false, body: '', image: '', caption: '', items: [] };
+    if (state.data.blocks.length >= 120) return toast('Votre page peut contenir au maximum 120 blocs.', true);
+    const kind = button.dataset.addKind, block = { id: crypto.randomUUID(), kind, pageId: state.pageId, title: names[kind], width: kind === 'duty' ? 3 : kind === 'news' ? 6 : 4, minHeight: kind === 'duty' ? 180 : kind === 'news' ? 360 : 240, fixedHeight: ['news', 'image'].includes(kind), newsLimit: 1, postId: '', imageHeight: 120, imageWidth: 100, imageFit: 'contain', hidden: false, background: kind === 'duty' ? '#123b53' : '#ffffff', color: kind === 'duty' ? '#ffffff' : '#193b4d', fontSize: 16, align: 'left', bold: false, italic: false, body: '', image: '', caption: '', items: [] };
     change(() => { state.data.blocks.push(block); state.selected = block.id; }); closeModal();
     document.querySelector(`[data-block="${block.id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     if (['text', 'image', 'links'].includes(kind)) editContent(block);
@@ -390,6 +483,7 @@ function blockPalette() {
 
 function editContent(block) {
   beginEdit(); selectBlock(block.id);
+  if (block.kind === 'duty') return dutyEditor(block);
   if (block.kind === 'news') return postEditor();
   if (block.kind === 'meetings') return showAgenda(block);
   if (block.kind === 'text') {
@@ -427,12 +521,12 @@ function appearanceEditor() {
 }
 
 function moveBlock(block, offset) {
-  const index = state.data.blocks.indexOf(block), next = index + offset;
-  if (next < 0 || next >= state.data.blocks.length) return;
-  change(() => { state.data.blocks.splice(index, 1); state.data.blocks.splice(next, 0, block); });
+  const blocks = DashboardPages.pageBlocks(state.data, block.pageId, true);
+  if (!blocks[blocks.indexOf(block) + offset]) return;
+  change(() => { DashboardPages.moveBlock(state.data, block.id, offset); });
 }
 function duplicateBlock(block) {
-  if (state.data.blocks.length >= 60) return toast('La limite de 60 blocs est atteinte.', true);
+  if (state.data.blocks.length >= 120) return toast('La limite de 120 blocs est atteinte.', true);
   change(() => { const copy = structuredClone(block); copy.id = crypto.randomUUID(); copy.title += ' · Copie'; copy.items = copy.items.map(item => ({ ...item, id: crypto.randomUUID() })); state.data.blocks.splice(state.data.blocks.indexOf(block) + 1, 0, copy); state.selected = copy.id; });
 }
 function removeBlock(block) {
@@ -456,12 +550,13 @@ async function handleAction(event) {
   if (action === 'new-post') return postEditor();
   if (action === 'edit-post' && post) return postEditor(post);
   if (action === 'delete-post' && post && confirm(`Supprimer la publication « ${post.title} » ?`)) {
-    try { const result = await api(`/posts/${encodeURIComponent(post.id)}`, { method: 'DELETE', body: { revision: state.data.revision } }); state.data.posts = state.data.posts.filter(item => item.id !== post.id); state.data.revision = result.revision; closeModal(); renderBoard(); toast('Publication supprimée.'); }
+    try { const result = await api(`/posts/${encodeURIComponent(post.id)}`, { method: 'DELETE', body: { revision: state.data.revision } }); state.data.posts = state.data.posts.filter(item => item.id !== post.id); state.data.revision = result.revision; closeModal(); renderBoard(); renderInspector(); toast('Publication supprimée.'); }
     catch (error) { if (error.status === 409) showConflict(error.message); else toast(error.message, true); }
     return;
   }
   if (action === 'add-block') return blockPalette();
   if (!block) return;
+  if (action === 'edit-duty') return dutyEditor(block);
   if (action === 'add-meeting') return meetingEditor(block);
   if (action === 'edit-meeting' && meeting) return meetingEditor(block, meeting);
   if (action === 'delete-meeting' && meeting && confirm('Supprimer cette réunion de la page ?')) { change(() => { block.items = block.items.filter(item => item.id !== meeting.id); }); if ($('modal').open) showAgenda(block); return; }
@@ -478,12 +573,12 @@ async function startPresentation() {
   state.presenting = true; state.slide = 0; document.body.classList.add('presenting'); $('presentation-controls').classList.remove('hidden');
   renderBoard(); window.scrollTo({ top: 0 });
   try { await document.documentElement.requestFullscreen?.(); } catch { /* viewport presentation still works */ }
-  clearInterval(slideTimer); slideTimer = setInterval(() => { state.slide++; if (state.presenting && state.data) renderBoard(); }, (state.data.settings.displaySeconds || 20) * 1000);
+  state.nextPageAt = Date.now() + DashboardPages.PAGE_INTERVAL_MS; state.nextSlideAt = Date.now() + (state.data.settings.displaySeconds || 20) * 1000; renderPageBar();
 }
 function stopPresentation() {
-  state.presenting = false; clearInterval(slideTimer); document.body.classList.remove('presenting'); $('presentation-controls').classList.add('hidden');
+  state.presenting = false; document.body.classList.remove('presenting'); $('presentation-controls').classList.add('hidden');
   if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
-  if (state.data) renderBoard();
+  if (state.data) { renderPageBar(); renderBoard(); }
 }
 
 document.querySelectorAll('[data-icon]').forEach(node => { node.innerHTML = icon(node.dataset.icon); });
@@ -508,7 +603,12 @@ $('renew-password').onclick = () => {
   };
 };
 $('logout').onclick = async () => { if (state.dirty && !confirm('Se déconnecter et abandonner les modifications de la page ?')) return; try { await api('/logout', { method: 'POST', body: {} }); showLogin(); } catch (error) { toast(error.message, true); } };
-$('edit-page').onclick = beginEdit; $('edit-duty').onclick = dutyEditor; $('cancel-edit').onclick = cancelEdit; $('save-page').onclick = savePage;
+$('edit-page').onclick = beginEdit; $('cancel-edit').onclick = cancelEdit; $('save-page').onclick = savePage;
+$('page-tabs').addEventListener('click', event => { const id = event.target.closest('[data-page]')?.dataset.page; if (id) setCurrentPage(id); });
+$('previous-page').onclick = () => setCurrentPage(DashboardPages.nextPageId(state.data.pages, state.pageId, -1));
+$('next-page').onclick = () => setCurrentPage(DashboardPages.nextPageId(state.data.pages, state.pageId, 1));
+$('toggle-rotation').onclick = () => { state.rotationPaused = !state.rotationPaused; state.nextPageAt = Date.now() + DashboardPages.PAGE_INTERVAL_MS; updateRotationStatus(); };
+$('manage-pages').onclick = pagesManager;
 $('add-block').onclick = blockPalette; $('page-settings').onclick = appearanceEditor;
 $('undo').onclick = () => { const previous = state.history.pop(); if (!previous) return; Object.assign(state.data, previous); state.selected = state.data.blocks.some(item => item.id === state.selected) ? state.selected : state.data.blocks[0]?.id; dirty(); render(); };
 $('close-modal').onclick = closeModal;
@@ -517,7 +617,7 @@ $('modal').addEventListener('cancel', () => { modalGeneration++; abortPhotos(); 
 $('board').addEventListener('click', event => { if (state.editing) { const card = event.target.closest('[data-block]'); if (card) selectBlock(card.dataset.block); } handleAction(event).catch(error => toast(error.message, true)); });
 $('board').addEventListener('focusin', event => { if (state.editing && event.target.matches('[contenteditable]')) remember(); });
 $('board').addEventListener('input', event => { if (!state.editing || !event.target.dataset.field) return; const block = state.data.blocks.find(item => item.id === event.target.closest('[data-block]').dataset.block); if (block) { block[event.target.dataset.field] = event.target.innerText.slice(0, event.target.dataset.field === 'title' ? 120 : 15000); dirty(); } });
-$('inspector-fields').addEventListener('change', event => { const prop = event.target.dataset.prop, block = selectedBlock(); if (!prop || !block) return; change(() => { block[prop] = event.target.type === 'checkbox' ? event.target.checked : ['width', 'minHeight', 'fontSize'].includes(prop) ? Number(event.target.value) : event.target.value; }); });
+$('inspector-fields').addEventListener('change', event => { const prop = event.target.dataset.prop, block = selectedBlock(); if (!prop || !block) return; change(() => { block[prop] = event.target.type === 'checkbox' ? event.target.checked : ['width', 'minHeight', 'fontSize', 'imageHeight', 'imageWidth', 'newsLimit'].includes(prop) ? Number(event.target.value) : event.target.value; if (prop === 'pageId') state.pageId = block.pageId; }); });
 $('inspector-fields').addEventListener('click', event => { const action = event.target.closest('[data-inspector-action]')?.dataset.inspectorAction, block = selectedBlock(); if (!action || !block) return; if (action === 'content') editContent(block); if (action === 'duplicate') duplicateBlock(block); if (action === 'delete') removeBlock(block); });
 $('board').addEventListener('pointerdown', event => { if (state.editing && event.target.closest('.drag-handle')) event.target.closest('[data-block]').draggable = true; });
 $('board').addEventListener('pointerdown', event => {
@@ -545,6 +645,6 @@ $('present').onclick = startPresentation; $('exit-present').onclick = stopPresen
 document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && state.presenting) stopPresentation(); });
 document.addEventListener('keydown', event => { if (event.key === 'Escape' && state.presenting) stopPresentation(); });
 window.addEventListener('beforeunload', event => { if (state.dirty) { event.preventDefault(); event.returnValue = ''; } });
-setInterval(updateClock, 1000);
+setInterval(() => { updateClock(); rotationTick(); }, 1000);
 setInterval(() => { if (state.user && !state.editing && !$('modal').open && !document.hidden) loadState().catch(() => {}); }, 30000);
 loadState(true);

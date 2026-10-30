@@ -5,7 +5,8 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
-const { isPhenixAppUrl, normalizePortalApp } = require('./app-navigation');
+const { isPhenixAppUrl } = require('./app-navigation');
+const { defaultPortalCatalog, normalizePortalCatalog, portalDataDirectory } = require('./portal-catalog');
 const { appAccess, appearanceFor, loadAdminConfig, policyForUser, portalAppAllowed } = require('./central-config');
 
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
@@ -16,21 +17,6 @@ function safeEqual(a, b) {
   const aa = Buffer.from(String(a ?? ''));
   const bb = Buffer.from(String(b ?? ''));
   return aa.length === bb.length && crypto.timingSafeEqual(aa, bb);
-}
-
-function writableDir(candidates) {
-  for (const dir of candidates) {
-    try {
-      fs.mkdirSync(dir, { recursive: true });
-      const probe = path.join(dir, '.portal-write-test');
-      fs.writeFileSync(probe, 'ok');
-      fs.unlinkSync(probe);
-      return dir;
-    } catch (err) {
-      console.warn(`[PORTAIL] Stockage indisponible ${dir}: ${err.message}`);
-    }
-  }
-  throw new Error('Aucun stockage disponible pour le portail.');
 }
 
 function scrypt(password, salt) {
@@ -112,10 +98,7 @@ function mountPortal(app, deps = {}) {
   const ENV_SECRET = String(process.env.SESSION_SECRET || '');
   const TOKEN_SECRET = ENV_SECRET.length >= 32 ? ENV_SECRET : crypto.randomBytes(48).toString('base64url');
   const PORTAL_DIR = path.join(__dirname, 'portail');
-  const requestedDataDir = String(process.env.PORTAL_DATA_DIR || '').trim();
-  const DATA_DIR = writableDir(requestedDataDir
-    ? [requestedDataDir]
-    : ['/var/data', path.join(__dirname, 'data'), '/tmp/portail-pm-chalon']);
+  const DATA_DIR = portalDataDirectory();
   const DB_FILE = path.join(DATA_DIR, 'portal.json');
   const PHENIX_DB_FILE = String(process.env.PHENIX_DATA_FILE || '/var/data/data.json').trim() || '/var/data/data.json';
 
@@ -134,21 +117,7 @@ function mountPortal(app, deps = {}) {
   if (IS_PROD && !ADMIN_PASSWORD) console.warn('[PORTAIL] PORTAL_ADMIN_PASSWORD absent : connexion admin indisponible.');
 
   function defaultData() {
-    return {
-      schemaVersion: 2,
-      users: [],
-      categories: [
-        { id: 'cat-operationnel', name: 'Opérationnel', order: 10 },
-        { id: 'cat-outils', name: 'Outils et applications', order: 20 },
-        { id: 'cat-documentation', name: 'Documentation', order: 30 }
-      ],
-      apps: [
-        {
-          id: 'app-phenix', categoryId: 'cat-operationnel', name: 'PHENIX',
-          description: 'Plateforme opérationnelle', url: '/phenix/', logoData: '', order: 10
-        }
-      ]
-    };
+    return defaultPortalCatalog({ syrius: appearanceFor('syrius') });
   }
 
   function loadData() {
@@ -156,12 +125,12 @@ function mountPortal(app, deps = {}) {
     try {
       if (!fs.existsSync(DB_FILE)) return base;
       const parsed = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-      return {
-        schemaVersion: 2,
+      return normalizePortalCatalog({
+        ...parsed,
         users: Array.isArray(parsed.users) ? parsed.users : [],
         categories: Array.isArray(parsed.categories) ? parsed.categories : base.categories,
-        apps: Array.isArray(parsed.apps) ? parsed.apps.map(normalizePortalApp) : base.apps
-      };
+        apps: Array.isArray(parsed.apps) ? parsed.apps : base.apps
+      }, { syrius: appearanceFor('syrius') });
     } catch (err) {
       console.error('[PORTAIL] Lecture portal.json impossible:', err.message);
       return base;
@@ -438,24 +407,6 @@ function mountPortal(app, deps = {}) {
     const config = loadAdminConfig();
     const categories = [...data.categories].sort((a, b) => Number(a.order || 0) - Number(b.order || 0) || String(a.name).localeCompare(String(b.name), 'fr'));
     let apps = [...data.apps];
-    if (!apps.some(item => item.id === 'app-dashboard' || /^\/dashboard(?:\/|$)/.test(String(item.url || '')))) {
-      const category = categories.find(item => item.id === 'cat-operationnel') || categories[0];
-      if (category) apps.push({
-        id: 'app-dashboard', categoryId: category.id, name: 'Dashboard · Vie du service',
-        description: 'Actualités, astreinte et prochaines réunions', url: '/dashboard/',
-        logoData: '', accentColor: '#16877b', order: 5
-      });
-    }
-    // Ajoute SYRIUS aux portails existants sans réécrire leur configuration.
-    if (!apps.some(item => item.id === 'app-syrius' || /^\/syrius(?:\/|$)/.test(String(item.url || '')))) {
-      const category = categories.find(item => item.id === 'cat-operationnel') || categories[0];
-      const radioAppearance = appearanceFor('syrius', config);
-      if (category) apps.push({
-        id: 'app-syrius', categoryId: category.id, name: radioAppearance.title,
-        description: radioAppearance.subtitle, url: '/syrius/',
-        logoData: radioAppearance.logoData, accentColor: radioAppearance.accentColor, order: 25
-      });
-    }
     if (req.portalUser.source === 'PHENIX') {
       const phenix = loadPhenixUsers();
       const rawId = String(req.portalUser.id || '').replace(/^phenix:/, '');
@@ -575,6 +526,7 @@ function mountPortal(app, deps = {}) {
       const target = data.apps.find(a => a.id === id);
       if (!target) return res.status(404).json({ error: 'NOT_FOUND', message: 'Application introuvable.' });
       Object.assign(target, { name, description, url, categoryId, order, accentColor });
+      if (target.followAppearance) target.followAppearance = false;
       if (logoData) target.logoData = logoData;
       if (req.body?.removeLogo === true) target.logoData = '';
     } else data.apps.push({ id: crypto.randomUUID(), categoryId, name, description, url, logoData: logoData || '', accentColor, order });

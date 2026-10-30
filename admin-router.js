@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const { normalizePortalApp } = require('./app-navigation');
+const { defaultPortalCatalog, normalizePortalCatalog, portalDataDirectory } = require('./portal-catalog');
 const {
   APPLICATIONS,
   NOTIFICATION_EVENTS,
@@ -107,22 +107,6 @@ function validUrl(value) {
   catch { return false; }
 }
 
-function portalDefaults() {
-  return {
-    schemaVersion: 2,
-    users: [],
-    categories: [
-      { id: 'cat-operationnel', name: 'Opérationnel', order: 10 },
-      { id: 'cat-outils', name: 'Outils et applications', order: 20 },
-      { id: 'cat-documentation', name: 'Documentation', order: 30 }
-    ],
-    apps: [{
-      id: 'app-phenix', categoryId: 'cat-operationnel', name: 'PHENIX',
-      description: 'Plateforme opérationnelle', url: '/phenix/', logoData: '', accentColor: '#0878df', order: 10
-    }]
-  };
-}
-
 function mountCentralAdmin(app, deps = {}) {
   const loadPhenix = deps.loadPhenix;
   const savePhenix = deps.savePhenix;
@@ -131,22 +115,23 @@ function mountCentralAdmin(app, deps = {}) {
   if (Buffer.byteLength(secret, 'utf8') < 32) throw new Error('ADMIN: SESSION_SECRET doit faire au moins 32 octets.');
 
   const staticDir = path.join(__dirname, 'portail', 'administration');
-  const dataDir = String(process.env.PORTAL_DATA_DIR || '/var/data');
+  const dataDir = portalDataDirectory();
   const portalFile = path.join(dataDir, 'portal.json');
   const atlasFile = path.join(String(process.env.ATLAS_DATA_DIR || dataDir), 'atlas.json');
   const arretesFile = path.join(String(process.env.ARRETES_DATA_DIR || '/var/data/arretes'), 'arretes.json');
 
   function loadPortal() {
-    const defaults = portalDefaults();
+    const appearances = { syrius: appearanceFor('syrius') };
+    const defaults = defaultPortalCatalog(appearances);
     try {
       if (!fs.existsSync(portalFile)) return defaults;
       const parsed = JSON.parse(fs.readFileSync(portalFile, 'utf8'));
-      return {
-        schemaVersion: 2,
+      return normalizePortalCatalog({
+        ...parsed,
         users: Array.isArray(parsed.users) ? parsed.users : [],
         categories: Array.isArray(parsed.categories) ? parsed.categories : defaults.categories,
-        apps: Array.isArray(parsed.apps) ? parsed.apps.map(normalizePortalApp) : defaults.apps
-      };
+        apps: Array.isArray(parsed.apps) ? parsed.apps : defaults.apps
+      }, appearances);
     } catch (error) {
       console.error('[ADMIN] Lecture portal.json impossible:', error.message);
       return defaults;
@@ -741,6 +726,7 @@ function mountCentralAdmin(app, deps = {}) {
         item = portal.apps.find(appItem => appItem.id === id);
         if (!item) return res.status(404).json({ error: 'Application introuvable.' });
         Object.assign(item, { name, description, url, categoryId, accentColor, order });
+        if (item.followAppearance) item.followAppearance = false;
         if (logoData) item.logoData = logoData;
         if (input.removeLogo) item.logoData = '';
       } else {

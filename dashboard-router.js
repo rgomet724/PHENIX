@@ -7,8 +7,9 @@ const fs = require('fs');
 const path = require('path');
 const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const { appAccess, appearanceFor, normalizedRole, passwordMinLength } = require('./central-config');
+const { migrateDashboard } = require('./dashboard/pages');
 
-const KINDS = new Set(['news', 'meetings', 'text', 'image', 'links']);
+const KINDS = new Set(['news', 'meetings', 'text', 'image', 'links', 'duty']);
 const FONTS = new Set(['system', 'serif', 'rounded', 'mono']);
 const MAX_MEDIA_BYTES = 2 * 1024 * 1024;
 const MEDIA_NAME = /^[0-9a-f-]{36}\.(?:jpg|png|webp)$/;
@@ -24,20 +25,22 @@ function newBlock(kind, title, width) {
 
 function initialData() {
   const news = newBlock('news', 'Vie du service', 8);
-  news.minHeight = 400;
+  news.minHeight = 360;
+  news.width = 6;
   const meetings = newBlock('meetings', 'Prochaines réunions', 4);
-  meetings.minHeight = 400;
-  const information = newBlock('text', 'À retenir', 4);
+  meetings.minHeight = 260;
+  meetings.width = 6;
+  const information = newBlock('text', 'Informations utiles', 3);
   information.body = '';
   information.background = '#e8f2ed';
   const links = newBlock('links', 'Vos accès utiles', 4);
   links.items = [{ id: crypto.randomUUID(), label: 'Portail ARGOS', url: '/' }, { id: crypto.randomUUID(), label: 'PHENIX', url: '/phenix/' }];
-  return {
+  return migrateDashboard({
     schemaVersion: 1, revision: 1,
     settings: { title: '', subtitle: '', accent: '', background: '', font: 'system', logo: '', backgroundImage: '', columns: 12, showClock: true, displaySeconds: 20 },
     duty: { label: 'ASTREINTE DIRECTION', name: '', phone: '', note: '' },
     blocks: [news, meetings, information, links], posts: [], audit: [], updatedAt: '', updatedBy: null
-  };
+  });
 }
 
 function safeLink(value) {
@@ -73,13 +76,14 @@ function mountDashboard(app, deps = {}) {
     if (!fs.existsSync(filename)) return structuredClone(seed);
     try {
       const data = JSON.parse(fs.readFileSync(filename, 'utf8'));
-      if (data.schemaVersion !== 1 || !Number.isInteger(data.revision) || !Array.isArray(data.blocks) || !Array.isArray(data.posts) || !data.settings || !data.duty) throw new Error('Structure invalide');
+      if (![1, 2].includes(data.schemaVersion) || !Number.isInteger(data.revision) || !Array.isArray(data.blocks) || !Array.isArray(data.posts) || !data.settings || !data.duty) throw new Error('Structure invalide');
+      if (data.schemaVersion === 2 && (!Array.isArray(data.pages) || !data.pages.length)) throw new Error('Pages invalides');
       // Retire uniquement les textes fournis par l’ancien modèle, en conservant les contenus personnalisés.
       if (data.settings.subtitle === 'Le point de rencontre de vos équipes') data.settings.subtitle = '';
       for (const block of data.blocks) {
         if (block.kind === 'text' && block.body === 'Un espace pour les informations utiles, les consignes du quotidien et les nouvelles de votre service.') block.body = '';
       }
-      return data;
+      return migrateDashboard(data);
     } catch (error) {
       console.error('[DASHBOARD] Lecture impossible :', error.message);
       fail(503, 'Le dashboard est temporairement indisponible. Les données existantes ont été conservées.');
@@ -132,18 +136,24 @@ function mountDashboard(app, deps = {}) {
     return raw;
   }
 
-  function cleanBlock(input, seen) {
+  function cleanBlock(input, seen, pages, previous) {
     if (!input || !KINDS.has(input.kind)) fail(400, 'Type de bloc invalide.');
     const id = uuid(input.id);
     if (seen.has(id)) fail(400, 'Deux blocs ont le même identifiant.');
     seen.add(id);
+    const pageId = input.pageId === undefined ? previous?.pageId || pages[0].id : text(input.pageId, 80);
+    if (!pages.some(page => page.id === pageId)) fail(400, 'Un bloc est associé à une page inexistante.');
     const block = {
-      id, kind: input.kind, title: text(input.title, 120, 'Sans titre'),
+      id, kind: input.kind, pageId, title: text(input.title, 120, 'Sans titre'),
       width: [3, 4, 6, 8, 9, 12].includes(input.width) ? input.width : 4,
       minHeight: number(input.minHeight, 160, 1200, 240), hidden: input.hidden === true,
       background: color(input.background, '#ffffff'), color: color(input.color, '#193b4d'),
       fontSize: number(input.fontSize, 12, 60, 16), align: ['left', 'center', 'right'].includes(input.align) ? input.align : 'left',
       bold: input.bold === true, italic: input.italic === true,
+      fixedHeight: typeof input.fixedHeight === 'boolean' ? input.fixedHeight : ['news', 'image'].includes(input.kind),
+      newsLimit: number(input.newsLimit, 1, 5, 1), imageHeight: number(input.imageHeight, 0, 600, 120),
+      imageWidth: number(input.imageWidth, 25, 100, 100), imageFit: input.imageFit === 'cover' ? 'cover' : 'contain',
+      postId: text(input.postId, 80),
       body: text(input.body, 15000), image: media(input.image), caption: text(input.caption, 500), items: []
     };
     if (!Array.isArray(input.items) || input.items.length > 100) fail(400, 'Un bloc peut contenir au maximum 100 éléments.');
@@ -217,16 +227,26 @@ function mountDashboard(app, deps = {}) {
   api.post('/logout', (req, res, next) => req.session.destroy(error => error ? next(error) : res.json({ ok: true })));
   api.put('/board', editor, wrap((req, res) => {
     const data = checkedData(req), input = req.body;
-    if (!input.settings || !input.duty || !Array.isArray(input.blocks) || input.blocks.length > 60) fail(400, 'La page doit contenir au maximum 60 blocs.');
+    if (!input.settings || !input.duty || !Array.isArray(input.blocks) || input.blocks.length > 120) fail(400, 'Le dashboard peut contenir au maximum 120 blocs.');
+    const rawPages = input.pages === undefined ? data.pages : input.pages;
+    if (!Array.isArray(rawPages) || !rawPages.length || rawPages.length > 20) fail(400, 'Le dashboard doit contenir de 1 à 20 pages.');
+    const pageIds = new Set();
+    const pages = rawPages.map(page => {
+      const id = uuid(page?.id), title = text(page?.title, 80);
+      if (!title || pageIds.has(id)) fail(400, 'Chaque page doit avoir un nom et un identifiant unique.');
+      pageIds.add(id); return { id, title };
+    });
     const settings = input.settings, duty = input.duty, seen = new Set();
     data.settings = {
       title: text(settings.title, 120), subtitle: text(settings.subtitle, 240),
       accent: color(settings.accent, '#16877b'), background: color(settings.background, '#f3f5f3'),
       font: FONTS.has(settings.font) ? settings.font : 'system', logo: media(settings.logo), backgroundImage: media(settings.backgroundImage),
-      columns: 12, showClock: settings.showClock !== false, displaySeconds: number(settings.displaySeconds, 8, 120, 20)
+      columns: 12, showClock: settings.showClock !== false, displaySeconds: number(settings.displaySeconds, 8, 120, 20), pageSeconds: 60
     };
     data.duty = { label: text(duty.label, 80, 'ASTREINTE DIRECTION'), name: text(duty.name, 160), phone: text(duty.phone, 60), note: text(duty.note, 500) };
-    data.blocks = input.blocks.map(block => cleanBlock(block, seen));
+    const oldBlocks = data.blocks;
+    data.pages = pages;
+    data.blocks = input.blocks.map(block => cleanBlock(block, seen, pages, oldBlocks.find(old => old.id === block?.id)));
     persist(data, req, 'Modification de la page et de l’astreinte');
     res.json({ dashboard: { ...data, audit: undefined } });
   }));

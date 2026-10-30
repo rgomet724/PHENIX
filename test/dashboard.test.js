@@ -61,7 +61,7 @@ test('Dashboard : accès distinct, édition protégée, publications, photos et 
   await t.test('L’écran de connexion est public ; les données et photos exigent le droit Dashboard', async () => {
     const redirect = await fetch(`${origin}/dashboard?from=test`, { redirect: 'manual' });
     assert.equal(redirect.headers.get('location'), '/dashboard/?from=test');
-    assert.match(await (await fetch(`${origin}/dashboard/`)).text(), /ASTREINTE DIRECTION/);
+    assert.match(await (await fetch(`${origin}/dashboard/`)).text(), /\/dashboard\/pages\.js/);
     assert.equal((await call('/state', undefined, 'anonymous')).status, 401);
     assert.equal((await fetch(`${origin}/dashboard/media/00000000-0000-0000-0000-000000000000.png`)).status, 401);
     assert.equal((await login('blocked')).status, 403);
@@ -152,6 +152,47 @@ test('Dashboard : accès distinct, édition protégée, publications, photos et 
     assert.equal(saved.data.dashboard.blocks[0].id, valid.blocks[0].id);
     assert.equal(saved.data.dashboard.blocks[0].hidden, true);
     assert.equal(saved.data.dashboard.posts[0].createdBy.id, 'supervisor');
+  });
+
+  await t.test('L’ancienne page est convertie en plusieurs pages et en astreinte compacte sans perdre les données', async () => {
+    const legacy = JSON.parse(fs.readFileSync(filename, 'utf8'));
+    legacy.schemaVersion = 1; delete legacy.pages;
+    legacy.blocks = legacy.blocks.filter(block => block.kind !== 'duty');
+    for (const block of legacy.blocks) for (const key of ['pageId', 'fixedHeight', 'imageHeight', 'imageWidth', 'imageFit', 'newsLimit', 'postId']) delete block[key];
+    const originalPosts = structuredClone(legacy.posts), originalDuty = structuredClone(legacy.duty);
+    fs.writeFileSync(filename, JSON.stringify(legacy));
+    const migrated = (await call('/state')).data.dashboard;
+    assert.equal(migrated.schemaVersion, 2); assert.equal(migrated.pages.length, 2);
+    assert.deepEqual(migrated.duty, originalDuty); assert.deepEqual(migrated.posts, originalPosts);
+    assert.equal(migrated.blocks.find(block => block.kind === 'duty').width, 3);
+    const news = migrated.blocks.find(block => block.kind === 'news');
+    assert.equal(news.fixedHeight, true); assert.equal(news.imageHeight, 120); assert.equal(news.newsLimit, 1);
+    assert.equal(news.pageId, migrated.pages[1].id);
+    const saved = await call('/board', { ...migrated, revision }, 'admin', 'PUT');
+    assert.equal(saved.status, 200); revision = saved.data.dashboard.revision;
+    assert.equal(JSON.parse(fs.readFileSync(filename, 'utf8')).schemaVersion, 2);
+  });
+
+  await t.test('Les pages et la taille des publications sont enregistrées ; les références invalides sont refusées', async () => {
+    board = (await call('/state')).data.dashboard;
+    board.pages.push({ id: 'page-extra', title: 'Réunions' });
+    board.blocks.find(block => block.kind === 'meetings').pageId = 'page-extra';
+    const news = board.blocks.find(block => block.kind === 'news');
+    Object.assign(news, { width: 4, minHeight: 260, fixedHeight: true, imageHeight: 80, imageWidth: 40, imageFit: 'contain', newsLimit: 1, postId: post.id });
+    const saved = await call('/board', { ...board, settings: { ...board.settings, pageSeconds: 10 }, revision }, 'admin', 'PUT');
+    assert.equal(saved.status, 200, JSON.stringify(saved.data)); revision = saved.data.dashboard.revision;
+    const view = (await call('/state', undefined, 'operator')).data.dashboard;
+    assert.equal(view.pages.length, 3); assert.equal(view.settings.pageSeconds, 60);
+    assert.equal(view.blocks.find(block => block.kind === 'meetings').pageId, 'page-extra');
+    const visibleNews = view.blocks.find(block => block.kind === 'news');
+    assert.equal(visibleNews.imageHeight, 80); assert.equal(visibleNews.imageWidth, 40); assert.equal(visibleNews.fixedHeight, true); assert.equal(visibleNews.postId, post.id);
+    const missing = structuredClone(view); missing.blocks[0].pageId = 'missing-page';
+    assert.equal((await call('/board', { ...missing, revision }, 'admin', 'PUT')).status, 400);
+    const duplicates = structuredClone(view); duplicates.pages[1].id = duplicates.pages[0].id;
+    assert.equal((await call('/board', { ...duplicates, revision }, 'admin', 'PUT')).status, 400);
+    assert.equal((await call('/board', { ...view, pages: [], revision }, 'admin', 'PUT')).status, 400);
+    assert.equal((await call('/board', { ...view, revision }, 'operator', 'PUT')).status, 403);
+    assert.equal((await call('/state')).data.dashboard.revision, revision);
   });
 
   await t.test('Les droits révoqués sont appliqués à une session déjà ouverte', async () => {

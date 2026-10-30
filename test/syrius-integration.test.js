@@ -63,7 +63,7 @@ test('Intégration avec le serveur PHENIX, le portail ARGOS et l’administratio
   assert.equal(phenixManifest.start_url, '/phenix/');
   assert.equal(phenixManifest.scope, '/phenix/');
   assert.equal((await fetch(`${origin}/admin-theme.js`)).status, 200);
-  assert.match(await (await fetch(`${origin}/dashboard/`)).text(), /ASTREINTE DIRECTION/);
+  assert.match(await (await fetch(`${origin}/dashboard/`)).text(), /\/dashboard\/pages\.js/);
   assert.equal((await fetch(`${origin}/dashboard/api/state`)).status, 401);
   const login = await fetch(`${origin}/syrius/api/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ login: 'integration-admin', password: 'integration-test-only' }) });
   assert.equal(login.status, 200);
@@ -121,6 +121,9 @@ test('Intégration avec le serveur PHENIX, le portail ARGOS et l’administratio
   assert.ok(catalogData.applications.some(app => app.id === 'syrius'));
   assert.ok(catalogData.applications.some(app => app.id === 'dashboard' && app.roles.includes('superviseur')));
   assert.equal(catalogData.apps.find(app => app.id === 'app-phenix').url, '/phenix/');
+  assert.ok(catalogData.categories.some(category => category.id === 'cat-outils'), 'la rubrique Outils est disponible même sur une ancienne base limitée à Opérationnel');
+  assert.ok(catalogData.apps.some(app => app.id === 'app-syrius'), 'la tuile radio est administrable');
+  assert.ok(catalogData.apps.some(app => app.id === 'app-dashboard'), 'la tuile Dashboard est administrable');
   // Le réglage reste exclusivement dans le centre d’administration existant.
   const adminSession = await (await fetch(`${origin}/portail/administration/api/session`, { headers: { cookie } })).json();
   const streamController = new AbortController();
@@ -171,5 +174,42 @@ test('Intégration avec le serveur PHENIX, le portail ARGOS et l’administratio
   assert.equal((await serviceDashboard.json()).user.canEdit, true);
   const radioTile = portalData.apps.find(app => app.id === 'app-syrius');
   assert.equal(radioTile.name, 'Radio de test'); assert.equal(radioTile.logoData, logoData); assert.equal(radioTile.accentColor, '#a32478');
+
+  await t.test('Le catalogue des tuiles est commun à ARGOS et aux deux panneaux d’administration', async () => {
+    const portalCookie = portalLogin.headers.get('set-cookie').split(';')[0];
+    const adminHeaders = { cookie, 'content-type': 'application/json', 'x-admin-csrf': adminSession.csrfToken };
+    const readCatalog = async () => (await fetch(`${origin}/portail/administration/api/catalog`, { headers: { cookie } })).json();
+    const readPortal = async () => (await fetch(`${origin}/portail/api/portal`, { headers: { cookie: portalCookie } })).json();
+    const ids = apps => apps.map(app => app.id).sort();
+    assert.deepEqual(ids((await readCatalog()).apps), ids(portalData.apps), 'aucune tuile n’est réservée à l’affichage public');
+    const movedTile = { ...radioTile, name: 'Radio personnalisée', categoryId: 'cat-outils', accentColor: '#145678', order: 42 };
+    const changedTile = await fetch(`${origin}/portail/administration/api/apps`, { method: 'POST', headers: adminHeaders, body: JSON.stringify(movedTile) });
+    assert.equal(changedTile.status, 200); await changedTile.json();
+    const saved = JSON.parse(fs.readFileSync(path.join(directory, 'portal.json'), 'utf8'));
+    assert.equal(saved.schemaVersion, 3); assert.ok(saved.apps.some(app => app.id === 'app-dashboard'));
+    const central = await readCatalog(), portal = await readPortal();
+    assert.deepEqual(central.apps.find(app => app.id === 'app-syrius'), portal.apps.find(app => app.id === 'app-syrius'));
+    assert.equal(portal.apps.find(app => app.id === 'app-syrius').categoryId, 'cat-outils');
+    assert.equal(portal.apps.find(app => app.id === 'app-syrius').name, 'Radio personnalisée');
+    assert.equal(portal.apps.find(app => app.id === 'app-syrius').logoData, logoData);
+    assert.deepEqual(ids(central.apps), ids(portal.apps));
+
+    const dashboardTile = central.apps.find(app => app.id === 'app-dashboard');
+    const legacyEdit = await fetch(`${origin}/portail/api/admin/apps`, { method: 'POST', headers: { cookie: portalCookie, 'content-type': 'application/json' }, body: JSON.stringify({ ...dashboardTile, categoryId: 'cat-outils', name: 'Écran du service', order: 43 }) });
+    assert.equal(legacyEdit.status, 200); await legacyEdit.json();
+    assert.equal((await readCatalog()).apps.find(app => app.id === 'app-dashboard').name, 'Écran du service', 'les modifications de l’ancien panneau sont visibles dans le centre');
+    assert.equal((await readPortal()).apps.find(app => app.id === 'app-dashboard').categoryId, 'cat-outils');
+    const nonEmpty = await fetch(`${origin}/portail/administration/api/categories/cat-outils`, { method: 'DELETE', headers: adminHeaders });
+    assert.equal(nonEmpty.status, 400); await nonEmpty.json();
+    const denied = await fetch(`${origin}/portail/administration/api/apps`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(movedTile) });
+    assert.equal(denied.status, 403); await denied.json();
+    for (const id of ['app-syrius', 'app-dashboard']) {
+      const removed = await fetch(`${origin}/portail/administration/api/apps/${id}`, { method: 'DELETE', headers: adminHeaders });
+      assert.equal(removed.status, 200); await removed.json();
+    }
+    for (const current of [await readCatalog(), await readPortal()]) {
+      assert.equal(current.apps.some(app => ['app-syrius', 'app-dashboard'].includes(app.id)), false, 'une tuile supprimée ne réapparaît pas automatiquement');
+    }
+  });
 });
 
