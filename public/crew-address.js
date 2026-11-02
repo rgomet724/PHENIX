@@ -75,7 +75,7 @@
     const rows = document.querySelectorAll('#crewRows tr');
     (S.crews || []).forEach((crew, index) => {
       if (!crew.interventionAddress || !rows[index]?.cells[3]) return;
-      const address = document.createElement('span');
+      const address = document.createElement('div');
       address.className = 'crewInterventionAddress';
       address.textContent = crew.interventionAddress;
       rows[index].cells[3].append(address);
