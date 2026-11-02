@@ -2,7 +2,7 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { PAGE_INTERVAL_MS, migrateDashboard, nextPageId, pageBlocks, rotationStep, moveBlock } = require('../dashboard/pages');
+const { PAGE_INTERVAL_MS, migrateDashboard, nextPageId, pageBlocks, rotationStep, moveBlock, moveBlockTo } = require('../dashboard/pages');
 
 function legacyData() {
   return { schemaVersion: 1, revision: 9, settings: { title: 'Informations utiles', font: 'system' }, duty: { label: 'ASTREINTE DIRECTION', name: 'Responsable test', phone: '01 02 03 04 05', note: 'Consigne de test' },
@@ -70,4 +70,15 @@ test('Les blocs sont filtrés par page et leur déplacement ne traverse pas les 
   assert.deepEqual(pageBlocks(data, 'one', true).map(block => block.id), ['b', 'a', 'c']);
   assert.deepEqual(pageBlocks(data, 'two').map(block => block.id), ['other']);
   assert.equal(moveBlock(data, 'c', 1), false); assert.equal(moveBlock(data, 'missing', 1), false);
+});
+
+test('Un widget peut être aimanté avant, après ou à la fin de sa grille', () => {
+  const data = { blocks: [{ id: 'a', pageId: 'one' }, { id: 'other', pageId: 'two' }, { id: 'b', pageId: 'one' }, { id: 'c', pageId: 'one' }] };
+  assert.equal(moveBlockTo(data, 'c', 'a', true), true);
+  assert.deepEqual(pageBlocks(data, 'one', true).map(block => block.id), ['c', 'a', 'b']);
+  assert.equal(moveBlockTo(data, 'c', 'b', false), true);
+  assert.deepEqual(pageBlocks(data, 'one', true).map(block => block.id), ['a', 'b', 'c']);
+  assert.equal(moveBlockTo(data, 'a'), true);
+  assert.deepEqual(pageBlocks(data, 'one', true).map(block => block.id), ['b', 'c', 'a']);
+  assert.equal(moveBlockTo(data, 'a', 'other'), false, 'un widget ne traverse pas une autre page');
 });
