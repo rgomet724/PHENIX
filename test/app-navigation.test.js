@@ -5,7 +5,15 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const { normalizePortalApp, isPhenixAppUrl } = require('../app-navigation');
+const { injectBeforeClosingTag, normalizePortalApp, isPhenixAppUrl } = require('../app-navigation');
+
+test('Les assets PHENIX sont injectés à la fin du document, pas dans une chaîne JavaScript', () => {
+  const source = '<html><body><script>const email = "<body>contenu</body>";</script></body></html>';
+  const result = injectBeforeClosingTag(source, 'body', '<script src="/phenix/crew-address.js"></script>');
+
+  assert.match(result, /const email = "<body>contenu<\/body>";/);
+  assert.match(result, /<\/script><script src="\/phenix\/crew-address\.js"><\/script>\n<\/body><\/html>$/);
+});
 
 test('Les anciennes tuiles PHENIX atteignent la nouvelle application avec leurs paramètres', () => {
   for (const [url, expected] of [

@@ -6,6 +6,13 @@ const path = require('path');
 
 const LEGACY_ORIGIN = 'https://pegase-2.onrender.com';
 
+function injectBeforeClosingTag(html, tagName, content) {
+  const closingTag = `</${tagName}>`;
+  const index = html.toLowerCase().lastIndexOf(closingTag);
+  if (index === -1) return `${html}\n${content}`;
+  return `${html.slice(0, index)}${content}\n${html.slice(index)}`;
+}
+
 function isPhenixAppUrl(value) {
   try {
     const url = new URL(String(value || ''), LEGACY_ORIGIN);
@@ -33,9 +40,17 @@ function normalizePortalApp(item) {
 
 function mountApplicationPages(app) {
   const publicDir = path.join(__dirname, 'public');
-  const phenixIndex = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8')
-    .replace('</head>', '  <link rel="stylesheet" href="/phenix/crew-address.css">\n</head>')
-    .replace('</body>', '  <script src="/phenix/crew-address.js"></script>\n</body>');
+  const sourceIndex = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8');
+  const withCrewAddressStyles = injectBeforeClosingTag(
+    sourceIndex,
+    'head',
+    '  <link rel="stylesheet" href="/phenix/crew-address.css">'
+  );
+  const phenixIndex = injectBeforeClosingTag(
+    withCrewAddressStyles,
+    'body',
+    '  <script src="/phenix/crew-address.js"></script>'
+  );
   const staticOptions = {
     etag: true,
     maxAge: 0,
@@ -60,4 +75,4 @@ function mountApplicationPages(app) {
   app.use(express.static(publicDir, { ...staticOptions, index: false }));
 }
 
-module.exports = { isPhenixAppUrl, normalizePortalApp, mountApplicationPages };
+module.exports = { injectBeforeClosingTag, isPhenixAppUrl, normalizePortalApp, mountApplicationPages };
