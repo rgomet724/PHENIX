@@ -58,7 +58,11 @@ test('Intégration avec le serveur PHENIX, le portail ARGOS et l’administratio
   assert.equal(phenixRedirect.headers.get('location'), '/phenix/?mode=test');
   const phenix = await fetch(`${origin}/phenix/`);
   assert.equal(phenix.status, 200);
-  assert.match(await phenix.text(), /<title>PHENIX<\/title>/);
+  const phenixHtml = await phenix.text();
+  assert.match(phenixHtml, /<title>PHENIX<\/title>/);
+  assert.match(phenixHtml, /\/phenix\/crew-address\.css/);
+  assert.match(phenixHtml, /\/phenix\/crew-address\.js/);
+  assert.equal((await fetch(`${origin}/phenix/crew-address.js`)).status, 200);
   const phenixManifest = await (await fetch(`${origin}/manifest.json`)).json();
   assert.equal(phenixManifest.start_url, '/phenix/');
   assert.equal(phenixManifest.scope, '/phenix/');
