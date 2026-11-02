@@ -15,6 +15,32 @@ test('Les assets PHENIX sont injectés à la fin du document, pas dans une chaî
   assert.match(result, /<\/script><script src="\/phenix\/crew-address\.js"><\/script>\n<\/body><\/html>$/);
 });
 
+test('Les balises des signatures, styles et commentaires ne sont pas des points d’insertion', () => {
+  const source = '<html><head><style>/* </head> */</style></head><body><!-- </body> --><script>const signature = "<html><head></head><body></body></html>";</script></body></html>';
+  const styles = '<link rel="stylesheet" href="/phenix/crew-address.css">';
+  const script = '<script src="/phenix/crew-address.js"></script>';
+  const rendered = injectBeforeClosingTag(injectBeforeClosingTag(source, 'head', styles), 'body', script);
+
+  assert.equal(rendered, '<html><head><style>/* </head> */</style>' + styles + '\n</head><body><!-- </body> --><script>const signature = "<html><head></head><body></body></html>";</script>' + script + '\n</body></html>');
+});
+
+test('La page PHENIX complète conserve ses scripts et son journal après injection des assets', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../public/index.html'), 'utf8');
+  const rendered = injectBeforeClosingTag(
+    injectBeforeClosingTag(source, 'head', '<link rel="stylesheet" href="/phenix/crew-address.css">'),
+    'body',
+    '<script src="/phenix/crew-address.js"></script>'
+  );
+  const inlineScripts = html => [...html.matchAll(/<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script\s*>/gi)].map(match => match[1]);
+
+  assert.deepEqual(inlineScripts(rendered), inlineScripts(source), 'aucun script PHENIX ne doit être modifié');
+  for (const [index, script] of inlineScripts(rendered).entries()) {
+    assert.doesNotThrow(() => new vm.Script(script, { filename: `phenix-inline-${index}.js` }));
+  }
+  assert.ok(rendered.indexOf('/phenix/crew-address.css') < rendered.indexOf('<body>'), 'la feuille de style doit être dans le véritable en-tête');
+  assert.match(rendered, /id="logs"/);
+});
+
 test('Les anciennes tuiles PHENIX atteignent la nouvelle application avec leurs paramètres', () => {
   for (const [url, expected] of [
     ['/', '/phenix/'],
