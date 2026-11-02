@@ -11,7 +11,18 @@
   const abortError = () => Object.assign(new Error('Envoi de la photo annulé.'), { name: 'AbortError' });
   const timeoutError = message => Object.assign(new Error(message), { name: 'TimeoutError' });
   function environment(overrides = {}) {
-    return { Image: globalThis.Image, URL: globalThis.URL, document: globalThis.document, XMLHttpRequest: globalThis.XMLHttpRequest, setTimeout, clearTimeout, ...overrides };
+    // Les fonctions de temporisation du navigateur doivent garder window comme receveur.
+    // Les recopier puis les appeler via env.setTimeout() déclenche "Illegal invocation"
+    // dans certains navigateurs (notamment WebKit/Safari).
+    return {
+      Image: globalThis.Image,
+      URL: globalThis.URL,
+      document: globalThis.document,
+      XMLHttpRequest: globalThis.XMLHttpRequest,
+      setTimeout: (...args) => globalThis.setTimeout(...args),
+      clearTimeout: (...args) => globalThis.clearTimeout(...args),
+      ...overrides
+    };
   }
   function bounded(work, options, env) {
     return new Promise((resolve, reject) => {

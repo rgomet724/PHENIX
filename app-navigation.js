@@ -1,6 +1,7 @@
 'use strict';
 
 const express = require('express');
+const fs = require('fs');
 const path = require('path');
 
 const LEGACY_ORIGIN = 'https://pegase-2.onrender.com';
@@ -32,6 +33,9 @@ function normalizePortalApp(item) {
 
 function mountApplicationPages(app) {
   const publicDir = path.join(__dirname, 'public');
+  const phenixIndex = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8')
+    .replace('</head>', '  <link rel="stylesheet" href="/phenix/crew-address.css">\n</head>')
+    .replace('</body>', '  <script src="/phenix/crew-address.js"></script>\n</body>');
   const staticOptions = {
     etag: true,
     maxAge: 0,
@@ -47,6 +51,10 @@ function mountApplicationPages(app) {
   });
   app.get('/index.html', (req, res) => res.redirect(302, `/${req.originalUrl.slice(req.path.length)}`));
   app.get(/^\/phenix$/, (req, res) => res.redirect(302, `/phenix/${req.originalUrl.slice(req.path.length)}`));
+  app.get(['/phenix/', '/phenix/index.html'], (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.type('html').send(phenixIndex);
+  });
   app.use('/phenix', express.static(publicDir, staticOptions));
   // Les API et les chemins d'assets historiques de PHENIX restent valides.
   app.use(express.static(publicDir, { ...staticOptions, index: false }));

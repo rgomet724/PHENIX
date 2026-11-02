@@ -35,6 +35,9 @@ const PASSWORD_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000; // 90 jours
 const PASSWORD_POLICY_START = '2026-08-28T00:00:00.000Z';
 const SOUND_KINDS = ['crew','urgent','system'];
 const PHENIX_SOUND_EVENTS = { crew:'phenix-crew-status', urgent:'phenix-consigne', system:'phenix-flash' };
+const BAN_GEOCODING_URL = String(process.env.BAN_GEOCODING_URL || 'https://data.geopf.fr/geocodage/search');
+const BAN_CITY_CODE = String(process.env.BAN_CITY_CODE || '71076');
+const addressSearchCache = new Map();
 
 const SESSION_SECRET = String(process.env.SESSION_SECRET || '');
 if (IS_PROD && Buffer.byteLength(SESSION_SECRET, 'utf8') < 32) {
@@ -607,6 +610,36 @@ app.get('/api/data', needLogin, (req,res)=>{
   });
 });
 
+app.get('/api/addresses', needLogin, async (req,res)=>{
+  const query=String(req.query.q||'').trim().replace(/\s+/g,' ').slice(0,120);
+  if(query.length<2) return res.json({addresses:[]});
+  const cacheKey=query.toLocaleLowerCase('fr');
+  const cached=addressSearchCache.get(cacheKey);
+  if(cached && cached.expiresAt>Date.now()) return res.json({addresses:cached.addresses});
+  try{
+    const url=new URL(BAN_GEOCODING_URL);
+    url.searchParams.set('q',query);
+    url.searchParams.set('index','address');
+    url.searchParams.set('citycode',BAN_CITY_CODE);
+    url.searchParams.set('autocomplete','1');
+    url.searchParams.set('limit','8');
+    const response=await fetch(url,{headers:{accept:'application/json'},signal:AbortSignal.timeout(5000)});
+    if(!response.ok) throw new Error('BAN '+response.status);
+    const data=await response.json();
+    const addresses=(Array.isArray(data.features)?data.features:[]).map(feature=>{
+      const properties=feature&&feature.properties||{};
+      const label=String(properties.label||properties.name||'').trim();
+      return label?{id:String(properties.id||properties.banId||label),label,score:Number(properties.score||0)}:null;
+    }).filter(Boolean).slice(0,8);
+    addressSearchCache.set(cacheKey,{addresses,expiresAt:Date.now()+5*60*1000});
+    if(addressSearchCache.size>200) addressSearchCache.delete(addressSearchCache.keys().next().value);
+    res.json({addresses});
+  }catch(error){
+    console.warn('[PHENIX] Recherche BAN impossible :',error.message);
+    res.status(502).json({error:'La recherche d’adresse est momentanément indisponible. Vous pouvez saisir l’adresse manuellement.'});
+  }
+});
+
 
 
 
@@ -721,7 +754,7 @@ app.get('/api/realtime/snapshot', needLogin, (req,res)=>{
   res.set('Cache-Control','no-store');
   res.json({
     serverTime:Date.now(),
-    crews:(d.crews||[]).map(c=>({id:c.id,status:c.status,callsign:c.callsign,intervention:c.intervention||''})),
+    crews:(d.crews||[]).map(c=>({id:c.id,status:c.status,callsign:c.callsign,intervention:c.intervention||'',interventionAddress:c.interventionAddress||''})),
     sounds:SOUND_KINDS.map(k=>soundMeta(d,k)),
     notifications:notificationSettingsForApp('phenix')
   });
@@ -824,17 +857,19 @@ app.post('/api/crew/:id/status', needLogin, needOperational, (req,res)=>{
   c.status=req.body.status==='INDISPO'?'INDISPO':'DISPO';
   if(c.status==='INDISPO'){
     c.intervention=String(req.body.intervention||'Intervention');
+    c.interventionAddress=String(req.body.address||'').trim().slice(0,220);
     c.interventionCode=String(req.body.code||'').trim().toUpperCase();
     c.interventionSource=String(req.body.source||'nature');
     c.eventId=String(req.body.eventId||'');
   }else{
     c.intervention='';
+    c.interventionAddress='';
     c.interventionCode='';
     c.interventionSource='';
     c.eventId='';
   }
   const codeTxt=c.interventionCode?' ['+c.interventionCode+']':'';
-  audit(d,req,`${c.callsign} ${c.status}${codeTxt}${c.intervention?' - '+c.intervention:''}`);
+  audit(d,req,`${c.callsign} ${c.status}${codeTxt}${c.intervention?' - '+c.intervention:''}${c.interventionAddress?' · '+c.interventionAddress:''}`);
   save(d);
   pushRealtimeEvent(d.users.map(x=>x.id),{
     type:'crew-status',
@@ -842,6 +877,7 @@ app.post('/api/crew/:id/status', needLogin, needOperational, (req,res)=>{
     callsign:c.callsign,
     status:c.status,
     intervention:c.intervention||'',
+    interventionAddress:c.interventionAddress||'',
     changedAt:new Date().toISOString()
   });
   res.json({ok:true});

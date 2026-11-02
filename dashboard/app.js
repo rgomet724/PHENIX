@@ -638,9 +638,31 @@ document.addEventListener('pointerup', event => { if (resizing && event.pointerI
 document.addEventListener('pointercancel', () => { if (resizing) { resizing = null; renderInspector(); } });
 $('board').addEventListener('pointerup', () => document.querySelectorAll('[data-block]').forEach(node => { node.draggable = false; }));
 $('board').addEventListener('dragstart', event => { if (!state.editing || !event.target.matches('[data-block]')) return event.preventDefault(); dragId = event.target.dataset.block; event.dataTransfer.setData('text/plain', dragId); event.dataTransfer.effectAllowed = 'move'; event.target.classList.add('dragging'); });
-$('board').addEventListener('dragover', event => { const card = event.target.closest('[data-block]'); if (!state.editing || !dragId || !card || card.dataset.block === dragId) return; event.preventDefault(); document.querySelectorAll('.drop-target').forEach(node => node.classList.remove('drop-target')); card.classList.add('drop-target'); });
-$('board').addEventListener('drop', event => { const target = event.target.closest('[data-block]'); if (!state.editing || !dragId || !target) return; event.preventDefault(); const source = state.data.blocks.find(item => item.id === dragId); const destination = target.dataset.block; if (source && source.id !== destination) change(() => { state.data.blocks = state.data.blocks.filter(item => item.id !== source.id); state.data.blocks.splice(state.data.blocks.findIndex(item => item.id === destination), 0, source); }); dragId = ''; });
-$('board').addEventListener('dragend', () => { dragId = ''; document.querySelectorAll('[data-block]').forEach(node => { node.draggable = false; node.classList.remove('dragging', 'drop-target'); }); });
+function clearWidgetDropTargets() {
+  $('board').classList.remove('drop-at-end');
+  document.querySelectorAll('[data-block]').forEach(node => node.classList.remove('drop-target', 'drop-before', 'drop-after'));
+}
+$('board').addEventListener('dragover', event => {
+  if (!state.editing || !dragId) return;
+  event.preventDefault(); clearWidgetDropTargets();
+  const card = event.target.closest('[data-block]');
+  if (!card || card.dataset.block === dragId) { $('board').classList.add('drop-at-end'); return; }
+  const rect = card.getBoundingClientRect();
+  const nearMiddle = Math.abs(event.clientY - (rect.top + rect.height / 2)) < rect.height / 3;
+  const before = event.clientY < rect.top + rect.height / 2 || nearMiddle && event.clientX < rect.left + rect.width / 2;
+  card.dataset.dropBefore = String(before); card.classList.add('drop-target', before ? 'drop-before' : 'drop-after');
+});
+$('board').addEventListener('drop', event => {
+  if (!state.editing || !dragId) return;
+  event.preventDefault();
+  const target = event.target.closest('[data-block]');
+  const destination = target && target.dataset.block !== dragId ? target.dataset.block : '';
+  const before = target?.dataset.dropBefore !== 'false';
+  change(() => { DashboardPages.moveBlockTo(state.data, dragId, destination, before); });
+  dragId = ''; clearWidgetDropTargets();
+});
+$('board').addEventListener('dragleave', event => { if (!$('board').contains(event.relatedTarget)) clearWidgetDropTargets(); });
+$('board').addEventListener('dragend', () => { dragId = ''; clearWidgetDropTargets(); document.querySelectorAll('[data-block]').forEach(node => { node.draggable = false; node.removeAttribute('data-drop-before'); node.classList.remove('dragging'); }); });
 $('present').onclick = startPresentation; $('exit-present').onclick = stopPresentation;
 document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && state.presenting) stopPresentation(); });
 document.addEventListener('keydown', event => { if (event.key === 'Escape' && state.presenting) stopPresentation(); });

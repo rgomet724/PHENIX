@@ -46,6 +46,24 @@ test('Une petite photo est envoyée sans décodage ni compression', async () => 
   assert.equal(await preparePhoto(photo, { environment: { Image: class { constructor() { throw new Error('Décodage inutile'); } } } }), photo);
 });
 
+test('Les temporisations natives restent appelées avec le contexte global du navigateur', async () => {
+  const nativeSetTimeout = globalThis.setTimeout, nativeClearTimeout = globalThis.clearTimeout;
+  let setReceiver, clearReceiver;
+  globalThis.setTimeout = function () { setReceiver = this; return 42; };
+  globalThis.clearTimeout = function () { clearReceiver = this; };
+  try {
+    const mock = requestEnvironment(xhr => queueMicrotask(() => {
+      xhr.status = 201; xhr.responseText = JSON.stringify({ url: mediaUrl }); xhr.onload();
+    }));
+    await uploadPhoto(small(), mock);
+    assert.equal(setReceiver, globalThis);
+    assert.equal(clearReceiver, globalThis);
+  } finally {
+    globalThis.setTimeout = nativeSetTimeout;
+    globalThis.clearTimeout = nativeClearTimeout;
+  }
+});
+
 test('Une grande photo est réduite et encodée en JPEG plutôt qu’en WebP', async () => {
   const mock = imageEnvironment();
   const prepared = await preparePhoto(large(), mock);
