@@ -59,5 +59,21 @@
     return true;
   }
 
-  return { PAGE_INTERVAL_MS, migrateDashboard, nextPageId, pageBlocks, rotationStep, moveBlock };
+  function moveBlockTo(data, id, targetId = '', before = true) {
+    const block = data.blocks.find(item => item.id === id);
+    const target = targetId ? data.blocks.find(item => item.id === targetId) : null;
+    if (!block || target === block || target && target.pageId !== block.pageId) return false;
+    data.blocks.splice(data.blocks.indexOf(block), 1);
+    if (target) {
+      const targetIndex = data.blocks.indexOf(target);
+      data.blocks.splice(targetIndex + (before ? 0 : 1), 0, block);
+      return true;
+    }
+    const siblings = pageBlocks(data, block.pageId, true);
+    const last = siblings.at(-1);
+    data.blocks.splice(last ? data.blocks.indexOf(last) + 1 : data.blocks.length, 0, block);
+    return true;
+  }
+
+  return { PAGE_INTERVAL_MS, migrateDashboard, nextPageId, pageBlocks, rotationStep, moveBlock, moveBlockTo };
 });
