@@ -7,10 +7,15 @@ const path = require('path');
 const LEGACY_ORIGIN = 'https://pegase-2.onrender.com';
 
 function injectBeforeClosingTag(html, tagName, content) {
-  const closingTag = `</${tagName}>`;
-  const index = html.toLowerCase().lastIndexOf(closingTag);
-  if (index === -1) return `${html}\n${content}`;
-  return `${html.slice(0, index)}${content}\n${html.slice(index)}`;
+  // Les scripts de signature contiennent eux-mêmes des documents HTML.
+  // Leurs balises (ainsi que celles des styles/commentaires) ne sont pas
+  // des points d'insertion dans la page PHENIX.
+  const markup = /<!--[\s\S]*?-->|<script\b[^>]*>[\s\S]*?<\/script\s*>|<style\b[^>]*>[\s\S]*?<\/style\s*>|<\/(head|body)\s*>/gi;
+  for (const match of html.matchAll(markup)) {
+    if (match[1]?.toLowerCase() !== tagName.toLowerCase()) continue;
+    return `${html.slice(0, match.index)}${content}\n${html.slice(match.index)}`;
+  }
+  return `${html}\n${content}`;
 }
 
 function isPhenixAppUrl(value) {
