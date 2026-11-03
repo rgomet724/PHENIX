@@ -327,6 +327,12 @@ function mountCentralAdmin(app, deps = {}) {
     res.json(publicNotificationSettings(req.query.appId));
   });
 
+  // Préférence publique uniquement : aucune information sensible ni droits
+  // d'administration ne transitent sur cette route.
+  router.get('/public/security-badge', (_req, res) => {
+    res.json({ showAnssiBadge: loadAdminConfig().security.showAnssiBadge === true });
+  });
+
   router.get('/public/notification-sounds/:eventId', (req, res) => {
     const definition = NOTIFICATION_EVENTS.find(item => item.id === String(req.params.eventId || ''));
     if (!definition) return res.status(404).end();
@@ -782,16 +788,28 @@ function mountCentralAdmin(app, deps = {}) {
 
   router.get('/security', (req, res) => {
     const config = loadAdminConfig();
-    res.json({ passwordMinLength: config.security.passwordMinLength, passwordMaxLength: 72, passwordMaxAgeDays: 90 });
+    res.json({
+      passwordMinLength: config.security.passwordMinLength,
+      passwordMaxLength: 72,
+      passwordMaxAgeDays: 90,
+      showAnssiBadge: config.security.showAnssiBadge === true
+    });
   });
 
   router.put('/security', (req, res) => {
     const config = loadAdminConfig(true);
     const value = Number(req.body && req.body.passwordMinLength);
     if (!Number.isInteger(value) || value < 4 || value > 32) return res.status(400).json({ error: 'Choisissez un minimum compris entre 4 et 32 caractères.' });
+    if (req.body && Object.hasOwn(req.body, 'showAnssiBadge') && typeof req.body.showAnssiBadge !== 'boolean') {
+      return res.status(400).json({ error: 'Le réglage du badge doit être activé ou désactivé.' });
+    }
     config.security.passwordMinLength = value;
-    auditAndSave(config, req, 'Modification sécurité', `Mot de passe minimum : ${value} caractères`);
-    res.json({ ok: true, passwordMinLength: value });
+    if (typeof req.body?.showAnssiBadge === 'boolean') {
+      config.security.showAnssiBadge = req.body.showAnssiBadge;
+    }
+    auditAndSave(config, req, 'Modification sécurité',
+      `Mot de passe minimum : ${value} caractères · Badge ANSSI-PA-009 : ${config.security.showAnssiBadge ? 'affiché' : 'masqué'}`);
+    res.json({ ok: true, passwordMinLength: value, showAnssiBadge: config.security.showAnssiBadge });
   });
 
   router.get('/audit', (req, res) => {
