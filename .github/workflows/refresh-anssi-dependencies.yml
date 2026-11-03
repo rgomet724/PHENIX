@@ -1,0 +1,35 @@
+# One-time dependency remediation job for the ANSSI hardening branch.
+# Remove this workflow after the dependency lockfile has been updated.
+name: Refresh vulnerable dependencies (temporary)
+
+on:
+  push:
+    branches:
+      - security/anssi-browser-hardening-20261103
+
+jobs:
+  lockfile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Upgrade npm lockfile and check security advisories
+        run: |
+          npm ci --ignore-scripts
+          npm audit fix --ignore-scripts --omit=dev
+          npm audit --omit=dev --audit-level=high
+      - name: Commit corrected lockfile
+        run: |
+          git add package.json package-lock.json
+          if ! git diff --cached --quiet; then
+            git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'security: resolve npm audit vulnerabilities'
+            git push origin "HEAD:refs/heads/security/anssi-browser-hardening-20261103"
+          fi
