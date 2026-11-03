@@ -23,6 +23,10 @@ const PORTAL_CSP = [
 // Ils seront à remplacer par des classes avant de supprimer cette exception.
 const ADMIN_CSP = PORTAL_CSP.replace("style-src 'self'", "style-src 'self' 'unsafe-inline'");
 
+// Le Dashboard positionne encore sa taille et ses couleurs de widgets au moyen
+// d'attributs style générés dynamiquement ; ne pas casser le redimensionnement.
+const DASHBOARD_CSP = ADMIN_CSP;
+
 function isSameOrigin(req, origin) {
   try {
     const supplied = new URL(origin);
@@ -56,10 +60,11 @@ function browserSecurity(req, res, next) {
   }
 
   if (isPortalPage(req.path)) {
-    res.set('Content-Security-Policy',
-      req.path.startsWith('/portail/administration') ? ADMIN_CSP : PORTAL_CSP);
+    const dynamicStyles = req.path.startsWith('/portail/administration') ||
+      req.path === '/dashboard' || req.path.startsWith('/dashboard/');
+    res.set('Content-Security-Policy', dynamicStyles ? DASHBOARD_CSP : PORTAL_CSP);
   }
   next();
 }
 
-module.exports = { browserSecurity, isSameOrigin, PORTAL_CSP, ADMIN_CSP };
+module.exports = { browserSecurity, isSameOrigin, PORTAL_CSP, ADMIN_CSP, DASHBOARD_CSP };
