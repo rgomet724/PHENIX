@@ -542,12 +542,25 @@ async function loadHistory() {
   $('historyRows').innerHTML = data.entries.length ? data.entries.map(item => `<tr><td>${escapeHtml(formatDate(item.date))}</td><td><strong>${escapeHtml(item.actor || item.user || 'Système')}</strong><br><small>${escapeHtml(item.login || '')}</small></td><td><span class="source-chip ${item.source === 'Administration' ? 'admin' : ''}">${escapeHtml(item.source)}</span></td><td>${escapeHtml(item.action || item.type || 'Autre')}</td><td class="history-detail">${escapeHtml(item.details || item.message || '')}</td><td>${escapeHtml(item.ip || '—')}</td></tr>`).join('') : '<tr><td colspan="6" class="empty-row">Aucune trace correspondant aux filtres.</td></tr>';
 }
 
-function renderSecurity() { $('passwordMinLength').value = state.security?.passwordMinLength || 6; }
+function renderSecurity() {
+  $('passwordMinLength').value = state.security?.passwordMinLength || 6;
+  $('showAnssiBadge').checked = state.security?.showAnssiBadge === true;
+}
 
 async function saveSecurity(event) {
   event.preventDefault();
-  try { await api('/security', { method: 'PUT', body: JSON.stringify({ passwordMinLength: Number($('passwordMinLength').value) }) }); await loadEverything(); toast('Règle de mot de passe enregistrée.'); }
-  catch (error) { toast(error.message, true); }
+  try {
+    await api('/security', {
+      method: 'PUT',
+      body: JSON.stringify({
+        passwordMinLength: Number($('passwordMinLength').value),
+        showAnssiBadge: $('showAnssiBadge').checked
+      })
+    });
+    await loadEverything();
+    window.dispatchEvent(new Event('phenix:security-badge-updated'));
+    toast('Paramètres de sécurité enregistrés.');
+  } catch (error) { toast(error.message, true); }
 }
 
 async function handleAction(event) {

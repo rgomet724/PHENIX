@@ -108,7 +108,7 @@ function defaultData() {
   }
   return {
     schemaVersion: 2,
-    security: { passwordMinLength: 6 },
+    security: { passwordMinLength: 6, showAnssiBadge: true },
     userPolicies: {},
     appearance: JSON.parse(JSON.stringify(DEFAULT_APPEARANCE)),
     notifications: { events },
@@ -122,6 +122,10 @@ function migrate(value) {
   data.schemaVersion = 2;
   data.security = data.security && typeof data.security === 'object' ? data.security : base.security;
   data.security.passwordMinLength = Math.min(32, Math.max(4, Number(data.security.passwordMinLength) || 6));
+  // Préserver la préférence explicite lors de la migration et des autres réglages.
+  data.security.showAnssiBadge = typeof data.security.showAnssiBadge === 'boolean'
+    ? data.security.showAnssiBadge
+    : base.security.showAnssiBadge;
   data.userPolicies = data.userPolicies && typeof data.userPolicies === 'object' ? data.userPolicies : {};
   data.appearance = data.appearance && typeof data.appearance === 'object' ? data.appearance : {};
   for (const app of APPLICATIONS) {

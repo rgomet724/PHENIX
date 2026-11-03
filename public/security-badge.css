@@ -1,0 +1,44 @@
+/* Signature visuelle facultative, volontairement discrète et non interactive. */
+.phenix-anssi-badge {
+  position: fixed;
+  right: max(10px, env(safe-area-inset-right));
+  bottom: max(9px, env(safe-area-inset-bottom));
+  z-index: 30;
+  width: 145px;
+  max-width: 26vw;
+  margin: 0;
+  padding: 0 3px 3px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  pointer-events: none;
+  opacity: .83;
+  border-radius: 6px;
+  background: rgba(255,255,255,.66);
+  box-shadow: 0 2px 9px rgba(0,0,0,.12);
+  color: #12395d;
+  font: 600 9px/1.2 Arial, Helvetica, sans-serif;
+  text-align: center;
+  contain: layout style;
+}
+.phenix-anssi-badge img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+.phenix-anssi-badge span {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .phenix-anssi-badge {
+    width: 105px;
+    max-width: 24vw;
+    opacity: .72;
+    font-size: 8px;
+  }
+}
+@media print {
+  .phenix-anssi-badge { display: none !important; }
+}

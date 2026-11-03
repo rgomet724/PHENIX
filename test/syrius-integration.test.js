@@ -51,6 +51,13 @@ test('Intégration avec le serveur PHENIX, le portail ARGOS et l’administratio
   const homeHtml = await home.text();
   assert.match(homeHtml, /<title>.*ARGOS/i);
   assert.match(homeHtml, /id="forgotPasswordBtn"/);
+  assert.match(homeHtml, /\/security-badge\.js/);
+  assert.match(await (await fetch(`${origin}/security-badge.js`)).text(), /showAnssiBadge/);
+  assert.match(await (await fetch(`${origin}/security-badge.css`)).text(), /phenix-anssi-badge/);
+  const badgeImage = await fetch(`${origin}/security-badge.webp`);
+  assert.equal(badgeImage.status, 200);
+  assert.match(badgeImage.headers.get('content-type'), /image\/webp/);
+  assert.ok((await badgeImage.arrayBuffer()).byteLength > 1000);
   assert.match(home.headers.get('cache-control'), /no-store/);
   assert.match(await (await fetch(`${origin}/portail/`)).text(), /<title>.*ARGOS/i);
   const phenixRedirect = await fetch(`${origin}/phenix?mode=test`, { redirect: 'manual' });
@@ -62,12 +69,16 @@ test('Intégration avec le serveur PHENIX, le portail ARGOS et l’administratio
   assert.match(phenixHtml, /<title>PHENIX<\/title>/);
   assert.match(phenixHtml, /\/phenix\/crew-address\.css/);
   assert.match(phenixHtml, /\/phenix\/crew-address\.js/);
+  assert.match(phenixHtml, /\/security-badge\.js/);
   assert.equal((await fetch(`${origin}/phenix/crew-address.js`)).status, 200);
   const phenixManifest = await (await fetch(`${origin}/manifest.json`)).json();
   assert.equal(phenixManifest.start_url, '/phenix/');
   assert.equal(phenixManifest.scope, '/phenix/');
   assert.equal((await fetch(`${origin}/admin-theme.js`)).status, 200);
-  assert.match(await (await fetch(`${origin}/dashboard/`)).text(), /\/dashboard\/pages\.js/);
+  const dashboardHtml = await (await fetch(`${origin}/dashboard/`)).text();
+  assert.match(dashboardHtml, /\/dashboard\/pages\.js/);
+  assert.match(dashboardHtml, /\/security-badge\.js/);
+  assert.match(await (await fetch(`${origin}/syrius/`)).text(), /\/security-badge\.js/);
   assert.equal((await fetch(`${origin}/dashboard/api/state`)).status, 401);
   const login = await fetch(`${origin}/syrius/api/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ login: 'integration-admin', password: 'integration-test-only' }) });
   assert.equal(login.status, 200);
@@ -130,6 +141,23 @@ test('Intégration avec le serveur PHENIX, le portail ARGOS et l’administratio
   assert.ok(catalogData.apps.some(app => app.id === 'app-dashboard'), 'la tuile Dashboard est administrable');
   // Le réglage reste exclusivement dans le centre d’administration existant.
   const adminSession = await (await fetch(`${origin}/portail/administration/api/session`, { headers: { cookie } })).json();
+  const badgeSettingsUrl = `${origin}/portail/administration/api/public/security-badge`;
+  const badgeSettings = async () => (await (await fetch(badgeSettingsUrl)).json()).showAnssiBadge;
+  assert.equal(await badgeSettings(), true, 'le badge est activé par défaut');
+  const updateBadge = enabled => fetch(`${origin}/portail/administration/api/security`, {
+    method: 'PUT', headers: { cookie, 'content-type': 'application/json', 'x-admin-csrf': adminSession.csrfToken },
+    body: JSON.stringify({ passwordMinLength: 6, showAnssiBadge: enabled })
+  });
+  const badBadgeValue = await updateBadge('false');
+  assert.equal(badBadgeValue.status, 400, 'le réglage exige un booléen');
+  const disableBadge = await updateBadge(false);
+  assert.equal(disableBadge.status, 200);
+  assert.equal(await badgeSettings(), false, 'le badge peut être masqué pour tous');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(directory, 'admin.json'), 'utf8')).security.showAnssiBadge, false, 'préférence enregistrée sur disque');
+  const enableBadge = await updateBadge(true);
+  assert.equal(enableBadge.status, 200);
+  assert.equal(await badgeSettings(), true, 'le badge peut être réactivé');
+  assert.match(await (await fetch(`${origin}/portail/administration/`, { headers: { cookie } })).text(), /id="showAnssiBadge"/);
   const streamController = new AbortController();
   t.after(() => streamController.abort());
   const stream = await fetch(`${origin}/syrius/api/stream?clientId=integration-branding-radio`, { headers: { cookie }, signal: streamController.signal });

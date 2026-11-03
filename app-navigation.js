@@ -51,8 +51,13 @@ function mountApplicationPages(app) {
     'head',
     '  <link rel="stylesheet" href="/phenix/crew-address.css">'
   );
-  const phenixIndex = injectBeforeClosingTag(
+  const withBadgeScript = injectBeforeClosingTag(
     withCrewAddressStyles,
+    'head',
+    '  <script src="/security-badge.js" defer></script>'
+  );
+  const phenixIndex = injectBeforeClosingTag(
+    withBadgeScript,
     'body',
     '  <script src="/phenix/crew-address.js"></script>'
   );
