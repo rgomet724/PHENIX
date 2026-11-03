@@ -328,20 +328,10 @@ function mountPortal(app, deps = {}) {
     next();
   });
 
-  router.get('/healthz', (req, res) => {
-    const phenix = loadPhenixUsers();
-    res.json({
-      ok: true,
-      service: 'argos-portail',
-      version: VERSION,
-      accountSource: 'PHENIX',
-      adminConfigured: Boolean(ADMIN_PASSWORD),
-      sessionSecretConfigured: ENV_SECRET.length >= 32,
-      phenixDataAvailable: phenix.ok,
-      phenixUserCount: phenix.users.length,
-      dataFile: DB_FILE,
-      phenixDataFile: PHENIX_DB_FILE
-    });
+  router.get('/healthz', (_req, res) => {
+    // La sonde publique ne doit divulguer ni chemins serveur, ni comptes,
+    // ni informations sur la configuration de l'authentification.
+    res.json({ ok: true, service: 'argos-portail', version: VERSION });
   });
 
   router.get('/me', (req, res) => {
