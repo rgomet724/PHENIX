@@ -2,6 +2,7 @@ const express = require('express');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const helmet = require('helmet');
+const { browserSecurity, isSameOrigin } = require('./browser-security');
 const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const MemoryStore = require('memorystore')(session);
 const FileStore = require('session-file-store')(session);
@@ -27,9 +28,14 @@ const DB_BACKUP_2 = path.join(DB_DIR, 'data.backup2.json');
 const DB_BACKUP_3 = path.join(DB_DIR, 'data.backup3.json');
 const DB_TMP = path.join(DB_DIR, 'data.tmp.json');
 const IS_PROD = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
-// Session persistante longue durée : plus de déconnexion quotidienne.
-const SESSION_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 365; // 1 an
-const SESSION_TTL_SECONDS = 60 * 60 * 24 * 365;       // 1 an
+// Durée de session glissante : 24 heures par défaut (7 jours maximum).
+// Une session ne doit jamais rester authentifiée pendant un an.
+const DEFAULT_SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const configuredSessionAge = Number(process.env.SESSION_MAX_AGE_MS);
+const SESSION_MAX_AGE_MS = Number.isSafeInteger(configuredSessionAge) && configuredSessionAge >= 15 * 60 * 1000
+  ? Math.min(configuredSessionAge, 7 * DEFAULT_SESSION_MAX_AGE_MS)
+  : DEFAULT_SESSION_MAX_AGE_MS;
+const SESSION_TTL_SECONDS = Math.ceil(SESSION_MAX_AGE_MS / 1000);
 const BCRYPT_ROUNDS = 12;
 const PASSWORD_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000; // 90 jours
 const PASSWORD_POLICY_START = '2026-08-28T00:00:00.000Z';
@@ -248,8 +254,9 @@ function auditType(msg){
   return 'Autre';
 }
 function requestIp(req){
-  const forwarded=String(req.headers['x-forwarded-for']||'').split(',')[0].trim();
-  return forwarded || req.ip || req.socket?.remoteAddress || '';
+  // Express normalise l'IP selon le nombre de proxys de confiance.
+  // La première entrée X-Forwarded-For peut être fournie par le client.
+  return req.ip || req.socket?.remoteAddress || '';
 }
 function audit(d, req, msg, type){
   const u=current(req);
@@ -386,6 +393,11 @@ app.use(helmet({
   referrerPolicy: {policy:'no-referrer'}
 }));
 
+// Contrôles côté navigateur (ANSSI) et protection transverse contre les
+// mutations inter-origines. La politique stricte est ciblée pour ne pas
+// interrompre les pages PHENIX historiques contenant du JavaScript inline.
+app.use(browserSecurity);
+
 app.use(express.json({limit:'4mb', strict:true}));
 
 const sessionPath = IS_PROD ? '/var/data/sessions' : path.join(__dirname,'.sessions');
@@ -415,15 +427,22 @@ app.use(session({
   }
 }));
 
+// Révoque les anciennes sessions longue durée lors de leur prochaine requête.
+// Les cookies historiques (1 an) seront remplacés après reconnexion.
+app.use((req, res, next) => {
+  if (!req.session?.userId) return next();
+  if (Number(req.session.cookie?.originalMaxAge) <= SESSION_MAX_AGE_MS) return next();
+  req.session.destroy(() => {
+    res.clearCookie('phenix.sid', { path: '/', httpOnly: true, secure: IS_PROD, sameSite: 'strict' });
+    res.status(401).json({ error: 'Session expirée. Reconnectez-vous.' });
+  });
+});
+
 // Refuse les requêtes API mutantes venant d'une autre origine.
 app.use('/api', (req,res,next)=>{
   if(['GET','HEAD','OPTIONS'].includes(req.method)) return next();
   const origin=req.get('origin');
-  if(origin){
-    try{
-      if(new URL(origin).host !== req.get('host')) return res.status(403).json({error:'Origine refusée'});
-    }catch(e){ return res.status(403).json({error:'Origine refusée'}); }
-  }
+  if(origin && !isSameOrigin(req, origin)) return res.status(403).json({error:'Origine refusée'});
   next();
 });
 
