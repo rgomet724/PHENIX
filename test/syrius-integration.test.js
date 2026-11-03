@@ -168,6 +168,9 @@ test('Intégration avec le serveur PHENIX, le portail ARGOS et l’administratio
   assert.equal(publicBranding.appearance.primaryColor, '#123456');
   const portalLogin = await fetch(`${origin}/portail/api/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ login: 'integration-admin', password: 'integration-test-only' }) });
   assert.equal(portalLogin.status, 200);
+  const portalLoginData = await portalLogin.json();
+  assert.ok(portalLoginData.csrfToken, 'le portail fournit un jeton CSRF et non un Bearer exposé');
+  assert.equal(portalLoginData.token, undefined, 'le secret de session ne transite pas en JSON');
   const portal = await fetch(`${origin}/portail/api/portal`, { headers: { cookie: portalLogin.headers.get('set-cookie').split(';')[0] } });
   const portalData = await portal.json();
   assert.equal(portalData.apps.find(app => app.id === 'app-phenix').url, '/phenix/');
@@ -199,7 +202,7 @@ test('Intégration avec le serveur PHENIX, le portail ARGOS et l’administratio
     assert.deepEqual(ids(central.apps), ids(portal.apps));
 
     const dashboardTile = central.apps.find(app => app.id === 'app-dashboard');
-    const legacyEdit = await fetch(`${origin}/portail/api/admin/apps`, { method: 'POST', headers: { cookie: portalCookie, 'content-type': 'application/json' }, body: JSON.stringify({ ...dashboardTile, categoryId: 'cat-outils', name: 'Écran du service', order: 43 }) });
+    const legacyEdit = await fetch(`${origin}/portail/api/admin/apps`, { method: 'POST', headers: { cookie: portalCookie, 'content-type': 'application/json', 'x-portal-csrf': portalLoginData.csrfToken }, body: JSON.stringify({ ...dashboardTile, categoryId: 'cat-outils', name: 'Écran du service', order: 43 }) });
     assert.equal(legacyEdit.status, 200); await legacyEdit.json();
     assert.equal((await readCatalog()).apps.find(app => app.id === 'app-dashboard').name, 'Écran du service', 'les modifications de l’ancien panneau sont visibles dans le centre');
     assert.equal((await readPortal()).apps.find(app => app.id === 'app-dashboard').categoryId, 'cat-outils');

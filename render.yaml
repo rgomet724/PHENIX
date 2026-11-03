@@ -3,5 +3,5 @@ services:
     name: pegase
     env: node
     plan: free
-    buildCommand: npm install
+    buildCommand: npm ci --omit=dev
     startCommand: npm start

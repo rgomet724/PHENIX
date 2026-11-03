@@ -1,0 +1,70 @@
+'use strict';
+
+// Protection des interfaces déjà compatibles avec une CSP sans JavaScript inline.
+// Les pages PHENIX historiques gardent leur stratégie existante jusqu'à la
+// migration de leurs scripts et gestionnaires d'événements intégrés au HTML.
+const PORTAL_CSP = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  "script-src 'self'",
+  "script-src-attr 'none'",
+  "style-src 'self'",
+  "img-src 'self' data: blob:",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "media-src 'self' blob:",
+  'upgrade-insecure-requests'
+].join('; ');
+
+// L'administration comporte encore quelques attributs style= dans son HTML.
+// Ils seront à remplacer par des classes avant de supprimer cette exception.
+const ADMIN_CSP = PORTAL_CSP.replace("style-src 'self'", "style-src 'self' 'unsafe-inline'");
+
+// Le Dashboard positionne encore sa taille et ses couleurs de widgets au moyen
+// d'attributs style générés dynamiquement ; ne pas casser le redimensionnement.
+const DASHBOARD_CSP = ADMIN_CSP;
+
+function isSameOrigin(req, origin) {
+  try {
+    const supplied = new URL(origin);
+    const expected = new URL(`${req.protocol}://${req.get('host')}`);
+    return (supplied.protocol === 'http:' || supplied.protocol === 'https:') &&
+      supplied.origin === expected.origin;
+  } catch {
+    return false;
+  }
+}
+
+function isPortalPage(pathname) {
+  // N'activer la CSP stricte que sur les applications dont les dépendances
+  // externes et l'absence de JavaScript inline ont été vérifiées.
+  return pathname === '/' ||
+    pathname === '/portail' || pathname === '/portail/' ||
+    pathname === '/portail/index.html' ||
+    pathname === '/portail/administration' ||
+    pathname.startsWith('/portail/administration/') ||
+    pathname === '/dashboard' || pathname.startsWith('/dashboard/');
+}
+
+function browserSecurity(req, res, next) {
+  // Origin est vérifié avec son schéma, pas uniquement avec l'hôte.
+  // Sec-Fetch-Site protège également les requêtes mutantes sans Origin.
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    if (req.get('sec-fetch-site') === 'cross-site' ||
+        (req.get('origin') && !isSameOrigin(req, req.get('origin')))) {
+      return res.status(403).json({ error: 'Origine de la requête refusée.' });
+    }
+  }
+
+  if (isPortalPage(req.path)) {
+    const dynamicStyles = req.path.startsWith('/portail/administration') ||
+      req.path === '/dashboard' || req.path.startsWith('/dashboard/');
+    res.set('Content-Security-Policy', dynamicStyles ? DASHBOARD_CSP : PORTAL_CSP);
+  }
+  next();
+}
+
+module.exports = { browserSecurity, isSameOrigin, PORTAL_CSP, ADMIN_CSP, DASHBOARD_CSP };

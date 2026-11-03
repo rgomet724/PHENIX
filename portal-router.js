@@ -197,6 +197,10 @@ function mountPortal(app, deps = {}) {
     return parseCookies(req.headers.cookie).pm_portal_auth || '';
   }
 
+  function csrfForToken(token) {
+    return crypto.createHmac('sha256', TOKEN_SECRET).update('portal-csrf:' + token).digest('base64url');
+  }
+
   function resolveTokenUser(token) {
     const user = verifyToken(token);
     if (!user) return null;
@@ -272,7 +276,7 @@ function mountPortal(app, deps = {}) {
   }
   function isSecure(req) { return IS_PROD || String(req.headers['x-forwarded-proto'] || '').toLowerCase() === 'https'; }
   function cookie(req, token, maxAge = Math.floor(TOKEN_TTL_MS / 1000)) {
-    const parts = [`pm_portal_auth=${encodeURIComponent(token)}`, 'Path=/portail', 'HttpOnly', 'SameSite=Lax', `Max-Age=${maxAge}`];
+    const parts = [`pm_portal_auth=${encodeURIComponent(token)}`, 'Path=/portail', 'HttpOnly', 'SameSite=Strict', `Max-Age=${maxAge}`];
     if (isSecure(req)) parts.push('Secure');
     return parts.join('; ');
   }
@@ -293,7 +297,7 @@ function mountPortal(app, deps = {}) {
 
   const attempts = new Map();
   function loginAllowed(req) {
-    const key = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown').split(',')[0].trim();
+    const key = String(req.ip || req.socket.remoteAddress || 'unknown');
     const now = Date.now(), windowMs = 15 * 60 * 1000, max = 25;
     const state = attempts.get(key);
     if (!state || state.resetAt <= now) {
@@ -311,23 +315,30 @@ function mountPortal(app, deps = {}) {
     next();
   });
 
-  router.get('/healthz', (req, res) => {
-    const phenix = loadPhenixUsers();
-    res.json({
-      ok: true,
-      service: 'argos-portail',
-      version: VERSION,
-      accountSource: 'PHENIX',
-      adminConfigured: Boolean(ADMIN_PASSWORD),
-      sessionSecretConfigured: ENV_SECRET.length >= 32,
-      phenixDataAvailable: phenix.ok,
-      phenixUserCount: phenix.users.length,
-      dataFile: DB_FILE,
-      phenixDataFile: PHENIX_DB_FILE
-    });
+  // Toutes les mutations authentifiées exigent une preuve anti-CSRF indépendante
+  // du cookie de session. Login et récupération de compte ne sont pas authentifiés.
+  router.use((req, res, next) => {
+    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method) ||
+        ['/login', '/password-reset/request'].includes(req.path)) return next();
+    const token = tokenFromRequest(req);
+    if (!token || !resolveTokenUser(token) ||
+        !safeEqual(req.get('x-portal-csrf'), csrfForToken(token))) {
+      return res.status(403).json({ error: 'CSRF_INVALID', message: 'Jeton de sécurité invalide. Rechargez la page.' });
+    }
+    next();
   });
 
-  router.get('/me', (req, res) => res.json({ user: currentUser(req) || null }));
+  router.get('/healthz', (_req, res) => {
+    // La sonde publique ne doit divulguer ni chemins serveur, ni comptes,
+    // ni informations sur la configuration de l'authentification.
+    res.json({ ok: true, service: 'argos-portail', version: VERSION });
+  });
+
+  router.get('/me', (req, res) => {
+    const token = tokenFromRequest(req);
+    const user = resolveTokenUser(token);
+    res.json({ user: user || null, csrfToken: user ? csrfForToken(token) : null });
+  });
 
   // Les demandes ARGOS arrivent dans la même file d’administration que celles de PHENIX.
   router.post('/password-reset/request', deps.passwordResetLimiter || ((req, res, next) => next()), (req, res, next) => {
@@ -393,7 +404,7 @@ function mountPortal(app, deps = {}) {
       const token = signToken(user);
       console.log(`[PORTAIL] Connexion ARGOS réussie: ${user.login} (${user.source}/${user.role})`);
       res.set('Set-Cookie', cookie(req, token));
-      res.json({ ok: true, user, token });
+      res.json({ ok: true, user, csrfToken: csrfForToken(token) });
     } catch (err) { next(err); }
   });
 
