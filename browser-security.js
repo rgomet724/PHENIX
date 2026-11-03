@@ -35,7 +35,14 @@ function isSameOrigin(req, origin) {
 }
 
 function isPortalPage(pathname) {
-  return pathname === '/' || /^\/(?:portail|dashboard)(?:\/|$)/.test(pathname);
+  // N'activer la CSP stricte que sur les applications dont les dépendances
+  // externes et l'absence de JavaScript inline ont été vérifiées.
+  return pathname === '/' ||
+    pathname === '/portail' || pathname === '/portail/' ||
+    pathname === '/portail/index.html' ||
+    pathname === '/portail/administration' ||
+    pathname.startsWith('/portail/administration/') ||
+    pathname === '/dashboard' || pathname.startsWith('/dashboard/');
 }
 
 function browserSecurity(req, res, next) {
