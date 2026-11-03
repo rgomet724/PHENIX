@@ -1,7 +1,10 @@
 'use strict';
 
+// Suppression du précédent jeton Bearer sauvegardé dans le navigateur.
+try { sessionStorage.removeItem('pmPortalToken'); } catch { /* stockage désactivé */ }
+
 const state = {
-  token: sessionStorage.getItem('pmPortalToken') || '',
+  csrfToken: '',
   user: null,
   categories: [],
   apps: [],
@@ -15,7 +18,9 @@ async function api(url, options = {}) {
   const headers = new Headers(options.headers || {});
   const isFormData = options.body instanceof FormData;
   if (!isFormData && options.body !== undefined && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
-  if (state.token) headers.set('Authorization', `Bearer ${state.token}`);
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(String(options.method || 'GET').toUpperCase()) && state.csrfToken) {
+    headers.set('x-portal-csrf', state.csrfToken);
+  }
 
   let response;
   try {
@@ -33,9 +38,8 @@ async function api(url, options = {}) {
   try { data = await response.json(); } catch { /* réponse vide */ }
 
   if (response.status === 401 && url !== '/portail/api/login') {
-    state.token = '';
+    state.csrfToken = '';
     state.user = null;
-    sessionStorage.removeItem('pmPortalToken');
     showLogin();
   }
 
@@ -178,6 +182,7 @@ async function initialize() {
   try {
     const me = await api('/portail/api/me');
     if (!me.user) return showLogin();
+    state.csrfToken = me.csrfToken || '';
     state.user = me.user;
     await loadPortal();
     showPortal();
@@ -202,8 +207,7 @@ async function login(event) {
         password: el('passwordInput').value
       })
     });
-    state.token = data.token || '';
-    if (state.token) sessionStorage.setItem('pmPortalToken', state.token);
+    state.csrfToken = data.csrfToken || '';
     state.user = data.user;
     await loadPortal();
     showPortal();
@@ -217,9 +221,8 @@ async function login(event) {
 
 async function logout() {
   try { await api('/portail/api/logout', { method: 'POST' }); } catch { /* local logout anyway */ }
-  state.token = '';
+  state.csrfToken = '';
   state.user = null;
-  sessionStorage.removeItem('pmPortalToken');
   showLogin();
 }
 
