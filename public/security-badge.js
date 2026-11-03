@@ -51,8 +51,8 @@
 
     const image = document.createElement('img');
     image.src = '/security-badge.webp';
-    image.width = 240;
-    image.height = 135;
+    image.width = 175;
+    image.height = 98;
     image.loading = 'lazy';
     image.decoding = 'async';
     image.alt = 'Visuel ANSSI-PA-009 fourni pour PHENIX';
