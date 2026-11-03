@@ -2,7 +2,7 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { browserSecurity, isSameOrigin, PORTAL_CSP, ADMIN_CSP } = require('../browser-security');
+const { browserSecurity, isSameOrigin, PORTAL_CSP, ADMIN_CSP, DASHBOARD_CSP } = require('../browser-security');
 
 function response() {
   const headers = {};
@@ -38,7 +38,7 @@ test('Politique navigateur stricte pour les pages auditées', () => {
   assert.match(PORTAL_CSP, /script-src 'self'; script-src-attr 'none'/);
   assert.match(PORTAL_CSP, /frame-ancestors 'none'/);
   assert.doesNotMatch(PORTAL_CSP, /unsafe-inline|unsafe-eval/);
-  for (const pathname of ['/', '/portail/', '/portail/index.html', '/dashboard/', '/dashboard/index.html']) {
+  for (const pathname of ['/', '/portail/', '/portail/index.html']) {
     const { res, nextCalled } = run(request(pathname));
     assert.equal(nextCalled, true);
     assert.equal(res.headers['content-security-policy'], PORTAL_CSP);
@@ -50,6 +50,14 @@ test('L administration conserve temporairement les styles intégrés, mais pas l
   assert.doesNotMatch(ADMIN_CSP, /script-src [^;]*unsafe-inline/);
   const { res } = run(request('/portail/administration/'));
   assert.equal(res.headers['content-security-policy'], ADMIN_CSP);
+});
+
+test('Le Dashboard conserve les tailles de widgets en CSS inline sans autoriser de JavaScript inline', () => {
+  assert.match(DASHBOARD_CSP, /style-src 'self' 'unsafe-inline'/);
+  assert.match(DASHBOARD_CSP, /script-src 'self'; script-src-attr 'none'/);
+  for (const pathname of ['/dashboard/', '/dashboard/index.html']) {
+    assert.equal(run(request(pathname)).res.headers['content-security-policy'], DASHBOARD_CSP);
+  }
 });
 
 test('Ne pas appliquer la CSP stricte à une application héritée non vérifiée', () => {
