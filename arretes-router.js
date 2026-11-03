@@ -426,8 +426,14 @@ function mountArretes(app, auth) {
   }
 
   function appearanceHtml() {
+    // L'interface Arrêtés est stockée en HTML embarqué : injection lors du
+    // rendu, y compris en l'absence de personnalisation.
+    const withBadge = html => html.replace(
+      '</head>',
+      '    <script src="/security-badge.js" defer></script>\\n  </head>'.replace('\\n', '\n')
+    );
     const appearance = currentAppearance();
-    if (!appearance) return embedded.indexHtml;
+    if (!appearance) return withBadge(embedded.indexHtml);
     const title = escapeHtml(appearance.title || 'Arrêtés municipaux');
     const subtitle = escapeHtml(appearance.subtitle || 'Police Municipale · Chalon-sur-Saône');
     let html = embedded.indexHtml
@@ -435,7 +441,7 @@ function mountArretes(app, auth) {
       .replace('<h1>Arrêtés municipaux</h1>', `<h1>${title}</h1>`)
       .replace('<p>Police Municipale · Chalon-sur-Saône</p>', `<p>${subtitle}</p>`);
     if (appearance.faviconData) html = html.replace('</head>', '    <link rel="icon" href="/arretes/assets/favicon">\n  </head>');
-    return html;
+    return withBadge(html);
   }
 
   const upload = multer({
