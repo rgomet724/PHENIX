@@ -104,7 +104,7 @@ async function announceAtlasMission(mission){
 function updateAtlasNotificationControls(){
   $('atlasSoundEnabled').checked=atlasSoundEnabled;$('atlasDesktopEnabled').checked=atlasDesktopEnabled;
   const permission='Notification' in window?Notification.permission:'unavailable';
-  $('atlasNotificationPermission').textContent=permission==='granted'?'Notifications de bureau autorisées sur ce poste.':permission==='denied'?'Notifications bloquées : autorisez-les dans les paramètres du navigateur.':permission==='unavailable'?'Ce navigateur ne propose pas les notifications de bureau.':'Cliquez sur « Autoriser sur ce poste » puis acceptez la demande du navigateur.';
+  $('atlasNotificationPermission').textContent=permission==='granted'?'Notifications autorisées.':permission==='denied'?'Notifications bloquées par le navigateur.':permission==='unavailable'?'Notifications indisponibles.':'Autorisation requise.';
   $('atlasAuthorizeNotifications').disabled=permission==='unavailable';
   setText('notificationsLabel',atlasDesktopEnabled&&permission==='granted'?'Notifications activées':'Notifications');
 }
@@ -115,7 +115,7 @@ async function authorizeAtlasNotifications(){
   const unlocked=await audioPermission;
   if(permission==='granted'){atlasDesktopEnabled=true;localStorage.setItem('atlasDesktopNotifications','true');}
   updateAtlasNotificationControls();
-  $('atlasNotificationFeedback').textContent=permission==='granted'?'Autorisation enregistrée sur ce poste.':permission==='denied'?'Autorisez les notifications dans les paramètres du navigateur.':unlocked?'Audio autorisé. Les notifications de bureau ne sont pas disponibles.':'L’audio ou les notifications ne sont pas autorisés.';
+  $('atlasNotificationFeedback').textContent=permission==='granted'?'Autorisation enregistrée.':permission==='denied'?'Notifications bloquées par le navigateur.':unlocked?'Audio activé. Notifications indisponibles.':'Audio et notifications non autorisés.';
 }
 
 function openModal(id){
@@ -155,7 +155,7 @@ document.addEventListener('keydown',event=>{
 });
 
 function populateSelects(){
-  fillCrewSelect($('missionCrew'),'À affecter plus tard');
+  fillCrewSelect($('missionCrew'),'En attente');
   fillCrewSelect($('nextCrew'),'Choisir une patrouille');
   const natureOptions=JSON.stringify(state.natures);
   if($('missionNatureSuggestions').dataset.options!==natureOptions){
@@ -186,11 +186,14 @@ function updateAssignmentFields(){
   const available=state.crews.filter(crewAssignable);
   $('nextCrewField').classList.toggle('hidden',nextAuto);
   $('missionCrewField').classList.toggle('hidden',missionAuto);
-  $('missionAssignmentHelp').classList.toggle('hidden',!missionAuto);
-  $('missionAssignmentHelp').textContent=available.length?'ATLAS choisira une patrouille disponible dès la création.':'Aucune patrouille disponible. Choisissez le mode manuel pour enregistrer en attente.';
+  const noCrew=available.length===0;
+  $('missionAssignmentHelp').classList.toggle('hidden',!missionAuto||!noCrew);
+  setText('missionAssignmentHelp',missionAuto&&noCrew?'Aucune patrouille disponible.':'');
   $('nextAssignmentPanel').classList.toggle('hidden',!state.canOperate);
   $('readOnlyPanel').classList.toggle('hidden',!atlasLoaded||state.canOperate);
-  setText('nextAssignmentHelp',!state.nextMissionId?'La prochaine intervention apparaîtra ici.':!available.length?'Aucune patrouille disponible. L’intervention reste en attente.':nextAuto?'Une patrouille disponible sera choisie au clic sur Affecter.':'L’affectation démarre immédiatement l’intervention dans PHENIX.');
+  const nextUnavailable=Boolean(state.nextMissionId)&&noCrew;
+  $('nextAssignmentHelp').classList.toggle('hidden',!nextUnavailable);
+  setText('nextAssignmentHelp',nextUnavailable?'Aucune patrouille disponible.':'');
   setText('missionSubmit',missionAuto||$('missionCrew').value?'Créer et affecter':'Enregistrer en attente');
   setText('takeNextBtn',takeNextPending?'Affectation…':nextAuto?'Affecter automatiquement':'Affecter la patrouille');
   const selected=state.crews.find(crew=>String(crew.id)===String($('nextCrew').value));
@@ -240,16 +243,16 @@ function streetSubmissionValue(){
 async function loadBanStreets(){
   const input=$('missionStreet'),status=$('banStatus'),request=++banRequestSeq;
   banStreetLoading=true;input.setAttribute('aria-busy','true');
-  status.textContent=state.banStreets.length?'Recherche disponible · actualisation des voies…':'Chargement des voies · vous pouvez déjà saisir le nom…';status.classList.remove('ok','error');
+  status.textContent=state.banStreets.length?'':'Chargement des voies…';status.classList.toggle('hidden',Boolean(state.banStreets.length));status.classList.remove('ok','error');
   try{
     const d=await api('/portail/atlas/api/streets?t='+Date.now());
     if(request!==banRequestSeq)return;
     state.banStreets=[...new Set((d.streets||[]).map(street=>String(street).trim()).filter(Boolean))];
-    status.textContent=`${state.banStreets.length} voies · tapez quelques lettres puis choisissez la voie${d.stale?' · dernière liste disponible':''}.`;status.classList.add(d.stale?'error':'ok');
+    status.textContent=d.stale?'Dernière liste disponible.':state.banStreets.length?'':'Aucune voie disponible.';status.classList.toggle('hidden',!status.textContent);status.classList.add(d.stale?'error':'ok');
     if(document.activeElement===input)renderStreetSuggestions();
   }catch(e){
     if(request!==banRequestSeq)return;
-    status.textContent=state.banStreets.length?'Actualisation indisponible : recherche dans la dernière liste chargée.':'Liste des voies indisponible : saisissez et vérifiez le nom complet de la voie.';status.classList.add('error');
+    status.textContent=state.banStreets.length?'Actualisation des voies indisponible.':'Recherche indisponible. Saisie libre.';status.classList.remove('hidden');status.classList.add('error');
   }finally{if(request===banRequestSeq){banStreetLoading=false;input.removeAttribute('aria-busy');}}
 }
 
@@ -258,7 +261,7 @@ function renderNext(){
   const mission=state.missions.find(item=>String(item.id)===String(state.nextMissionId));
   document.querySelector('.hero-grid').classList.toggle('has-urgent',mission?.priority==='URGENT');
   if(!mission){
-    box.innerHTML='<div class="empty-next"><strong>La file d’attente est à jour</strong>Aucune intervention à affecter pour le moment.</div>';
+    box.innerHTML='<div class="empty-next">Aucune intervention en attente.</div>';
     return;
   }
   box.innerHTML='<div class="next-summary"><h3>'+esc(mission.natureLabel)+'</h3><p class="next-address">'+icon('pin')+'<span>'+esc(fullAddress(mission))+'</span></p><div class="next-meta"><span class="next-priority '+(mission.priority==='URGENT'?'urgent':'normal')+'">'+priorityLabel(mission.priority)+'</span><span>Créée à '+esc(fmtTime(mission.createdAt))+'</span><span>En attente depuis <strong class="next-wait">'+esc(elapsed(mission.createdAt))+'</strong></span></div></div>';
@@ -310,15 +313,17 @@ function missionAssignmentForm(mission){
   const choice=assignmentChoices.get(mission.id)||{assignmentMode:preferredAssignmentMode(),crewId:''};
   assignmentChoices.set(mission.id,choice);
   const form=document.createElement('form');form.className='mission-assignment';
-  form.innerHTML=`<fieldset class="assignment-mode"><legend>Affectation de la patrouille</legend><label><input type="radio" name="assignment-${esc(mission.id)}" value="auto" ${choice.assignmentMode==='auto'?'checked':''}> Automatique</label><label><input type="radio" name="assignment-${esc(mission.id)}" value="manual" ${choice.assignmentMode==='manual'?'checked':''}> Manuelle</label></fieldset><label class="crew-choice">Patrouille disponible<select aria-label="Patrouille pour cette intervention"></select></label><small class="assignment-explanation"></small><button class="btn primary" type="submit">Affecter</button><p class="error" role="alert"></p>`;
+  form.innerHTML=`<fieldset class="assignment-mode"><legend>Affectation de la patrouille</legend><label><input type="radio" name="assignment-${esc(mission.id)}" value="auto" ${choice.assignmentMode==='auto'?'checked':''}> Automatique</label><label><input type="radio" name="assignment-${esc(mission.id)}" value="manual" ${choice.assignmentMode==='manual'?'checked':''}> Manuelle</label></fieldset><label class="crew-choice">Patrouille disponible<select aria-label="Patrouille pour cette intervention"></select></label><small class="assignment-explanation hidden"></small><button class="btn primary" type="submit">Affecter</button><p class="error" role="alert"></p>`;
   const select=form.querySelector('select'),submit=form.querySelector('button[type="submit"]'),error=form.querySelector('.error');
   fillCrewSelect(select,'Choisir une patrouille');select.value=choice.crewId;
   const update=()=>{
     const auto=choice.assignmentMode==='auto';
     form.querySelector('.crew-choice').classList.toggle('hidden',auto);
-    form.querySelector('.assignment-explanation').textContent=auto?'Une patrouille disponible sera choisie au clic sur Affecter.':'L’affectation démarre immédiatement l’intervention.';
+    const noCrew=!state.crews.some(crewAssignable);
+    const notice=form.querySelector('.assignment-explanation');
+    notice.textContent=noCrew?'Aucune patrouille disponible.':'';
+    notice.classList.toggle('hidden',!noCrew);
     const selected=state.crews.find(crew=>String(crew.id)===String(choice.crewId));
-    if(!state.crews.some(crewAssignable))form.querySelector('.assignment-explanation').textContent='Aucune patrouille disponible. L’intervention reste en attente.';
     submit.disabled=assignmentPending.has(mission.id)||(auto?!state.crews.some(crewAssignable):!selected||!crewAssignable(selected));
   };
   form.querySelectorAll('input[type="radio"]').forEach(input=>input.addEventListener('change',()=>{choice.assignmentMode=input.value;localStorage.setItem('atlasAssignmentMode',input.value);error.textContent='';update();}));
@@ -344,11 +349,10 @@ function renderMissions(){
   setText('waitingCount',total.waiting);setText('activeCount',total.active);
   setText('urgentCount',total.urgent);setText('availableCount',total.available);
   $('urgentStat').classList.toggle('has-urgent',total.urgent>0);
-  setText('crewCountHelp',total.available+' disponible'+(total.available>1?'s':'')+' sur '+state.crews.length+' patrouille'+(state.crews.length>1?'s':''));
   setText('waitingVisible',waiting.length);setText('activeVisible',active.length);
   const count=waiting.length+active.length,all=total.waiting+total.active;
   const filtered=Boolean(boardView.query.trim())||boardView.priority!=='all';
-  setText('boardResult',filtered?count+' intervention'+(count>1?'s':'')+' affichée'+(count>1?'s':'')+' sur '+all:all+' intervention'+(all>1?'s':'')+' à suivre');
+  setText('boardResult',filtered?count+' / '+all+' interventions':all+' intervention'+(all>1?'s':''));
   $('missionBoard').setAttribute('aria-busy','false');
   for(const [id,missions] of [['waitingList',waiting],['activeList',active]]){
     const list=$(id),key=JSON.stringify([missions,state.crews,state.canOperate,state.canManage,boardView]);
@@ -359,7 +363,7 @@ function renderMissions(){
     list.dataset.renderKey=key;list.replaceChildren();
     if(!missions.length){
       const empty=document.createElement('div');empty.className='empty-list';
-      empty.innerHTML=icon(filtered?'search':id==='waitingList'?'check':'activity')+'<strong>'+(filtered?'Aucune intervention correspondante':id==='waitingList'?'Aucune intervention en attente':'Aucune intervention en cours')+'</strong><span>'+(filtered?'Essayez un autre terme ou retirez les filtres.':id==='waitingList'?'Les nouvelles interventions apparaîtront ici.':'Les interventions affectées apparaîtront ici.')+'</span>';
+      empty.innerHTML=icon(filtered?'search':id==='waitingList'?'check':'activity')+'<strong>'+(filtered?'Aucune intervention correspondante':id==='waitingList'?'Aucune intervention en attente':'Aucune intervention en cours')+'</strong>';
       if(filtered)empty.append(button('Réinitialiser les filtres','ghost',resetBoardFilters));
       else if(id==='waitingList'&&state.canOperate)empty.append(button('Créer une intervention','ghost',()=>$('newMissionBtn').click()));
       list.append(empty);
@@ -376,7 +380,7 @@ function renderCrews(){
   const list=$('crewList'),key=JSON.stringify([state.crews,state.missions.map(m=>[m.crewId,m.status])]);
   if(list.dataset.renderKey===key)return;
   list.dataset.renderKey=key;list.replaceChildren();
-  if(!state.crews.length){list.innerHTML='<span class="muted">Aucune patrouille active dans PHENIX pour le moment.</span>';return;}
+  if(!state.crews.length){list.innerHTML='<span class="muted">Aucune patrouille active.</span>';return;}
   [...state.crews].sort((a,b)=>Number(crewAssignable(b))-Number(crewAssignable(a))||a.callsign.localeCompare(b.callsign,'fr',{numeric:true})).forEach(crew=>{
     const available=crewAssignable(crew),active=state.missions.find(m=>String(m.crewId)===String(crew.id)&&AtlasBoard.activeStatuses.has(m.status));
     const chip=document.createElement('div');chip.className='crew-chip'+(available?'':' unavailable');
@@ -418,9 +422,8 @@ function applyAppearance(){
   document.documentElement.style.setProperty('--blue',a.primaryColor||'#1683c5');
   document.documentElement.style.setProperty('--blue2',a.accentColor||'#0d6597');
   document.documentElement.style.setProperty('--bg',a.backgroundColor||'#edf1f3');
-  const title=document.querySelector('.brand strong'),subtitle=document.querySelector('.brand span'),logo=document.querySelector('.brand-logo');
+  const title=document.querySelector('.brand strong'),logo=document.querySelector('.brand-logo');
   if(title)title.textContent=a.title||'ATLAS';
-  if(subtitle)subtitle.textContent=a.subtitle||'Coordination des interventions';
   if(logo&&a.logoData)logo.src=a.logoData;
   if(a.faviconData){let icon=document.querySelector('link[rel="icon"]');if(!icon){icon=document.createElement('link');icon.rel='icon';document.head.appendChild(icon)}icon.href=a.faviconData;}
   if(a.backgroundData){document.body.style.backgroundImage=`linear-gradient(rgba(237,243,248,.88),rgba(237,243,248,.94)),url(${JSON.stringify(a.backgroundData)})`;document.body.style.backgroundSize='cover';document.body.style.backgroundAttachment='fixed';}
@@ -447,13 +450,13 @@ async function refresh(silent=false){
     }catch(e){
       setText('syncState','Connexion interrompue');$('syncState').classList.add('disconnected');$('syncState').classList.remove('connected');
       $('connectionAlert').classList.remove('hidden');
-      setText('connectionMessage',(atlasLastSync?'Dernière actualisation à '+fmtTime(atlasLastSync)+'. Les informations affichées peuvent avoir changé. ':'')+e.message);
+      setText('connectionMessage',(atlasLastSync?'Dernière actualisation : '+fmtTime(atlasLastSync)+'. ':'')+e.message);
       if(!atlasLoaded){
         $('missionBoard').setAttribute('aria-busy','false');setText('boardResult','Chargement indisponible');
-        $('waitingList').innerHTML='<div class="empty-list">La file d’attente sera affichée dès le retour de la connexion.</div>';
-        $('activeList').innerHTML='<div class="empty-list">Le suivi sera affiché dès le retour de la connexion.</div>';
-        $('nextMissionBox').innerHTML='<div class="empty-next">Connexion nécessaire pour charger la prochaine intervention.</div>';
-        $('crewList').textContent='Disponibilités momentanément indisponibles.';
+        $('waitingList').innerHTML='<div class="empty-list">File d’attente indisponible.</div>';
+        $('activeList').innerHTML='<div class="empty-list">Suivi indisponible.</div>';
+        $('nextMissionBox').innerHTML='<div class="empty-next">Connexion indisponible.</div>';
+        $('crewList').textContent='Données indisponibles.';
       }
     }
   })();
@@ -474,7 +477,7 @@ $('atlasAuthorizeNotifications').addEventListener('click',authorizeAtlasNotifica
 $('atlasTestNotifications').addEventListener('click',async()=>{
   await unlockAtlasAudio();
   const [sound,desktop]=await Promise.all([playAtlasSound(),showAtlasDesktopNotification('ATLAS — Test de notification','Les nouvelles interventions apparaîtront sur ce poste.','atlas-notification-test')]);
-  $('atlasNotificationFeedback').textContent=sound||desktop?'Test envoyé selon les réglages activés.':'Aucune alerte active ou autorisée. Vérifiez les options du poste et de l’administration ARGOS.';
+  $('atlasNotificationFeedback').textContent=sound||desktop?'Test envoyé.':'Alertes désactivées ou non autorisées.';
 });
 function installAtlasAudioUnlock(){
   const handler=async()=>{if(!atlasSoundEnabled)return;if(await unlockAtlasAudio()){document.removeEventListener('pointerdown',handler,true);document.removeEventListener('keydown',handler,true);loadAtlasAudio().catch(()=>{});}};
@@ -546,7 +549,7 @@ async function saveCatalog(){
   catalogBusy=true;
   try{
     const d=await api('/portail/atlas/api/catalog/natures',{method:'POST',body:JSON.stringify({labels})});
-    state.natures=d.natures||[];renderManage();$('manageSuccess').textContent='Codes et motifs enregistrés dans PHENIX et ATLAS.';return true;
+    state.natures=d.natures||[];renderManage();$('manageSuccess').textContent='Motifs enregistrés.';return true;
   }catch(e){error.textContent=e.message;return false;}finally{catalogBusy=false;}
 }
 function editRow(value){
