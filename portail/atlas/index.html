@@ -4,178 +4,103 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
-  <title>ATLAS — Gestion des interventions</title>
+  <meta name="theme-color" content="#071827">
+  <title>ATLAS — Tableau des interventions</title>
+  <link rel="icon" href="/portail/atlas/logo-atlas.png">
   <link rel="stylesheet" href="/portail/atlas/styles.css">
   <script src="/security-badge.js" defer></script>
 </head>
 <body>
+  <a class="skip-link" href="#main">Aller aux interventions</a>
   <header class="topbar">
     <div class="brand">
-      <img class="brand-logo" src="/portail/atlas/logo-atlas.png" alt="Logo ATLAS">
-      <div>
-        <strong>ATLAS</strong>
-        <span>Gestion opérationnelle des interventions</span>
-      </div>
+      <img class="brand-logo" src="/portail/atlas/logo-atlas.png" alt="" width="50" height="50">
+      <div><strong>ATLAS</strong><span>Coordination des interventions</span></div>
+      <span class="ecosystem-label">PHENIX</span>
     </div>
     <div class="top-actions">
-      <span id="syncState" class="sync-pill">PHENIX connecté</span>
+      <span id="syncState" class="sync-pill" role="status">Connexion à PHENIX…</span>
       <span id="currentUser" class="user-pill">—</span>
-      <button id="atlasNotificationsBtn" class="btn ghost" type="button">Notifications</button>
-      <a class="btn ghost" href="/portail/">Retour à ARGOS</a>
+      <button id="atlasNotificationsBtn" class="btn ghost" type="button" aria-label="Sons et notifications"><svg class="icon" aria-hidden="true"><use href="/portail/atlas/icons.svg#bell"/></svg><span id="notificationsLabel">Notifications</span></button>
+      <a class="btn ghost" href="/portail/"><svg class="icon" aria-hidden="true"><use href="/portail/atlas/icons.svg#grid"/></svg>ARGOS</a>
     </div>
   </header>
 
-  <main class="page">
-    <section class="hero-grid">
-      <div class="next-card">
-        <div class="eyebrow">MISSION PRIORITAIRE</div>
-        <div id="nextMissionBox" class="next-content">
-          <div class="empty-next">Chargement…</div>
-        </div>
-      </div>
-      <div class="next-action-card">
-        <fieldset class="assignment-mode">
-          <legend>Affectation de la patrouille</legend>
-          <label><input type="radio" name="nextAssignmentMode" value="auto"> Automatique</label>
-          <label><input type="radio" name="nextAssignmentMode" value="manual" checked> Manuelle</label>
-        </fieldset>
-        <label id="nextCrewField" for="nextCrew">Patrouille disponible<select id="nextCrew"></select></label>
-        <small id="nextAssignmentHelp">Choisissez la patrouille pour l’intervention prioritaire.</small>
-        <button id="takeNextBtn" class="btn primary large" type="button" disabled>Affecter</button>
-        
-        <p id="nextError" class="error" role="alert"></p>
-      </div>
-    </section>
-
-    <section class="toolbar">
-      <div>
-        <h1>Interventions</h1>
-        <p><span id="waitingCount">0</span> en attente · <span id="activeCount">0</span> en cours</p>
-      </div>
+  <main id="main" class="page" tabindex="-1">
+    <section class="page-heading" aria-labelledby="pageTitle">
+      <div><span class="eyebrow">COORDINATION OPÉRATIONNELLE</span><h1 id="pageTitle">Tableau des interventions</h1><p>Une vue claire pour prioriser, affecter et suivre les patrouilles.</p></div>
       <div class="toolbar-actions">
-        <button id="manageBtn" class="btn secondary hidden" type="button">Gestion des motifs</button>
-        <button id="newMissionBtn" class="btn primary hidden" type="button">Nouvelle intervention</button>
+        <button id="manageBtn" class="btn ghost hidden" type="button" aria-label="Gérer les motifs d’intervention"><svg class="icon" aria-hidden="true"><use href="/portail/atlas/icons.svg#settings"/></svg>Motifs d’intervention</button>
+        <button id="newMissionBtn" class="btn primary hidden" type="button"><svg class="icon" aria-hidden="true"><use href="/portail/atlas/icons.svg#plus"/></svg>Nouvelle intervention</button>
       </div>
     </section>
 
-    <section class="board-grid">
-      <div class="board-column">
-        <div class="column-head">
-          <h2>En attente</h2>
-          <span class="legend"><i class="dot red"></i> prioritaire <i class="dot orange"></i> normale</span>
-        </div>
-        <div id="waitingList" class="mission-list"></div>
+    <div id="connectionAlert" class="connection-alert hidden" role="alert"><div><strong>La connexion à PHENIX est interrompue.</strong><span id="connectionMessage">Les informations affichées peuvent avoir changé.</span></div><button id="retryBtn" class="btn ghost" type="button">Réessayer</button></div>
+
+    <section class="overview-grid" aria-label="Situation opérationnelle">
+      <div class="stat-card"><div class="stat-icon waiting-tone"><svg class="icon" aria-hidden="true"><use href="/portail/atlas/icons.svg#clock"/></svg></div><div><span>En attente</span><strong id="waitingCount">—</strong><small>interventions à affecter</small></div></div>
+      <div id="urgentStat" class="stat-card"><div class="stat-icon urgent-tone"><svg class="icon" aria-hidden="true"><use href="/portail/atlas/icons.svg#flag"/></svg></div><div><span>Prioritaires</span><strong id="urgentCount">—</strong><small>parmi les interventions en attente</small></div></div>
+      <div class="stat-card"><div class="stat-icon active-tone"><svg class="icon" aria-hidden="true"><use href="/portail/atlas/icons.svg#activity"/></svg></div><div><span>En cours</span><strong id="activeCount">—</strong><small>interventions prises en charge</small></div></div>
+      <div class="stat-card"><div class="stat-icon available-tone"><svg class="icon" aria-hidden="true"><use href="/portail/atlas/icons.svg#crew"/></svg></div><div><span>Patrouilles disponibles</span><strong id="availableCount">—</strong><small id="crewCountHelp">Disponibilités PHENIX</small></div></div>
+    </section>
+
+    <section class="hero-grid" aria-labelledby="nextTitle">
+      <div class="next-card">
+        <div class="section-kicker"><svg class="icon" aria-hidden="true"><use href="/portail/atlas/icons.svg#flag"/></svg><h2 id="nextTitle">À affecter en priorité</h2><span class="next-order">Priorité, puis ancienneté</span></div>
+        <div id="nextMissionBox" class="next-content"><div class="empty-next">Chargement des interventions…</div></div>
       </div>
-      <div class="board-column">
-        <div class="column-head"><h2>En cours</h2></div>
-        <div id="activeList" class="mission-list"></div>
+      <div id="nextAssignmentPanel" class="next-action-card hidden">
+        <fieldset class="assignment-mode"><legend>Affectation de la patrouille</legend><label><input type="radio" name="nextAssignmentMode" value="manual" checked> Manuelle</label><label><input type="radio" name="nextAssignmentMode" value="auto"> Automatique</label></fieldset>
+        <div class="next-assign-row"><label id="nextCrewField" for="nextCrew">Patrouille disponible<select id="nextCrew"></select></label><button id="takeNextBtn" class="btn primary" type="button" disabled>Affecter la patrouille</button></div>
+        <small id="nextAssignmentHelp">Choisissez une patrouille pour cette intervention.</small><p id="nextError" class="error" role="alert"></p>
+      </div>
+      <div id="readOnlyPanel" class="read-only-panel hidden"><svg class="icon" aria-hidden="true"><use href="/portail/atlas/icons.svg#activity"/></svg><div><strong>Mode consultation</strong><p>Suivez les interventions et les disponibilités des patrouilles en temps réel.</p></div></div>
+    </section>
+
+    <section class="board-section" aria-labelledby="boardTitle">
+      <div class="board-heading"><div><h2 id="boardTitle">Suivi des interventions</h2><p id="boardResult" role="status">Chargement…</p></div><span id="lastSync" class="last-sync">Actualisation automatique</span></div>
+      <div class="board-tools">
+        <div class="search-field"><svg class="icon" aria-hidden="true"><use href="/portail/atlas/icons.svg#search"/></svg><label for="missionSearch" class="sr-only">Rechercher un motif, une adresse ou une patrouille</label><input id="missionSearch" type="search" placeholder="Motif, adresse, patrouille…" autocomplete="off"><button id="clearSearchBtn" class="icon-btn hidden" type="button" aria-label="Effacer la recherche">×</button></div>
+        <div class="priority-filters" role="group" aria-label="Filtrer par priorité"><button class="filter-btn selected" type="button" data-priority="all" aria-pressed="true">Toutes</button><button class="filter-btn" type="button" data-priority="URGENT" aria-pressed="false">Prioritaires</button><button class="filter-btn" type="button" data-priority="NORMAL" aria-pressed="false">Normales</button></div>
+        <label class="sort-field"><span class="sr-only">Ordre d’affichage</span><select id="missionSort"><option value="priority">Priorité puis ancienneté</option><option value="oldest">Les plus anciennes</option><option value="newest">Les plus récentes</option></select></label>
+      </div>
+      <div class="board-grid" id="missionBoard" aria-busy="true">
+        <section class="board-column" aria-labelledby="waitingTitle"><div class="column-head"><div class="column-title"><span class="column-symbol waiting-tone"><svg class="icon" aria-hidden="true"><use href="/portail/atlas/icons.svg#clock"/></svg></span><h3 id="waitingTitle">En attente</h3><span id="waitingVisible" class="column-count">—</span></div><span class="column-hint">À affecter</span></div><div id="waitingList" class="mission-list"><div class="empty-list">Chargement de la file d’attente…</div></div></section>
+        <section class="board-column" aria-labelledby="activeTitle"><div class="column-head"><div class="column-title"><span class="column-symbol active-tone"><svg class="icon" aria-hidden="true"><use href="/portail/atlas/icons.svg#activity"/></svg></span><h3 id="activeTitle">En cours</h3><span id="activeVisible" class="column-count">—</span></div><span class="column-hint">Patrouilles engagées</span></div><div id="activeList" class="mission-list"><div class="empty-list">Chargement des interventions…</div></div></section>
       </div>
     </section>
+
+    <section class="crews-panel" aria-labelledby="crewsTitle"><div class="crews-heading"><div><h2 id="crewsTitle">Patrouilles PHENIX</h2><p>Disponibilités partagées avec PHENIX</p></div><span class="crew-legend"><span class="availability-dot" aria-hidden="true"></span>Disponible pour une affectation</span></div><div id="crewList" class="crew-list"><span class="muted">Chargement des patrouilles…</span></div></section>
+    <footer class="page-footer"><span>ATLAS <span aria-hidden="true">/</span> Écosystème PHENIX</span><span>Coordination des interventions · Chalon-sur-Saône</span></footer>
   </main>
 
-  <div id="notificationsModal" class="modal hidden">
-    <div class="modal-card notification-preferences">
-      <div class="modal-head">
-        <div><span class="eyebrow">CE POSTE</span><h2>Sons et notifications</h2></div>
-        <button class="icon-btn" data-close="notificationsModal" type="button" aria-label="Fermer">×</button>
-      </div>
-      <p>L’administrateur choisit les sons et les événements dans l’administration ARGOS. Ces options activent leur réception sur cet appareil.</p>
-      <label class="notification-preference"><span>Alertes sonores</span><input id="atlasSoundEnabled" type="checkbox"></label>
-      <label class="notification-preference"><span>Notifications de bureau</span><input id="atlasDesktopEnabled" type="checkbox"></label>
-      <p id="atlasNotificationPermission" class="notification-permission"></p>
-      <p class="notification-permission">Gardez ATLAS ouvert, même en arrière-plan, pour recevoir les nouvelles interventions.</p>
-      <div class="notification-preference-actions">
-        <button id="atlasAuthorizeNotifications" class="btn primary" type="button">Autoriser sur ce poste</button>
-        <button id="atlasTestNotifications" class="btn secondary" type="button">Tester l’alerte</button>
-      </div>
-      <p id="atlasNotificationFeedback" role="status" class="notification-permission"></p>
+  <div id="notificationsModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="notificationsTitle">
+    <div class="modal-card notification-preferences" tabindex="-1"><div class="modal-head"><div><span class="eyebrow">SUR CET APPAREIL</span><h2 id="notificationsTitle">Sons et notifications</h2></div><button class="icon-btn" data-close="notificationsModal" type="button" aria-label="Fermer les notifications">×</button></div>
+      <p>L’administrateur choisit les sons et les événements dans ARGOS. Activez ici leur réception sur cet appareil.</p>
+      <label class="notification-preference"><span>Alertes sonores</span><input id="atlasSoundEnabled" type="checkbox"></label><label class="notification-preference"><span>Notifications de bureau</span><input id="atlasDesktopEnabled" type="checkbox"></label>
+      <p id="atlasNotificationPermission" class="notification-permission"></p><p class="notification-permission">Gardez ATLAS ouvert, même en arrière-plan, pour recevoir les nouvelles interventions.</p>
+      <div class="notification-preference-actions"><button id="atlasAuthorizeNotifications" class="btn primary" type="button">Autoriser sur ce poste</button><button id="atlasTestNotifications" class="btn secondary" type="button">Tester l’alerte</button></div><p id="atlasNotificationFeedback" role="status" class="notification-permission"></p>
     </div>
   </div>
 
-  <div id="missionModal" class="modal hidden">
-    <div class="modal-card">
-      <div class="modal-head">
-        <div><span class="eyebrow">NOUVELLE INTERVENTION</span><h2>Ajouter une mission</h2></div>
-        <button class="icon-btn" data-close="missionModal" type="button">×</button>
-      </div>
+  <div id="missionModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="missionTitle">
+    <div class="modal-card mission-modal-card" tabindex="-1">
+      <div class="modal-head"><div><span class="eyebrow">NOUVELLE INTERVENTION</span><h2 id="missionTitle">Créer une intervention</h2><p>Les champs marqués d’un * sont obligatoires.</p></div><button class="icon-btn" data-close="missionModal" type="button" aria-label="Fermer la création d’intervention">×</button></div>
       <form id="missionForm" class="form-grid">
-        <label class="span-2">Infraction / motif de l’intervention
-          <input id="missionNature" maxlength="180" required autocomplete="off" placeholder="Ex : stationnement gênant, tapage, accident, différend…">
-        </label>
-        <label>Priorité
-          <select id="missionPriority">
-            <option value="NORMAL">Normale</option>
-            <option value="URGENT">Prioritaire</option>
-          </select>
-        </label>
-        <fieldset class="assignment-mode span-2">
-          <legend>Affectation de la patrouille</legend>
-          <label><input type="radio" name="missionAssignmentMode" value="auto"> Automatique</label>
-          <label><input type="radio" name="missionAssignmentMode" value="manual" checked> Manuelle</label>
-          
-        </fieldset>
-        <label id="missionCrewField">Patrouille disponible
-          <select id="missionCrew"><option value="">À affecter plus tard</option></select>
-          <small>Sans patrouille sélectionnée, l’intervention reste en attente.</small>
-        </label>
-        <label>N° de voirie
-          <input id="missionNumber" maxlength="20" placeholder="Ex : 12 bis">
-        </label>
-        <div class="field span-2 street-field">
-          <label for="missionStreet">Voie à Chalon-sur-Saône</label>
-          <input id="missionStreet" type="text" role="combobox" aria-autocomplete="list" aria-controls="missionStreetSuggestions" aria-expanded="false" autocomplete="off" maxlength="180" placeholder="Tapez un nom de rue, boulevard, impasse…" required>
-          <div id="missionStreetSuggestions" class="street-suggestions hidden" role="listbox" aria-label="Voies correspondantes"></div>
-          <small id="banStatus" class="ban-status">Connexion à la Base Adresse Nationale…</small>
-        </div>
-        <label class="span-2">Complément
-          <input id="missionComplement" maxlength="240" placeholder="Bâtiment, étage, appartement, entrée…">
-        </label>
-        <label class="span-2">Observations
-          <textarea id="missionNotes" rows="3" maxlength="1000" placeholder="Informations utiles pour la patrouille"></textarea>
-        </label>
-        <p id="missionError" class="error span-2"></p>
-        <div class="modal-actions span-2">
-          <button class="btn ghost" data-close="missionModal" type="button">Annuler</button>
-          <button id="missionSubmit" class="btn primary" type="submit">Créer l’intervention</button>
-        </div>
+        <fieldset class="form-section"><legend>Intervention</legend><div class="nature-row"><label>Motif de l’intervention *<input id="missionNature" list="missionNatureSuggestions" maxlength="180" required autocomplete="off" placeholder="Ex. : stationnement gênant, tapage…"><datalist id="missionNatureSuggestions"></datalist></label><label>Priorité<select id="missionPriority"><option value="NORMAL">Normale</option><option value="URGENT">Prioritaire</option></select></label></div></fieldset>
+        <fieldset class="form-section"><legend>Localisation</legend><div class="address-row"><label>N° de voirie<input id="missionNumber" maxlength="20" placeholder="12 bis"></label><div class="field street-field"><label for="missionStreet">Voie à Chalon-sur-Saône *</label><input id="missionStreet" type="text" role="combobox" aria-autocomplete="list" aria-controls="missionStreetSuggestions" aria-expanded="false" aria-describedby="banStatus" autocomplete="off" maxlength="180" placeholder="Saisissez quelques lettres du nom de la voie…" required><div id="missionStreetSuggestions" class="street-suggestions hidden" role="listbox" aria-label="Voies correspondantes"></div></div></div><small id="banStatus" class="ban-status">Recherche dans la Base Adresse Nationale</small><label>Complément d’adresse<input id="missionComplement" maxlength="240" placeholder="Bâtiment, étage, appartement, entrée…"></label></fieldset>
+        <fieldset class="form-section"><legend>Affectation</legend><fieldset class="assignment-mode"><legend>Choix de la patrouille</legend><label><input type="radio" name="missionAssignmentMode" value="manual" checked> Manuelle</label><label><input type="radio" name="missionAssignmentMode" value="auto"> Automatique</label></fieldset><label id="missionCrewField">Patrouille disponible<select id="missionCrew"><option value="">À affecter plus tard</option></select><small>Sans patrouille sélectionnée, l’intervention reste en attente.</small></label><p id="missionAssignmentHelp" class="field-help hidden">ATLAS choisira une patrouille disponible dès la création.</p></fieldset>
+        <label>Observations<textarea id="missionNotes" rows="3" maxlength="1000" placeholder="Informations utiles à la patrouille (facultatif)"></textarea></label>
+        <p id="missionError" class="error" role="alert"></p><div class="modal-actions"><button class="btn ghost" data-close="missionModal" type="button">Annuler</button><button id="missionSubmit" class="btn primary" type="submit">Enregistrer en attente</button></div>
       </form>
     </div>
   </div>
 
-  <div id="manageModal" class="modal hidden">
-    <div class="modal-card wide-card">
-      <div class="modal-head"><div><span class="eyebrow">ADMINISTRATION</span><h2>Paramètres ATLAS</h2></div><button class="icon-btn" data-close="manageModal" type="button">×</button></div>
-      <div class="manage-grid single-panel">
-        <section class="manage-panel">
-          <h3>Motifs d’intervention</h3>
-          <p>Catalogue commun à ATLAS et PHENIX.</p>
-          <div id="natureRows" class="edit-list"></div>
-          <button id="addNatureBtn" class="btn secondary" type="button">Ajouter un motif</button>
-        </section>
-      </div>
-      <p id="manageError" class="error" role="alert"></p><p id="manageSuccess" class="catalog-success" role="status"></p>
-      <div class="modal-actions"><button class="btn ghost" data-close="manageModal" type="button">Fermer</button><button id="saveCatalogBtn" class="btn primary" type="button">Enregistrer les modifications</button></div>
-    </div>
-  </div>
+  <div id="manageModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="manageTitle"><div class="modal-card wide-card" tabindex="-1"><div class="modal-head"><div><span class="eyebrow">CATALOGUE PARTAGÉ</span><h2 id="manageTitle">Motifs d’intervention</h2></div><button class="icon-btn" data-close="manageModal" type="button" aria-label="Fermer les motifs d’intervention">×</button></div><section class="manage-panel"><p>Les codes et motifs sont communs à ATLAS et PHENIX.</p><div id="natureRows" class="edit-list"></div><button id="addNatureBtn" class="btn secondary" type="button">Ajouter un motif</button></section><p id="manageError" class="error" role="alert"></p><p id="manageSuccess" class="catalog-success" role="status"></p><div class="modal-actions"><button class="btn ghost" data-close="manageModal" type="button">Fermer</button><button id="saveCatalogBtn" class="btn primary" type="button">Enregistrer les modifications</button></div></div></div>
 
-  <template id="missionTemplate">
-    <article class="mission-card">
-      <div class="mission-priority"></div>
-      <div class="mission-top">
-        <div><span class="priority-label"></span><h3 class="nature"></h3></div>
-        <span class="status-badge"></span>
-      </div>
-      <div class="address"></div>
-      <div class="notes"></div>
-      <div class="mission-meta">
-        <div><span>Créée</span><strong class="created"></strong></div>
-        <div><span>Patrouille</span><strong class="crew"></strong></div>
-        <div><span>Temps d’intervention</span><strong class="elapsed"></strong></div>
-      </div>
-      <div class="mission-actions"></div>
-    </article>
-  </template>
-
+  <template id="missionTemplate"><article class="mission-card"><div class="mission-top"><div class="mission-title"><span class="priority-label"></span><h4 class="nature"></h4></div><span class="status-badge"></span></div><div class="address-row-card"><svg class="icon" aria-hidden="true"><use href="/portail/atlas/icons.svg#pin"/></svg><p class="address"></p></div><p class="notes"></p><dl class="mission-meta"><div><dt>Créée à</dt><dd class="created"></dd></div><div><dt>Patrouille</dt><dd class="crew"></dd></div><div><dt class="elapsed-label">Temps d’attente</dt><dd class="elapsed"></dd></div></dl><div class="mission-actions"></div></article></template>
+  <div id="toast" class="toast hidden" role="status"><span id="toastMessage"></span><button id="closeToastBtn" class="icon-btn" type="button" aria-label="Fermer le message">×</button></div>
+  <script src="/portail/atlas/board.js" defer></script>
   <script src="/portail/atlas/app.js" defer></script>
 </body>
 </html>

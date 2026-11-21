@@ -30,6 +30,8 @@ jobs:
           node --check portail/app.js
       - name: Browser security tests
         run: node --test test/browser-security.test.js
+      - name: Atlas regression tests
+        run: npm run test:atlas
       - name: Dashboard regression tests
         run: npm run test:dashboard
       - name: Syrius regression tests
