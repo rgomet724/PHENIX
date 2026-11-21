@@ -611,8 +611,6 @@ function mountInterventions(app, deps = {}) {
     if (!street) return res.status(400).json({ error: 'ADDRESS_REQUIRED', message: 'La voie est obligatoire.' });
 
     const data = loadDispatch();
-    const mode = assignmentMode(b);
-    const crewId = String(b.crewId || '').trim();
 
     const mission = {
       id: crypto.randomUUID(),
@@ -626,7 +624,7 @@ function mountInterventions(app, deps = {}) {
       status: 'WAITING',
       crewId: '',
       crewCallsign: '',
-      assignmentMode: mode,
+      assignmentMode: 'manual',
       createdAt: new Date().toISOString(),
       createdBy: req.regulationUser.name,
       assignedAt: null,
@@ -634,7 +632,7 @@ function mountInterventions(app, deps = {}) {
       departedAt: null,
       onSceneAt: null
     };
-    if (mode === 'auto' || crewId) startMission(data, mission, b, req.regulationUser);
+    // La création alimente la file d’attente ; seule une affectation explicite démarre la mission.
     data.missions.push(mission);
     if (street && !data.streets.some(x => String(x).toLocaleLowerCase('fr-FR') === street.toLocaleLowerCase('fr-FR'))) data.streets.push(street);
     saveDispatch(data);

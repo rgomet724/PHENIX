@@ -9,7 +9,7 @@ const AtlasBoard=require('../portail/atlas/board');
 
 // Exécuter les gestionnaires réels avec des dépendances DOM et réseau simulées.
 // Ces tests vérifient les contrats API ; ils ne remplacent pas un essai navigateur.
-function client(onRequest){
+function client(onRequest,{assignmentMode='manual'}={}){
   const nodes=new Map(),radios=new Map(),calls=[];
   let document;
   function node(id){
@@ -38,7 +38,7 @@ function client(onRequest){
   document.activeElement=node('newMissionBtn');
   const payload={user:{id:'user',name:'Test',role:'operateur'},missions:[],crews:[{id:'c1',callsign:'ALPHA 1',status:'DISPO',assignable:true}],nextMissionId:'m1',canOperate:true,canManage:false,serverTime:Date.now(),notifications:{events:{'atlas-new-intervention':{soundEnabled:false,desktopEnabled:false}}}};
   const context=vm.createContext({document,window:{},navigator:{},location:{},Headers,AtlasBoard,console,
-    localStorage:{getItem(){return 'false';},setItem(){}},setTimeout(){return 0;},clearTimeout(){},setInterval(){},
+    localStorage:{getItem(key){return key==='atlasAssignmentMode'?assignmentMode:'false';},setItem(){}},setTimeout(){return 0;},clearTimeout(){},setInterval(){},
     confirm(){return true;},
     async fetch(url,options={}){
       const request={url,method:options.method||'GET',body:options.body?JSON.parse(options.body):null};calls.push(request);
@@ -66,14 +66,13 @@ test('La création manuelle sans patrouille conserve le contrat d’enregistreme
   assert.match(ui.node('toastMessage').textContent,/file d’attente/);
 });
 
-test('L’affectation automatique ne transmet pas une ancienne sélection manuelle',async()=>{
-  const ui=client();Object.assign(ui.state,ui.payload);
-  ui.group('missionAssignmentMode').forEach(input=>input.checked=input.value==='auto');
-  ui.node('missionCrew').value='ancienne-patrouille';
+test('La préférence d’affectation automatique ne démarre pas une nouvelle intervention',async()=>{
+  const ui=client(undefined,{assignmentMode:'auto'});Object.assign(ui.state,ui.payload);
+  assert.equal(ui.group('nextAssignmentMode').find(input=>input.checked).value,'auto');
   await ui.form();
   const request=ui.calls.find(call=>call.method==='POST');
-  assert.equal(request.body.assignmentMode,'auto');assert.equal(request.body.crewId,'');
-  assert.match(ui.node('toastMessage').textContent,/créée et affectée/);
+  assert.equal(request.body.assignmentMode,'manual');assert.equal(request.body.crewId,'');
+  assert.match(ui.node('toastMessage').textContent,/file d’attente/);
 });
 
 test('Une création refusée conserve le formulaire et affiche le message du serveur',async()=>{

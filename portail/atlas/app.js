@@ -155,7 +155,6 @@ document.addEventListener('keydown',event=>{
 });
 
 function populateSelects(){
-  fillCrewSelect($('missionCrew'),'En attente');
   fillCrewSelect($('nextCrew'),'Choisir une patrouille');
   const natureOptions=JSON.stringify(state.natures);
   if($('missionNatureSuggestions').dataset.options!==natureOptions){
@@ -182,19 +181,14 @@ function selectedAssignmentMode(name){return document.querySelector(`input[name=
 function setAssignmentMode(name,mode){document.querySelectorAll(`input[name="${name}"]`).forEach(input=>{input.checked=input.value===mode;});}
 function updateAssignmentFields(){
   const nextAuto=selectedAssignmentMode('nextAssignmentMode')==='auto';
-  const missionAuto=selectedAssignmentMode('missionAssignmentMode')==='auto';
   const available=state.crews.filter(crewAssignable);
   $('nextCrewField').classList.toggle('hidden',nextAuto);
-  $('missionCrewField').classList.toggle('hidden',missionAuto);
   const noCrew=available.length===0;
-  $('missionAssignmentHelp').classList.toggle('hidden',!missionAuto||!noCrew);
-  setText('missionAssignmentHelp',missionAuto&&noCrew?'Aucune patrouille disponible.':'');
   $('nextAssignmentPanel').classList.toggle('hidden',!state.canOperate);
   $('readOnlyPanel').classList.toggle('hidden',!atlasLoaded||state.canOperate);
   const nextUnavailable=Boolean(state.nextMissionId)&&noCrew;
   $('nextAssignmentHelp').classList.toggle('hidden',!nextUnavailable);
   setText('nextAssignmentHelp',nextUnavailable?'Aucune patrouille disponible.':'');
-  setText('missionSubmit',missionAuto||$('missionCrew').value?'Créer et affecter':'Enregistrer en attente');
   setText('takeNextBtn',takeNextPending?'Affectation…':nextAuto?'Affecter automatiquement':'Affecter la patrouille');
   const selected=state.crews.find(crew=>String(crew.id)===String($('nextCrew').value));
   $('takeNextBtn').disabled=takeNextPending||!state.canOperate||!state.nextMissionId||(nextAuto?!available.length:!selected||!crewAssignable(selected));
@@ -485,15 +479,14 @@ function installAtlasAudioUnlock(){
 }
 installAtlasAudioUnlock();
 
-$('newMissionBtn').addEventListener('click',()=>{$('missionForm').reset();$('missionError').textContent='';closeStreetSuggestions();setAssignmentMode('missionAssignmentMode',preferredAssignmentMode());populateSelects();$('missionCrew').value='';updateAssignmentFields();openModal('missionModal');loadBanStreets();setTimeout(()=>$('missionNature')?.focus(),60);});
+$('newMissionBtn').addEventListener('click',()=>{$('missionForm').reset();$('missionError').textContent='';closeStreetSuggestions();populateSelects();openModal('missionModal');loadBanStreets();setTimeout(()=>$('missionNature')?.focus(),60);});
 $('missionForm').addEventListener('submit',async e=>{
   e.preventDefault();$('missionError').textContent='';const submit=$('missionSubmit');submit.disabled=true;
   try{
     const natureLabel=String($('missionNature').value||'').trim();
-    const assignmentMode=selectedAssignmentMode('missionAssignmentMode');
     const street=streetSubmissionValue();
-    await api('/portail/atlas/api/missions',{method:'POST',body:JSON.stringify({natureCode:'',natureLabel,priority:$('missionPriority').value,assignmentMode,crewId:assignmentMode==='manual'?$('missionCrew').value:'',number:$('missionNumber').value,street,complement:$('missionComplement').value,notes:$('missionNotes').value})});
-    closeModal('missionModal');resetBoardFilters();showToast(assignmentMode==='auto'||$('missionCrew').value?'Intervention créée et affectée.':'Intervention enregistrée dans la file d’attente.');await refreshAfterMutation();
+    await api('/portail/atlas/api/missions',{method:'POST',body:JSON.stringify({natureCode:'',natureLabel,priority:$('missionPriority').value,assignmentMode:'manual',crewId:'',number:$('missionNumber').value,street,complement:$('missionComplement').value,notes:$('missionNotes').value})});
+    closeModal('missionModal');resetBoardFilters();showToast('Intervention enregistrée dans la file d’attente.');await refreshAfterMutation();
   }catch(err){$('missionError').textContent=err.message;}finally{submit.disabled=false;}
 });
 
@@ -519,9 +512,9 @@ $('takeNextBtn').addEventListener('click',async()=>{
   try{const d=await api('/portail/atlas/api/next',{method:'POST',body:JSON.stringify({assignmentMode,crewId:assignmentMode==='manual'?$('nextCrew').value:''})});if(!d.mission)$('nextError').textContent='Aucune intervention en attente.';else showToast('Intervention affectée à '+(d.mission.crewCallsign||'la patrouille')+'.');await refreshAfterMutation();}
   catch(e){$('nextError').textContent=e.message;}finally{takeNextPending=false;updateAssignmentFields();}
 });
-document.querySelectorAll('input[name="nextAssignmentMode"], input[name="missionAssignmentMode"]').forEach(input=>input.addEventListener('change',()=>{localStorage.setItem('atlasAssignmentMode',input.value);$('nextError').textContent='';updateAssignmentFields();}));
-$('missionCrew').addEventListener('change',updateAssignmentFields);$('nextCrew').addEventListener('change',updateAssignmentFields);
-setAssignmentMode('nextAssignmentMode',preferredAssignmentMode());setAssignmentMode('missionAssignmentMode',preferredAssignmentMode());updateAssignmentFields();
+document.querySelectorAll('input[name="nextAssignmentMode"]').forEach(input=>input.addEventListener('change',()=>{localStorage.setItem('atlasAssignmentMode',input.value);$('nextError').textContent='';updateAssignmentFields();}));
+$('nextCrew').addEventListener('change',updateAssignmentFields);
+setAssignmentMode('nextAssignmentMode',preferredAssignmentMode());updateAssignmentFields();
 $('missionStreet').addEventListener('input',()=>{$('missionStreet').setCustomValidity('');renderStreetSuggestions();});
 $('missionStreet').addEventListener('focus',renderStreetSuggestions);
 $('missionStreet').addEventListener('blur',()=>setTimeout(closeStreetSuggestions,100));

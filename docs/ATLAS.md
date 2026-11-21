@@ -10,8 +10,8 @@ L’interface de `/portail/atlas/` reprend le bleu nuit, les accents bleus et le
 - Les filtres et le tri agissent sur les deux listes. Les indicateurs globaux restent visibles, et le nombre de résultats précise qu’un filtre est actif.
 - Chaque fiche affiche le temps d’attente avant affectation, puis la durée d’intervention. Les chronomètres utilisent l’heure transmise par le serveur pour compenser le décalage de l’ordinateur.
 - Pour affecter une autre intervention, ouvrir « Affecter une patrouille » sur sa fiche. Le choix est conservé pendant l’actualisation de la liste. Les patrouilles disponibles sont présentées en premier.
-- Le formulaire de création regroupe motif, localisation, affectation et observations. Le motif peut être saisi librement ou choisi dans les suggestions du catalogue partagé. La recherche des voies dans la Base Adresse Nationale reste disponible au clavier.
-- En mode manuel, sans patrouille sélectionnée, la création enregistre une intervention en attente. Le mode automatique demande une affectation immédiate au serveur.
+- Le formulaire de création regroupe motif, localisation et observations. Le motif peut être saisi librement ou choisi dans les suggestions du catalogue partagé. La recherche des voies dans la Base Adresse Nationale reste disponible au clavier.
+- Toute création enregistre une intervention en attente, même si la dernière affectation utilisait le mode automatique. L’affectation manuelle ou automatique se fait ensuite depuis le tableau et démarre l’intervention.
 - Les comptes Consultation disposent d’une indication explicite de leur mode de lecture.
 
 Une interruption de connexion affiche un bandeau et conserve le dernier état reçu. La dernière heure d’actualisation permet d’identifier les informations potentiellement anciennes. Une fenêtre modale bloque le fond de page, garde la navigation au clavier dans la fenêtre et restitue le focus à sa fermeture.
