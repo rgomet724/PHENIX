@@ -15,6 +15,22 @@ let atlasRefreshPending=null;
 let atlasSeenMissions=null;
 let atlasNotificationUserId='';
 const $ = id => document.getElementById(id);
+const boardView = { query:'', priority:'all', order:'priority' };
+const modalReturnFocus = new Map();
+let atlasLoaded = false;
+let atlasLastSync = 0;
+let serverOffset = 0;
+let toastTimer;
+const roleLabels = { admin:'Administrateur', superviseur:'Superviseur', operateur:'Opérateur', consultation:'Consultation' };
+function setText(id, value) { const node=$(id); if(node.textContent!==String(value))node.textContent=value; }
+function icon(name) { return '<svg class="icon" aria-hidden="true"><use href="/portail/atlas/icons.svg#'+name+'"/></svg>'; }
+function showToast(message, error=false) {
+  clearTimeout(toastTimer);
+  $('toastMessage').textContent=message;
+  $('toast').classList.toggle('is-error',error);
+  $('toast').classList.remove('hidden');
+  toastTimer=setTimeout(()=>$('toast').classList.add('hidden'),error?12000:6000);
+}
 
 async function api(url,opt={}){
   const headers=new Headers(opt.headers||{});
@@ -27,10 +43,11 @@ async function api(url,opt={}){
 }
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function fmtTime(v){if(!v)return '—';return new Date(v).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
-function elapsed(from){if(!from)return 'Non démarrée';const ms=Math.max(0,Date.now()-new Date(from).getTime());const h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000),s=Math.floor((ms%60000)/1000);return h?`${h} h ${String(m).padStart(2,'0')} min`:`${m} min ${String(s).padStart(2,'0')} s`;}
+function elapsed(from){return AtlasBoard.duration(from,Date.now()+serverOffset);}
+
 function fullAddress(m){return [m.number,m.street,m.complement].filter(Boolean).join(' ');}
-function statusLabel(s){return ({WAITING:'EN ATTENTE',ASSIGNED:'EN COURS',DEPARTED:'EN COURS',IN_PROGRESS:'EN COURS',ONSCENE:'SUR PLACE'})[s]||s;}
-function priorityLabel(p){return p==='URGENT'?'PRIORITAIRE':'NORMALE';}
+function statusLabel(s){return ({WAITING:'En attente',ASSIGNED:'En cours',DEPARTED:'En cours',IN_PROGRESS:'En cours',ONSCENE:'Sur place'})[s]||s;}
+function priorityLabel(p){return p==='URGENT'?'Prioritaire':'Normale';}
 function crewById(id){return state.crews.find(c=>String(c.id)===String(id));}
 
 function atlasNotificationRule(){
@@ -89,7 +106,7 @@ function updateAtlasNotificationControls(){
   const permission='Notification' in window?Notification.permission:'unavailable';
   $('atlasNotificationPermission').textContent=permission==='granted'?'Notifications de bureau autorisées sur ce poste.':permission==='denied'?'Notifications bloquées : autorisez-les dans les paramètres du navigateur.':permission==='unavailable'?'Ce navigateur ne propose pas les notifications de bureau.':'Cliquez sur « Autoriser sur ce poste » puis acceptez la demande du navigateur.';
   $('atlasAuthorizeNotifications').disabled=permission==='unavailable';
-  $('atlasNotificationsBtn').textContent=atlasDesktopEnabled&&permission==='granted'?'Notifications activées':'Notifications';
+  setText('notificationsLabel',atlasDesktopEnabled&&permission==='granted'?'Notifications activées':'Notifications');
 }
 async function authorizeAtlasNotifications(){
   const audioPermission=unlockAtlasAudio();
@@ -101,24 +118,61 @@ async function authorizeAtlasNotifications(){
   $('atlasNotificationFeedback').textContent=permission==='granted'?'Autorisation enregistrée sur ce poste.':permission==='denied'?'Autorisez les notifications dans les paramètres du navigateur.':unlocked?'Audio autorisé. Les notifications de bureau ne sont pas disponibles.':'L’audio ou les notifications ne sont pas autorisés.';
 }
 
-function openModal(id){$(id).classList.remove('hidden');document.body.style.overflow='hidden';}
-function closeModal(id){$(id).classList.add('hidden');if(document.querySelectorAll('.modal:not(.hidden)').length===0)document.body.style.overflow='';}
-
-document.addEventListener('click',e=>{const b=e.target.closest('[data-close]');if(b)closeModal(b.dataset.close);if(e.target.classList.contains('modal'))closeModal(e.target.id);});
+function openModal(id){
+  modalReturnFocus.set(id,document.activeElement);
+  $(id).classList.remove('hidden');
+  document.body.style.overflow='hidden';
+  document.querySelector('.topbar').inert=true;
+  $('main').inert=true;
+  $(id).querySelector('.modal-card').focus();
+}
+function closeModal(id){
+  $(id).classList.add('hidden');
+  if(!document.querySelector('.modal:not(.hidden)')){
+    document.body.style.overflow='';
+    document.querySelector('.topbar').inert=false;
+    $('main').inert=false;
+    const previous=modalReturnFocus.get(id);
+    if(previous?.isConnected)previous.focus({preventScroll:true});
+  }
+  modalReturnFocus.delete(id);
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-close]');
+  if(b)closeModal(b.dataset.close);
+  if(e.target.classList.contains('modal'))closeModal(e.target.id);
+});
+document.addEventListener('keydown',event=>{
+  const modal=document.querySelector('.modal:not(.hidden)');
+  if(!modal)return;
+  if(event.key==='Escape'){event.preventDefault();closeModal(modal.id);return;}
+  if(event.key!=='Tab')return;
+  const controls=[...modal.querySelectorAll('button,input,select,textarea,a[href],[tabindex="0"]')].filter(node=>!node.disabled&&node.getClientRects().length);
+  const first=controls[0],last=controls[controls.length-1];
+  if(!first){event.preventDefault();return;}
+  if(event.shiftKey&&(document.activeElement===first||document.activeElement===modal.querySelector('.modal-card'))){event.preventDefault();last.focus();}
+  else if(!event.shiftKey&&(document.activeElement===last||!modal.contains(document.activeElement))){event.preventDefault();first.focus();}
+});
 
 function populateSelects(){
   fillCrewSelect($('missionCrew'),'À affecter plus tard');
   fillCrewSelect($('nextCrew'),'Choisir une patrouille');
+  const natureOptions=JSON.stringify(state.natures);
+  if($('missionNatureSuggestions').dataset.options!==natureOptions){
+    $('missionNatureSuggestions').dataset.options=natureOptions;
+    $('missionNatureSuggestions').replaceChildren(...state.natures.map(nature=>{
+      const option=document.createElement('option');option.value=nature.label;option.label=nature.code||'';return option;
+    }));
+  }
   updateAssignmentFields();
 }
 
-function crewAssignable(crew){
-  if(typeof crew.assignable==='boolean')return crew.assignable;
-  return String(crew.status).toUpperCase()==='DISPO'&&!state.missions.some(m=>String(m.crewId)===String(crew.id)&&['ASSIGNED','DEPARTED','IN_PROGRESS','ONSCENE'].includes(m.status));
-}
+function crewAssignable(crew){return AtlasBoard.isCrewAssignable(crew,state.missions);}
+
 function fillCrewSelect(select,placeholder){
   const selected=select.value;
-  const options=`<option value="">${esc(placeholder)}</option>`+state.crews.map(crew=>`<option value="${esc(crew.id)}" ${crewAssignable(crew)?'':'disabled'}>${esc(crew.callsign)} — ${crewAssignable(crew)?'DISPONIBLE':'INDISPONIBLE'}</option>`).join('');
+  const crews=[...state.crews].sort((a,b)=>Number(crewAssignable(b))-Number(crewAssignable(a))||a.callsign.localeCompare(b.callsign,'fr',{numeric:true}));
+  const options=`<option value="">${esc(placeholder)}</option>`+crews.map(crew=>`<option value="${esc(crew.id)}" ${crewAssignable(crew)?'':'disabled'}>${esc(crew.callsign)} — ${crewAssignable(crew)?'Disponible':'Indisponible'}</option>`).join('');
   if(select.dataset.crewOptions===options)return;
   select.dataset.crewOptions=options;select.innerHTML=options;
   if([...select.options].some(option=>option.value===selected))select.value=selected;
@@ -129,13 +183,17 @@ function setAssignmentMode(name,mode){document.querySelectorAll(`input[name="${n
 function updateAssignmentFields(){
   const nextAuto=selectedAssignmentMode('nextAssignmentMode')==='auto';
   const missionAuto=selectedAssignmentMode('missionAssignmentMode')==='auto';
+  const available=state.crews.filter(crewAssignable);
   $('nextCrewField').classList.toggle('hidden',nextAuto);
   $('missionCrewField').classList.toggle('hidden',missionAuto);
-  $('nextAssignmentHelp').textContent=nextAuto?'ATLAS choisit une patrouille disponible au clic sur Affecter.':'Choisissez la patrouille pour l’intervention prioritaire.';
-  $('missionSubmit').textContent=missionAuto||$('missionCrew').value?'Créer et affecter':'Enregistrer en attente';
-  const available=state.crews.filter(crewAssignable);
-  if(!available.length)$('nextAssignmentHelp').textContent='Aucune patrouille disponible. L’intervention reste en attente.';
-  const selected=state.crews.find(crew=>crew.id===$('nextCrew').value);
+  $('missionAssignmentHelp').classList.toggle('hidden',!missionAuto);
+  $('missionAssignmentHelp').textContent=available.length?'ATLAS choisira une patrouille disponible dès la création.':'Aucune patrouille disponible. Choisissez le mode manuel pour enregistrer en attente.';
+  $('nextAssignmentPanel').classList.toggle('hidden',!state.canOperate);
+  $('readOnlyPanel').classList.toggle('hidden',!atlasLoaded||state.canOperate);
+  setText('nextAssignmentHelp',!state.nextMissionId?'La prochaine intervention apparaîtra ici.':!available.length?'Aucune patrouille disponible. L’intervention reste en attente.':nextAuto?'Une patrouille disponible sera choisie au clic sur Affecter.':'L’affectation démarre immédiatement l’intervention dans PHENIX.');
+  setText('missionSubmit',missionAuto||$('missionCrew').value?'Créer et affecter':'Enregistrer en attente');
+  setText('takeNextBtn',takeNextPending?'Affectation…':nextAuto?'Affecter automatiquement':'Affecter la patrouille');
+  const selected=state.crews.find(crew=>String(crew.id)===String($('nextCrew').value));
   $('takeNextBtn').disabled=takeNextPending||!state.canOperate||!state.nextMissionId||(nextAuto?!available.length:!selected||!crewAssignable(selected));
 }
 
@@ -197,40 +255,56 @@ async function loadBanStreets(){
 
 function renderNext(){
   const box=$('nextMissionBox');
-  const m=state.missions.find(x=>x.id===state.nextMissionId);
-  if(!m){box.innerHTML='<div class="empty-next">Aucune mission à venir</div>';return;}
-  box.innerHTML=`<div class="next-summary"><div><h2>${esc(m.natureLabel)}</h2><p>${esc(fullAddress(m))}</p></div><span class="next-priority ${m.priority==='URGENT'?'urgent':'normal'}">${priorityLabel(m.priority)}</span></div>`;
+  const mission=state.missions.find(item=>String(item.id)===String(state.nextMissionId));
+  document.querySelector('.hero-grid').classList.toggle('has-urgent',mission?.priority==='URGENT');
+  if(!mission){
+    box.innerHTML='<div class="empty-next"><strong>La file d’attente est à jour</strong>Aucune intervention à affecter pour le moment.</div>';
+    return;
+  }
+  box.innerHTML='<div class="next-summary"><h3>'+esc(mission.natureLabel)+'</h3><p class="next-address">'+icon('pin')+'<span>'+esc(fullAddress(mission))+'</span></p><div class="next-meta"><span class="next-priority '+(mission.priority==='URGENT'?'urgent':'normal')+'">'+priorityLabel(mission.priority)+'</span><span>Créée à '+esc(fmtTime(mission.createdAt))+'</span><span>En attente depuis <strong class="next-wait">'+esc(elapsed(mission.createdAt))+'</strong></span></div></div>';
 }
 
+function missionClock(mission){return mission.status==='WAITING'?mission.createdAt:mission.startedAt||mission.departedAt||mission.assignedAt;}
 function missionCard(m){
-  const t=$('missionTemplate').content.cloneNode(true);
-  const card=t.querySelector('.mission-card');
+  const fragment=$('missionTemplate').content.cloneNode(true);
+  const card=fragment.querySelector('.mission-card');
   card.dataset.missionId=m.id;
   card.classList.add(m.priority==='URGENT'?'urgent':'normal');
-  t.querySelector('.priority-label').textContent=priorityLabel(m.priority);
-  t.querySelector('.nature').textContent=(m.natureCode?m.natureCode+' — ':'')+m.natureLabel;
-  t.querySelector('.status-badge').textContent=statusLabel(m.status);
-  t.querySelector('.address').textContent=fullAddress(m);
-  const notes=t.querySelector('.notes');notes.textContent=m.notes||'';notes.classList.toggle('hidden',!m.notes);
-  t.querySelector('.created').textContent=fmtTime(m.createdAt);
+  card.classList.toggle('is-active',AtlasBoard.activeStatuses.has(m.status));
+  card.classList.toggle('is-onscene',m.status==='ONSCENE');
+  fragment.querySelector('.priority-label').textContent=priorityLabel(m.priority);
+  fragment.querySelector('.nature').textContent=(m.natureCode?m.natureCode+' · ':'')+m.natureLabel;
+  fragment.querySelector('.status-badge').textContent=statusLabel(m.status);
+  fragment.querySelector('.address').textContent=fullAddress(m)||'Adresse non renseignée';
+  const notes=fragment.querySelector('.notes');notes.textContent=m.notes||'';notes.classList.toggle('hidden',!m.notes);
+  fragment.querySelector('.created').textContent=fmtTime(m.createdAt);
+  fragment.querySelector('.created').title=new Date(m.createdAt).toLocaleString('fr-FR');
   const liveCrew=crewById(m.crewId);
-  t.querySelector('.crew').textContent=m.crewCallsign||'Non affectée';
-  if(m.crewId&&!liveCrew)t.querySelector('.crew').textContent+=(m.crewCallsign?' · ':'')+'absente de PHENIX';
-  t.querySelector('.elapsed').textContent=elapsed(m.startedAt||m.departedAt);
-  const actions=t.querySelector('.mission-actions');
-
-  if(!m.crewId&&state.canOperate){
-    actions.append(missionAssignmentForm(m));
-  }else if(['IN_PROGRESS','ASSIGNED','DEPARTED'].includes(m.status)&&state.canOperate){
-    actions.append(button('SUR PLACE','onscene',()=>setStatus(m.id,'ONSCENE')));
-    actions.append(button('TERMINÉ','done',()=>setStatus(m.id,'DONE')));
-  }else if(m.status==='ONSCENE'&&state.canOperate){
-    actions.append(button('TERMINÉ','done',()=>setStatus(m.id,'DONE')));
+  fragment.querySelector('.crew').textContent=m.crewCallsign||liveCrew?.callsign||'À affecter';
+  if(m.crewId&&!liveCrew)fragment.querySelector('.crew').textContent+=' · absente de PHENIX';
+  fragment.querySelector('.elapsed-label').textContent=m.status==='WAITING'?'Temps d’attente':'Durée d’intervention';
+  fragment.querySelector('.elapsed').textContent=elapsed(missionClock(m));
+  const actions=fragment.querySelector('.mission-actions');
+  if(m.status==='WAITING'&&!m.crewId&&state.canOperate){
+    const details=document.createElement('details');details.className='mission-dispatch';
+    const summary=document.createElement('summary');summary.innerHTML=icon('crew')+'Affecter une patrouille';
+    summary.setAttribute('aria-label','Affecter une patrouille pour '+m.natureLabel);
+    details.append(summary,missionAssignmentForm(m));
+    details.open=Boolean(assignmentChoices.get(m.id)?.expanded);
+    details.addEventListener('toggle',()=>{const choice=assignmentChoices.get(m.id);if(choice)choice.expanded=details.open;});
+    actions.append(details);
+  }else if(AtlasBoard.activeStatuses.has(m.status)&&state.canOperate){
+    if(m.status!=='ONSCENE')actions.append(button('Sur place','onscene',()=>setStatus(m.id,'ONSCENE')));
+    actions.append(button('Terminer','done',()=>setStatus(m.id,'DONE')));
   }
   if(state.canManage)actions.append(button('Supprimer','danger',()=>deleteMission(m.id)));
-  return t;
+  return fragment;
 }
-function button(label,kind,fn){const b=document.createElement('button');b.type='button';b.className='btn '+kind;b.textContent=label;b.addEventListener('click',fn);return b;}
+function button(label,kind,fn){
+  const element=document.createElement('button');element.type='button';element.className='btn '+kind;element.textContent=label;
+  element.addEventListener('click',async()=>{if(element.disabled)return;element.disabled=true;try{await fn();}finally{element.disabled=false;}});
+  return element;
+}
 
 function missionAssignmentForm(mission){
   const choice=assignmentChoices.get(mission.id)||{assignmentMode:preferredAssignmentMode(),crewId:''};
@@ -243,7 +317,7 @@ function missionAssignmentForm(mission){
     const auto=choice.assignmentMode==='auto';
     form.querySelector('.crew-choice').classList.toggle('hidden',auto);
     form.querySelector('.assignment-explanation').textContent=auto?'Une patrouille disponible sera choisie au clic sur Affecter.':'L’affectation démarre immédiatement l’intervention.';
-    const selected=state.crews.find(crew=>crew.id===choice.crewId);
+    const selected=state.crews.find(crew=>String(crew.id)===String(choice.crewId));
     if(!state.crews.some(crewAssignable))form.querySelector('.assignment-explanation').textContent='Aucune patrouille disponible. L’intervention reste en attente.';
     submit.disabled=assignmentPending.has(mission.id)||(auto?!state.crews.some(crewAssignable):!selected||!crewAssignable(selected));
   };
@@ -254,7 +328,7 @@ function missionAssignmentForm(mission){
     assignmentPending.add(mission.id);error.textContent='';submit.disabled=true;submit.textContent='Affectation…';
     try{
       await api(`/portail/atlas/api/missions/${encodeURIComponent(mission.id)}/assign`,{method:'POST',body:JSON.stringify({assignmentMode:choice.assignmentMode,crewId:choice.assignmentMode==='manual'?choice.crewId:''})});
-      assignmentChoices.delete(mission.id);await refreshAfterMutation();
+      assignmentChoices.delete(mission.id);showToast('Intervention affectée à la patrouille.');await refreshAfterMutation();
     }catch(e){error.textContent=e.message;}
     finally{assignmentPending.delete(mission.id);submit.textContent='Affecter';update();}
   });
@@ -262,36 +336,91 @@ function missionAssignmentForm(mission){
 }
 
 function renderMissions(){
-  const waiting=state.missions.filter(m=>m.status==='WAITING');
-  const active=state.missions.filter(m=>['IN_PROGRESS','ASSIGNED','DEPARTED','ONSCENE'].includes(m.status));
-  $('waitingCount').textContent=waiting.length;$('activeCount').textContent=active.length;
-  for(const [id,missions,empty] of [['waitingList',waiting,'Aucune mission à venir'],['activeList',active,'Aucune intervention en cours']]){
-    const list=$(id),key=JSON.stringify([missions,state.crews,state.canOperate,state.canManage]);
+  if(!atlasLoaded)return;
+  const total=AtlasBoard.summary(state.missions,state.crews);
+  const visible=AtlasBoard.selectMissions(state.missions,boardView,state.crews);
+  const waiting=visible.filter(mission=>mission.status==='WAITING');
+  const active=visible.filter(mission=>AtlasBoard.activeStatuses.has(mission.status));
+  setText('waitingCount',total.waiting);setText('activeCount',total.active);
+  setText('urgentCount',total.urgent);setText('availableCount',total.available);
+  $('urgentStat').classList.toggle('has-urgent',total.urgent>0);
+  setText('crewCountHelp',total.available+' disponible'+(total.available>1?'s':'')+' sur '+state.crews.length+' patrouille'+(state.crews.length>1?'s':''));
+  setText('waitingVisible',waiting.length);setText('activeVisible',active.length);
+  const count=waiting.length+active.length,all=total.waiting+total.active;
+  const filtered=Boolean(boardView.query.trim())||boardView.priority!=='all';
+  setText('boardResult',filtered?count+' intervention'+(count>1?'s':'')+' affichée'+(count>1?'s':'')+' sur '+all:all+' intervention'+(all>1?'s':'')+' à suivre');
+  $('missionBoard').setAttribute('aria-busy','false');
+  for(const [id,missions] of [['waitingList',waiting],['activeList',active]]){
+    const list=$(id),key=JSON.stringify([missions,state.crews,state.canOperate,state.canManage,boardView]);
     if(list.dataset.renderKey===key)continue;
+    const focused=document.activeElement,focusedCard=focused?.closest('.mission-card');
+    const focusedId=list.contains(focusedCard)?focusedCard.dataset.missionId:null;
+    const controlIndex=focusedId?[...focusedCard.querySelectorAll('button,input,select,summary')].indexOf(focused):-1;
     list.dataset.renderKey=key;list.replaceChildren();
-    if(!missions.length)list.innerHTML=`<div class="empty-list">${empty}</div>`;
-    else missions.forEach(mission=>list.appendChild(missionCard(mission)));
+    if(!missions.length){
+      const empty=document.createElement('div');empty.className='empty-list';
+      empty.innerHTML=icon(filtered?'search':id==='waitingList'?'check':'activity')+'<strong>'+(filtered?'Aucune intervention correspondante':id==='waitingList'?'Aucune intervention en attente':'Aucune intervention en cours')+'</strong><span>'+(filtered?'Essayez un autre terme ou retirez les filtres.':id==='waitingList'?'Les nouvelles interventions apparaîtront ici.':'Les interventions affectées apparaîtront ici.')+'</span>';
+      if(filtered)empty.append(button('Réinitialiser les filtres','ghost',resetBoardFilters));
+      else if(id==='waitingList'&&state.canOperate)empty.append(button('Créer une intervention','ghost',()=>$('newMissionBtn').click()));
+      list.append(empty);
+    }else missions.forEach(mission=>list.appendChild(missionCard(mission)));
+    if(focusedId&&controlIndex>=0){
+      const replacement=[...list.querySelectorAll('.mission-card')].find(card=>card.dataset.missionId===focusedId);
+      replacement?.querySelectorAll('button,input,select,summary')[controlIndex]?.focus({preventScroll:true});
+    }
   }
-  for(const id of assignmentChoices.keys())if(!waiting.some(m=>m.id===id))assignmentChoices.delete(id);
+  for(const id of assignmentChoices.keys())if(!state.missions.some(m=>m.id===id&&m.status==='WAITING'))assignmentChoices.delete(id);
 }
 
+function renderCrews(){
+  const list=$('crewList'),key=JSON.stringify([state.crews,state.missions.map(m=>[m.crewId,m.status])]);
+  if(list.dataset.renderKey===key)return;
+  list.dataset.renderKey=key;list.replaceChildren();
+  if(!state.crews.length){list.innerHTML='<span class="muted">Aucune patrouille active dans PHENIX pour le moment.</span>';return;}
+  [...state.crews].sort((a,b)=>Number(crewAssignable(b))-Number(crewAssignable(a))||a.callsign.localeCompare(b.callsign,'fr',{numeric:true})).forEach(crew=>{
+    const available=crewAssignable(crew),active=state.missions.find(m=>String(m.crewId)===String(crew.id)&&AtlasBoard.activeStatuses.has(m.status));
+    const chip=document.createElement('div');chip.className='crew-chip'+(available?'':' unavailable');
+    chip.innerHTML='<span class="availability-dot" aria-hidden="true"></span><strong>'+esc(crew.callsign)+'</strong><span>'+(available?'Disponible':active?'En intervention':'Indisponible')+'</span>';
+    list.append(chip);
+  });
+}
+
+function resetBoardFilters(){
+  boardView.query='';boardView.priority='all';$('missionSearch').value='';
+  $('clearSearchBtn').classList.add('hidden');
+  updatePriorityFilters();renderMissions();
+}
+function updatePriorityFilters(){
+  document.querySelectorAll('[data-priority]').forEach(button=>{
+    const selected=button.dataset.priority===boardView.priority;
+    button.classList.toggle('selected',selected);button.setAttribute('aria-pressed',String(selected));
+  });
+}
+function updateClocks(){
+  document.querySelectorAll('.mission-card').forEach(card=>{
+    const mission=state.missions.find(item=>String(item.id)===card.dataset.missionId);
+    if(mission)card.querySelector('.elapsed').textContent=elapsed(missionClock(mission));
+  });
+  const next=state.missions.find(item=>String(item.id)===String(state.nextMissionId));
+  const timer=document.querySelector('.next-wait');if(next&&timer)timer.textContent=elapsed(next.createdAt);
+}
 function renderAll(){
   applyAppearance();
-  $('currentUser').textContent=state.user?`${state.user.name} · ${state.user.role}`:'—';
+  setText('currentUser',state.user?state.user.name+' · '+(roleLabels[state.user.role]||state.user.role):'—');
   $('manageBtn').classList.toggle('hidden',!state.canManage);
   $('newMissionBtn').classList.toggle('hidden',!state.canOperate);
-  populateSelects();renderNext();renderMissions();
+  populateSelects();renderNext();renderMissions();renderCrews();
   updateAtlasNotificationControls();
 }
 
 function applyAppearance(){
   const a=state.appearance;if(!a)return;
-  document.documentElement.style.setProperty('--blue',a.primaryColor||'#0018a8');
-  document.documentElement.style.setProperty('--blue2',a.accentColor||'#0758b6');
-  document.documentElement.style.setProperty('--bg',a.backgroundColor||'#edf3f8');
+  document.documentElement.style.setProperty('--blue',a.primaryColor||'#1683c5');
+  document.documentElement.style.setProperty('--blue2',a.accentColor||'#0d6597');
+  document.documentElement.style.setProperty('--bg',a.backgroundColor||'#edf1f3');
   const title=document.querySelector('.brand strong'),subtitle=document.querySelector('.brand span'),logo=document.querySelector('.brand-logo');
   if(title)title.textContent=a.title||'ATLAS';
-  if(subtitle)subtitle.textContent=a.subtitle||'Gestion de l’attente des interventions';
+  if(subtitle)subtitle.textContent=a.subtitle||'Coordination des interventions';
   if(logo&&a.logoData)logo.src=a.logoData;
   if(a.faviconData){let icon=document.querySelector('link[rel="icon"]');if(!icon){icon=document.createElement('link');icon.rel='icon';document.head.appendChild(icon)}icon.href=a.faviconData;}
   if(a.backgroundData){document.body.style.backgroundImage=`linear-gradient(rgba(237,243,248,.88),rgba(237,243,248,.94)),url(${JSON.stringify(a.backgroundData)})`;document.body.style.backgroundSize='cover';document.body.style.backgroundAttachment='fixed';}
@@ -308,10 +437,25 @@ async function refresh(silent=false){
       const current=Array.isArray(d.missions)?d.missions:[];
       const arrived=atlasSeenMissions===null?[]:current.filter(mission=>!atlasSeenMissions.has(String(mission.id)));
       atlasSeenMissions=new Set(current.map(mission=>String(mission.id)));
-      Object.assign(state,d);$('syncState').textContent='PHENIX connecté';$('syncState').style.background='rgba(255,255,255,.13)';renderAll();
+      Object.assign(state,d);atlasLoaded=true;atlasLastSync=Date.now();
+      serverOffset=(Number(d.serverTime)||Date.now())-Date.now();
+      setText('syncState','PHENIX connecté');$('syncState').classList.add('connected');$('syncState').classList.remove('disconnected');
+      $('connectionAlert').classList.add('hidden');setText('lastSync','Actualisé à '+fmtTime(atlasLastSync));
+      renderAll();
       if(atlasSoundEnabled&&atlasNotificationRule().soundEnabled!==false)loadAtlasAudio().catch(()=>{});
       await Promise.allSettled(arrived.map(announceAtlasMission));
-    }catch(e){$('syncState').textContent='Connexion perdue';$('syncState').style.background='rgba(217,35,46,.35)';if(!silent)alert(e.message);}
+    }catch(e){
+      setText('syncState','Connexion interrompue');$('syncState').classList.add('disconnected');$('syncState').classList.remove('connected');
+      $('connectionAlert').classList.remove('hidden');
+      setText('connectionMessage',(atlasLastSync?'Dernière actualisation à '+fmtTime(atlasLastSync)+'. Les informations affichées peuvent avoir changé. ':'')+e.message);
+      if(!atlasLoaded){
+        $('missionBoard').setAttribute('aria-busy','false');setText('boardResult','Chargement indisponible');
+        $('waitingList').innerHTML='<div class="empty-list">La file d’attente sera affichée dès le retour de la connexion.</div>';
+        $('activeList').innerHTML='<div class="empty-list">Le suivi sera affiché dès le retour de la connexion.</div>';
+        $('nextMissionBox').innerHTML='<div class="empty-next">Connexion nécessaire pour charger la prochaine intervention.</div>';
+        $('crewList').textContent='Disponibilités momentanément indisponibles.';
+      }
+    }
   })();
   atlasRefreshPending=task;
   try{return await task}finally{if(atlasRefreshPending===task)atlasRefreshPending=null;}
@@ -346,18 +490,30 @@ $('missionForm').addEventListener('submit',async e=>{
     const assignmentMode=selectedAssignmentMode('missionAssignmentMode');
     const street=streetSubmissionValue();
     await api('/portail/atlas/api/missions',{method:'POST',body:JSON.stringify({natureCode:'',natureLabel,priority:$('missionPriority').value,assignmentMode,crewId:assignmentMode==='manual'?$('missionCrew').value:'',number:$('missionNumber').value,street,complement:$('missionComplement').value,notes:$('missionNotes').value})});
-    closeModal('missionModal');await refreshAfterMutation();
+    closeModal('missionModal');resetBoardFilters();showToast(assignmentMode==='auto'||$('missionCrew').value?'Intervention créée et affectée.':'Intervention enregistrée dans la file d’attente.');await refreshAfterMutation();
   }catch(err){$('missionError').textContent=err.message;}finally{submit.disabled=false;}
 });
 
-async function setStatus(id,status){try{await api(`/portail/atlas/api/missions/${encodeURIComponent(id)}/status`,{method:'POST',body:JSON.stringify({status})});await refreshAfterMutation();}catch(e){alert(e.message);}}
-async function deleteMission(id){if(!confirm('Supprimer cette intervention ?'))return;try{await api(`/portail/atlas/api/missions/${encodeURIComponent(id)}`,{method:'DELETE'});await refreshAfterMutation();}catch(e){alert(e.message);}}
+async function setStatus(id,status){
+  try{
+    await api('/portail/atlas/api/missions/'+encodeURIComponent(id)+'/status',{method:'POST',body:JSON.stringify({status})});
+    showToast(status==='DONE'?'Intervention terminée.':'La patrouille est signalée sur place.');
+    await refreshAfterMutation();
+  }catch(error){showToast(error.message,true);}
+}
+async function deleteMission(id){
+  if(!confirm('Supprimer cette intervention ?'))return;
+  try{
+    await api('/portail/atlas/api/missions/'+encodeURIComponent(id),{method:'DELETE'});
+    showToast('Intervention supprimée.');await refreshAfterMutation();
+  }catch(error){showToast(error.message,true);}
+}
 
 $('takeNextBtn').addEventListener('click',async()=>{
   if(takeNextPending)return;
   takeNextPending=true;$('nextError').textContent='';updateAssignmentFields();
   const assignmentMode=selectedAssignmentMode('nextAssignmentMode');
-  try{const d=await api('/portail/atlas/api/next',{method:'POST',body:JSON.stringify({assignmentMode,crewId:assignmentMode==='manual'?$('nextCrew').value:''})});if(!d.mission)$('nextError').textContent='Aucune intervention en attente.';await refreshAfterMutation();}
+  try{const d=await api('/portail/atlas/api/next',{method:'POST',body:JSON.stringify({assignmentMode,crewId:assignmentMode==='manual'?$('nextCrew').value:''})});if(!d.mission)$('nextError').textContent='Aucune intervention en attente.';else showToast('Intervention affectée à '+(d.mission.crewCallsign||'la patrouille')+'.');await refreshAfterMutation();}
   catch(e){$('nextError').textContent=e.message;}finally{takeNextPending=false;updateAssignmentFields();}
 });
 document.querySelectorAll('input[name="nextAssignmentMode"], input[name="missionAssignmentMode"]').forEach(input=>input.addEventListener('change',()=>{localStorage.setItem('atlasAssignmentMode',input.value);$('nextError').textContent='';updateAssignmentFields();}));
@@ -367,7 +523,7 @@ $('missionStreet').addEventListener('input',()=>{$('missionStreet').setCustomVal
 $('missionStreet').addEventListener('focus',renderStreetSuggestions);
 $('missionStreet').addEventListener('blur',()=>setTimeout(closeStreetSuggestions,100));
 $('missionStreet').addEventListener('keydown',event=>{
-  if(event.key==='Escape'){closeStreetSuggestions();return;}
+  if(event.key==='Escape'&&!$('missionStreetSuggestions').classList.contains('hidden')){event.stopPropagation();event.preventDefault();closeStreetSuggestions();return;}
   if(!['ArrowDown','ArrowUp','Enter'].includes(event.key))return;
   const open=!$('missionStreetSuggestions').classList.contains('hidden');
   if(event.key==='Enter'){
@@ -406,6 +562,14 @@ $('manageBtn').addEventListener('click',()=>{renderManage();$('manageError').tex
 $('addNatureBtn').addEventListener('click',()=>{const row=editRow({code:'',label:''});$('natureRows').appendChild(row);row.querySelector('input').focus();});
 $('saveCatalogBtn').addEventListener('click',saveCatalog);
 
-setInterval(()=>{document.querySelectorAll('.mission-card').forEach(card=>{const mission=state.missions.find(item=>item.id===card.dataset.missionId);if(mission)card.querySelector('.elapsed').textContent=elapsed(mission.startedAt||mission.departedAt);});},1000);
+$('missionSearch').addEventListener('input',event=>{
+  boardView.query=event.target.value;$('clearSearchBtn').classList.toggle('hidden',!boardView.query);renderMissions();
+});
+$('clearSearchBtn').addEventListener('click',()=>{boardView.query='';$('missionSearch').value='';$('clearSearchBtn').classList.add('hidden');renderMissions();$('missionSearch').focus();});
+document.querySelectorAll('[data-priority]').forEach(button=>button.addEventListener('click',()=>{boardView.priority=button.dataset.priority;updatePriorityFilters();renderMissions();}));
+$('missionSort').addEventListener('change',event=>{boardView.order=event.target.value;renderMissions();});
+$('retryBtn').addEventListener('click',async()=>{const button=$('retryBtn');button.disabled=true;try{await refresh(true);}finally{button.disabled=false;}});
+$('closeToastBtn').addEventListener('click',()=>$('toast').classList.add('hidden'));
+setInterval(updateClocks,1000);
 setInterval(()=>refresh(true),2000);
 refresh();
