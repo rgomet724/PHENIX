@@ -7,7 +7,7 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 const { isPhenixAppUrl } = require('./app-navigation');
 const { defaultPortalCatalog, normalizePortalCatalog, portalDataDirectory } = require('./portal-catalog');
-const { appAccess, appearanceFor, loadAdminConfig, policyForUser, portalAppAllowed } = require('./central-config');
+const { appAccess, appearanceFor, loadAdminConfig, passwordMinLength, policyForUser, portalAppAllowed } = require('./central-config');
 
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
 const MAX_LOGO_SIZE = 400 * 1024;
@@ -102,11 +102,11 @@ function mountPortal(app, deps = {}) {
   const DB_FILE = path.join(DATA_DIR, 'portal.json');
   const PHENIX_DB_FILE = String(process.env.PHENIX_DATA_FILE || '/var/data/data.json').trim() || '/var/data/data.json';
 
-  function loadPhenixUsers() {
+  function loadPhenixUsers(readData = () => JSON.parse(fs.readFileSync(PHENIX_DB_FILE, 'utf8'))) {
     try {
       if (!fs.existsSync(PHENIX_DB_FILE)) return { ok: false, users: [], error: `Base PHENIX introuvable: ${PHENIX_DB_FILE}` };
-      const parsed = JSON.parse(fs.readFileSync(PHENIX_DB_FILE, 'utf8'));
-      return { ok: true, users: Array.isArray(parsed.users) ? parsed.users : [], error: '' };
+      const data = readData();
+      return { ok: true, data, users: Array.isArray(data.users) ? data.users : [], error: '' };
     } catch (err) {
       console.error('[PORTAIL] Lecture comptes PHENIX impossible:', err.message);
       return { ok: false, users: [], error: err.message };
@@ -315,13 +315,15 @@ function mountPortal(app, deps = {}) {
     next();
   });
 
-  // Toutes les mutations authentifiées exigent une preuve anti-CSRF indépendante
-  // du cookie de session. Login et récupération de compte ne sont pas authentifiés.
+  // Le renouvellement avant connexion vérifie le mot de passe actuel. Avec une
+  // session valide, il exige aussi le même jeton CSRF que les autres mutations.
   router.use((req, res, next) => {
     if (['GET', 'HEAD', 'OPTIONS'].includes(req.method) ||
         ['/login', '/password-reset/request'].includes(req.path)) return next();
     const token = tokenFromRequest(req);
-    if (!token || !resolveTokenUser(token) ||
+    const user = token && resolveTokenUser(token);
+    if (req.path === '/password' && !user) return next();
+    if (!user ||
         !safeEqual(req.get('x-portal-csrf'), csrfForToken(token))) {
       return res.status(403).json({ error: 'CSRF_INVALID', message: 'Jeton de sécurité invalide. Rechargez la page.' });
     }
@@ -346,66 +348,66 @@ function mountPortal(app, deps = {}) {
     try { deps.requestPasswordReset(req, res); } catch (error) { next(error); }
   });
 
-  router.post('/login', async (req, res, next) => {
-    try {
-      if (!loginAllowed(req)) return res.status(429).json({ error: 'TOO_MANY_ATTEMPTS', message: 'Trop de tentatives. Réessayez dans quelques minutes.' });
-      const login = String(req.body?.login || '').trim();
-      const password = String(req.body?.password || '');
-      if (!login || !password) return res.status(400).json({ error: 'MISSING_CREDENTIALS', message: 'Identifiant et mot de passe requis.' });
+  function authenticateCredentials(req, res, next) {
+    if (!loginAllowed(req)) return res.status(429).json({ error: 'TOO_MANY_ATTEMPTS', message: 'Trop de tentatives. Réessayez dans quelques minutes.' });
+    const login = String(req.body?.login || '').trim();
+    const password = req.body?.password;
+    if (!login || typeof password !== 'string' || !password) return res.status(400).json({ error: 'MISSING_CREDENTIALS', message: 'Identifiant et mot de passe requis.' });
 
-      const loginNorm = login.toLocaleLowerCase('fr-FR');
-      const envAdminMatches = loginNorm === ADMIN_LOGIN.toLocaleLowerCase('fr-FR');
-      let user = null;
+    const loginNorm = login.toLocaleLowerCase('fr-FR');
+    const envAdminMatches = loginNorm === ADMIN_LOGIN.toLocaleLowerCase('fr-FR');
+    if (envAdminMatches && ADMIN_PASSWORD && safeEqual(password, ADMIN_PASSWORD)) {
+      req.portalUser = { id: 'env-admin', login: ADMIN_LOGIN, name: ADMIN_NAME, role: 'admin', source: 'Render', phenixRole: '' };
+      return next();
+    }
 
-      if (envAdminMatches && ADMIN_PASSWORD && safeEqual(password, ADMIN_PASSWORD)) {
-        user = { id: 'env-admin', login: ADMIN_LOGIN, name: ADMIN_NAME, role: 'admin', source: 'Render', phenixRole: '' };
-      }
+    const phenix = loadPhenixUsers(req.route.path === '/password' ? deps.loadPhenix : undefined);
+    if (!phenix.ok) {
+      return res.status(503).json({ error: 'PHENIX_ACCOUNTS_UNAVAILABLE', message: 'Les comptes sont momentanément indisponibles. Réessayez dans quelques instants.' });
+    }
+    const stored = phenix.users.find(u => String(u.login || '') === login)
+      || phenix.users.find(u => String(u.login || '').toLocaleLowerCase('fr-FR') === loginNorm);
+    if (!stored?.passwordHash || !bcrypt.compareSync(password, stored.passwordHash)) {
+      return res.status(401).json({ error: 'BAD_CREDENTIALS', message: 'Identifiant ou mot de passe incorrect.' });
+    }
+    const access = appAccess(stored, 'argos');
+    if (!access.enabled) {
+      return res.status(403).json({ error: 'ARGOS_ACCESS_DISABLED', message: 'Ce compte n’est pas autorisé à accéder à ARGOS.' });
+    }
 
-      if (!user) {
-        const phenix = loadPhenixUsers();
-        if (!phenix.ok) {
-          return res.status(503).json({
-            error: 'PHENIX_ACCOUNTS_UNAVAILABLE',
-            message: 'Les comptes PHENIX sont momentanément indisponibles. Vérifiez le disque persistant /var/data.'
-          });
-        }
+    res.locals.account = stored;
+    res.locals.accountData = phenix.data;
+    req.portalUser = {
+      id: `phenix:${stored.id}`, login: stored.login, name: stored.displayName || stored.login,
+      role: access.role, source: 'PHENIX', phenixRole: normalizePhenixRole(stored.role), app: 'argos'
+    };
+    next();
+  }
 
-        const stored = phenix.users.find(u => String(u.login || '') === login)
-          || phenix.users.find(u => String(u.login || '').toLocaleLowerCase('fr-FR') === loginNorm);
+  function openSession(req, res) {
+    const user = req.portalUser;
+    const token = signToken(user);
+    console.log(`[PORTAIL] Connexion ARGOS réussie: ${user.login} (${user.source}/${user.role})`);
+    res.set('Set-Cookie', cookie(req, token));
+    res.json({ ok: true, user, csrfToken: csrfForToken(token) });
+  }
 
-        if (stored && stored.passwordHash && bcrypt.compareSync(password, stored.passwordHash)) {
-          const access = appAccess(stored, 'argos');
-          if (!access.enabled) {
-            return res.status(403).json({
-              error: 'ARGOS_ACCESS_DISABLED',
-              message: 'Ce type de compte PHENIX n’est pas autorisé à accéder à ARGOS.'
-            });
-          }
-          if (phenixPasswordExpired(stored)) {
-            return res.status(428).json({
-              error: 'PASSWORD_CHANGE_REQUIRED',
-              message: 'Votre mot de passe PHENIX doit être changé. Connectez-vous d’abord à PHENIX pour le modifier.'
-            });
-          }
+  router.post('/login', authenticateCredentials, (req, res) => {
+    if (res.locals.account && phenixPasswordExpired(res.locals.account)) {
+      return res.status(428).json({
+        error: 'PASSWORD_CHANGE_REQUIRED', passwordMinLength: passwordMinLength(),
+        message: 'Choisissez un nouveau mot de passe pour accéder à ARGOS.'
+      });
+    }
+    openSession(req, res);
+  });
 
-          user = {
-            id: `phenix:${stored.id}`,
-            login: stored.login,
-            name: stored.displayName || stored.login,
-            role: access.role,
-            source: 'PHENIX',
-            phenixRole: normalizePhenixRole(stored.role),
-            app: 'argos'
-          };
-        }
-      }
-
-      if (!user) return res.status(401).json({ error: 'BAD_CREDENTIALS', message: 'Identifiant ou mot de passe incorrect.' });
-      const token = signToken(user);
-      console.log(`[PORTAIL] Connexion ARGOS réussie: ${user.login} (${user.source}/${user.role})`);
-      res.set('Set-Cookie', cookie(req, token));
-      res.json({ ok: true, user, csrfToken: csrfForToken(token) });
-    } catch (err) { next(err); }
+  router.post('/password', authenticateCredentials, (req, res) => {
+    const { account, accountData } = res.locals;
+    if (!account) return res.status(403).json({ error: 'Le mot de passe de ce compte technique est géré par l’hébergeur.' });
+    const error = deps.changeOwnPassword(accountData, account, req, req.body.newPassword, 'Changement de mot de passe depuis ARGOS');
+    if (error) return res.status(400).json({ error });
+    openSession(req, res);
   });
 
   router.post('/logout', (req, res) => {
@@ -436,7 +438,7 @@ function mountPortal(app, deps = {}) {
       }
     }
     apps.sort((a, b) => Number(a.order || 0) - Number(b.order || 0) || String(a.name).localeCompare(String(b.name), 'fr'));
-    res.json({ categories, apps, user: req.portalUser, appearance: appearanceFor('argos', config) });
+    res.json({ categories, apps, user: req.portalUser, appearance: appearanceFor('argos', config), passwordMinLength: config.security.passwordMinLength });
   });
 
   router.get('/admin/users', requireAdmin, (req, res) => {

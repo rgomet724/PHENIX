@@ -258,8 +258,7 @@ function requestIp(req){
   // La première entrée X-Forwarded-For peut être fournie par le client.
   return req.ip || req.socket?.remoteAddress || '';
 }
-function audit(d, req, msg, type){
-  const u=current(req);
+function audit(d, req, msg, type, u=current(req)){
   const deviceId=String(req.get('x-phenix-device-id')||'').slice(0,80);
   const deviceName=String(req.get('x-phenix-device-name')||'').slice(0,100);
   d.logs.unshift({
@@ -591,15 +590,22 @@ app.post('/api/logout', (req,res)=>{
   });
 });
 
+function changeOwnPassword(d, u, req, newPassword, message){
+  if(typeof newPassword!=='string' || !validPassword(newPassword)) return `Choisissez un mot de passe d’au moins ${passwordMinLength()} caractères et de 72 octets maximum.`;
+  if(bcrypt.compareSync(newPassword,u.passwordHash)) return 'Le nouveau mot de passe doit être différent du mot de passe actuel.';
+  u.passwordHash=bcrypt.hashSync(newPassword,BCRYPT_ROUNDS);
+  u.passwordChangedAt=new Date().toISOString();
+  u.mustChangePassword=false;
+  audit(d,req,message,'Sécurité / comptes',u);
+  save(d);
+  return null;
+}
+
 app.post('/api/password', needLogin, (req,res)=>{
   const d=load(); const u=d.users.find(x=>x.id===req.session.userId);
   if(!bcrypt.compareSync(String(req.body.oldPassword||''), u.passwordHash)) return res.status(400).json({error:'Ancien mot de passe incorrect'});
-  if(!validPassword(req.body.newPassword)) return res.status(400).json({error:`Nouveau mot de passe requis : ${passwordMinLength()} à 72 caractères`});
-  if(String(req.body.oldPassword||'')===String(req.body.newPassword||'')) return res.status(400).json({error:'Le nouveau mot de passe doit être différent'});
-  u.passwordHash=bcrypt.hashSync(String(req.body.newPassword),BCRYPT_ROUNDS);
-  u.passwordChangedAt=new Date().toISOString();
-  u.mustChangePassword=false;
-  audit(d,req,'Changement de mot de passe','Sécurité / comptes'); save(d);
+  const error=changeOwnPassword(d,u,req,req.body.newPassword,'Changement de mot de passe');
+  if(error) return res.status(400).json({error});
   req.session.regenerate(err=>{
     if(err) return res.status(500).json({error:'Mot de passe modifié, mais reconnexion nécessaire'});
     req.session.userId=u.id; req.session.csrfToken=newCsrfToken();
@@ -1167,7 +1173,7 @@ const { mountDashboard } = require('./dashboard-router');
 mountDashboard(app, { loadPhenix: load, savePhenix: save, passwordExpired });
 
 const { mountPortal } = require('./portal-router');
-mountPortal(app, { requestPasswordReset, passwordResetLimiter });
+mountPortal(app, { requestPasswordReset, passwordResetLimiter, loadPhenix: load, changeOwnPassword });
 
 app.use((err,req,res,next)=>{
   console.error('[PHENIX]',err && err.stack ? err.stack : err);
