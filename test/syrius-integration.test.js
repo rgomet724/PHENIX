@@ -13,9 +13,20 @@ const { createHash } = require('node:crypto');
 test('Intégration avec le serveur PHENIX, le portail ARGOS et l’administration centrale', async t => {
   const root = path.resolve(__dirname, '..');
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'syrius-server-test-'));
+  const temporaryPassword = 'temporary-integration-only';
+  const agent = { id: 'agent', login: 'agent', displayName: 'Agent de test', role: 'operateur', passwordHash: bcrypt.hashSync(temporaryPassword, 4), mustChangePassword: true };
   fs.writeFileSync(path.join(directory, 'data.json'), JSON.stringify({
-    users: [{ id: 'integration-admin', login: 'integration-admin', role: 'admin', displayName: 'Administration test', passwordHash: bcrypt.hashSync('integration-test-only', 4), passwordChangedAt: new Date().toISOString() }],
+    users: [
+      { id: 'integration-admin', login: 'integration-admin', role: 'admin', displayName: 'Administration test', passwordHash: bcrypt.hashSync('integration-test-only', 4), passwordChangedAt: new Date().toISOString() },
+      agent,
+      { ...agent, id: 'expired', login: 'expired', mustChangePassword: false, passwordChangedAt: '2000-01-01T00:00:00Z' },
+      { ...agent, id: 'disabled', login: 'disabled' }
+    ],
     events: [{ id: 'integration-event', title: 'Test uniquement' }]
+  }));
+  fs.writeFileSync(path.join(directory, 'admin.json'), JSON.stringify({
+    security: { passwordMinLength: 12 },
+    userPolicies: { agent: { phenix: { enabled: false } }, disabled: { argos: { enabled: false } } }
   }));
   fs.writeFileSync(path.join(directory, 'portal.json'), JSON.stringify({
     schemaVersion: 2, users: [], categories: [{ id: 'cat-operationnel', name: 'Opérationnel', order: 10 }],
@@ -45,6 +56,47 @@ test('Intégration avec le serveur PHENIX, le portail ARGOS et l’administratio
     child.once('exit', code => { clearTimeout(timer); reject(new Error(`Serveur arrêté (${code}) : ${output}`)); });
   });
   const origin = `http://127.0.0.1:${port}`;
+  await t.test('Renouvellement dans ARGOS avec un compte privé d’accès à PHENIX', async () => {
+    const post = (url, body, headers = {}) => fetch(origin + url, {
+      method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body)
+    });
+    const credentials = { login: 'AGENT', password: temporaryPassword };
+    const nextPassword = 'new-integration-only';
+    const loginUrl = '/portail/api/login', changeUrl = '/portail/api/password';
+    for (const login of ['AGENT', 'expired']) {
+      const required = await post(loginUrl, { ...credentials, login });
+      assert.equal(required.status, 428);
+      assert.equal(required.headers.get('set-cookie'), null);
+      const result = await required.json();
+      assert.equal(result.error, 'PASSWORD_CHANGE_REQUIRED');
+      assert.equal(result.passwordMinLength, 12);
+    }
+    assert.equal((await fetch(origin + '/portail/api/portal')).status, 401);
+    const change = { ...credentials, newPassword: nextPassword };
+    assert.equal((await post(changeUrl, { ...change, password: 'incorrect' })).status, 401);
+    assert.equal((await post(changeUrl, { ...change, login: 'disabled' })).status, 403);
+    assert.equal((await post(changeUrl, change, { origin: 'https://outside.example' })).status, 403);
+    for (const newPassword of ['trop-court', temporaryPassword, 'é'.repeat(37)]) {
+      assert.equal((await post(changeUrl, { ...change, newPassword })).status, 400);
+    }
+    const changed = await post(changeUrl, change);
+    assert.equal(changed.status, 200);
+    const cookie = changed.headers.get('set-cookie').split(';')[0];
+    const session = await changed.json();
+    assert.equal(session.user.login, 'agent');
+    assert.ok(session.csrfToken);
+    assert.equal((await fetch(origin + '/portail/api/portal', { headers: { cookie } })).status, 200);
+    assert.equal((await post(changeUrl, { ...change, password: nextPassword, newPassword: temporaryPassword }, { cookie })).status, 403);
+    assert.equal((await post(loginUrl, credentials)).status, 401);
+    assert.equal((await post(loginUrl, { login: 'agent', password: nextPassword })).status, 200);
+    assert.equal((await post('/api/login', { login: 'agent', password: nextPassword })).status, 403);
+    const data = JSON.parse(fs.readFileSync(path.join(directory, 'data.json'), 'utf8'));
+    const saved = data.users.find(user => user.id === 'agent');
+    assert.equal(saved.mustChangePassword, false);
+    assert.ok(Number.isFinite(Date.parse(saved.passwordChangedAt)));
+    assert.ok(bcrypt.compareSync(nextPassword, saved.passwordHash));
+    assert.equal(data.logs.filter(log => log.userId === 'agent' && log.msg === 'Changement de mot de passe depuis ARGOS').length, 1);
+  });
   const home = await fetch(`${origin}/`);
   assert.equal(home.status, 200);
   assert.equal(home.url, `${origin}/`, 'ARGOS reste affiché à la racine');

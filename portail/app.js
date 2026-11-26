@@ -9,6 +9,7 @@ const state = {
   categories: [],
   apps: [],
   users: [],
+  passwordMinLength: null,
   appearance: null
 };
 
@@ -37,13 +38,18 @@ async function api(url, options = {}) {
   let data = {};
   try { data = await response.json(); } catch { /* réponse vide */ }
 
-  if (response.status === 401 && url !== '/portail/api/login') {
+  if (response.status === 401 && !['/portail/api/login', '/portail/api/password'].includes(url)) {
     state.csrfToken = '';
     state.user = null;
     showLogin();
   }
 
-  if (!response.ok) throw new Error(data.message || data.error || `Erreur ${response.status}`);
+  if (!response.ok) {
+    const error = new Error(data.message || data.error || `Erreur ${response.status}`);
+    error.code = data.error;
+    error.passwordMinLength = data.passwordMinLength;
+    throw error;
+  }
   return data;
 }
 
@@ -62,11 +68,33 @@ function setBusy(button, busy, label) {
 function showLogin() {
   el('portalView').classList.add('hidden');
   el('loginView').classList.remove('hidden');
+  el('loginCard').classList.remove('hidden');
+  el('passwordCard').classList.add('hidden');
+  el('passwordForm').reset();
   el('passwordInput').value = '';
+  el('loginError').textContent = '';
+  el('passwordResetMessage').textContent = '';
   setTimeout(() => el('loginInput').focus(), 0);
 }
 
+function showPasswordChange(login, currentPassword, minLength) {
+  el('passwordForm').reset();
+  el('changeLogin').value = login;
+  el('currentPassword').value = currentPassword;
+  el('passwordInput').value = '';
+  el('changeError').textContent = '';
+  el('newPassword').minLength = minLength;
+  el('passwordPolicy').textContent = `Au moins ${minLength} caractères, dans la limite de 72 octets.`;
+  el('portalView').classList.add('hidden');
+  el('loginView').classList.remove('hidden');
+  el('loginCard').classList.add('hidden');
+  el('passwordCard').classList.remove('hidden');
+  el(currentPassword ? 'newPassword' : 'currentPassword').focus();
+}
+
 function showPortal() {
+  el('passwordForm').reset();
+  el('passwordInput').value = '';
   el('loginView').classList.add('hidden');
   el('portalView').classList.remove('hidden');
   el('userDisplayName').textContent = state.user.name;
@@ -74,6 +102,7 @@ function showPortal() {
   el('userRoleBadge').textContent = state.user.role === 'admin' ? 'Administrateur' : 'Utilisateur';
   const centralAdmin = state.user.source === 'Render' || state.user.phenixRole === 'admin';
   el('adminOpenBtn').classList.toggle('hidden', !centralAdmin);
+  el('changePasswordBtn').classList.toggle('hidden', state.user.source !== 'PHENIX');
 }
 
 function appCard(app) {
@@ -151,6 +180,7 @@ async function loadPortal() {
   state.categories = data.categories || [];
   state.apps = data.apps || [];
   state.appearance = data.appearance || null;
+  state.passwordMinLength = data.passwordMinLength;
   applyAppearance();
   renderPortal();
 }
@@ -198,23 +228,65 @@ async function login(event) {
   const button = el('loginSubmit');
   error.textContent = '';
   setBusy(button, true, 'Connexion…');
+  const login = el('loginInput').value.trim();
+  const password = el('passwordInput').value;
 
   try {
     const data = await api('/portail/api/login', {
       method: 'POST',
-      body: JSON.stringify({
-        login: el('loginInput').value.trim(),
-        password: el('passwordInput').value
-      })
+      body: JSON.stringify({ login, password })
     });
-    state.csrfToken = data.csrfToken || '';
-    state.user = data.user;
-    await loadPortal();
-    showPortal();
+    await enterPortal(data);
   } catch (err) {
+    if (err.code === 'PASSWORD_CHANGE_REQUIRED') {
+      showPasswordChange(login, password, err.passwordMinLength);
+      return;
+    }
     error.textContent = err.message;
     el('passwordInput').select();
   } finally {
+    setBusy(button, false);
+  }
+}
+
+async function enterPortal(data) {
+  state.csrfToken = data.csrfToken || '';
+  state.user = data.user;
+  await loadPortal();
+  showPortal();
+}
+
+async function changePassword(event) {
+  event.preventDefault();
+  const error = el('changeError');
+  const newPassword = el('newPassword').value;
+  if (newPassword !== el('confirmPassword').value) {
+    error.textContent = 'Les deux nouveaux mots de passe ne correspondent pas.';
+    el('confirmPassword').focus();
+    return;
+  }
+  error.textContent = '';
+  const button = el('changeSubmit');
+  setBusy(button, true, 'Enregistrement…');
+  el('cancelChange').disabled = true;
+  try {
+    const data = await api('/portail/api/password', {
+      method: 'POST',
+      body: JSON.stringify({ login: el('changeLogin').value, password: el('currentPassword').value, newPassword })
+    });
+    el('passwordForm').reset();
+    try {
+      await enterPortal(data);
+    } catch {
+      state.user = null;
+      state.csrfToken = '';
+      showLogin();
+      el('passwordResetMessage').textContent = 'Mot de passe enregistré. Reconnectez-vous avec votre nouveau mot de passe.';
+    }
+  } catch (err) {
+    error.textContent = err.message;
+  } finally {
+    el('cancelChange').disabled = false;
     setBusy(button, false);
   }
 }
@@ -335,7 +407,7 @@ function renderAdmin() {
     const sourceText = isRender
       ? 'Compte de secours Render'
       : `PHENIX${user.phenixRole ? ` • rôle ${user.phenixRole}` : ''}`;
-    const passwordText = user.passwordChangeRequired ? ' • mot de passe PHENIX à changer' : '';
+    const passwordText = user.passwordChangeRequired ? ' • mot de passe à renouveler dans ARGOS' : '';
     userList.appendChild(adminItem(
       `${user.name} — ${user.login}`,
       `${accessText} • ${sourceText}${passwordText}`,
@@ -521,6 +593,13 @@ function handleAdminAction(event) {
 
 function bindEvents() {
   el('loginForm').addEventListener('submit', login);
+  el('passwordForm').addEventListener('submit', changePassword);
+  el('changePasswordBtn').addEventListener('click', () => showPasswordChange(state.user.login, '', state.passwordMinLength));
+  el('cancelChange').addEventListener('click', () => {
+    if (!state.user) return showLogin();
+    showPortal();
+    el('changePasswordBtn').focus();
+  });
   el('forgotPasswordBtn').addEventListener('click', requestForgotPassword);
   el('logoutBtn').addEventListener('click', logout);
   el('adminOpenBtn').addEventListener('click', openAdmin);

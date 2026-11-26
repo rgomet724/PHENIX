@@ -23,7 +23,7 @@
         </div>
       </header>
       <div class="notice-bar"><span class="status-dot" aria-hidden="true"></span>Accès réservé aux utilisateurs autorisés</div>
-      <section class="login-card" aria-labelledby="loginTitle">
+      <section id="loginCard" class="login-card" aria-labelledby="loginTitle">
         <div class="login-card-heading">
           <span class="lock-mark" aria-hidden="true">●</span>
           <div><h2 id="loginTitle">Connexion à ARGOS</h2><p>Identifiez-vous pour accéder à vos applications.</p></div>
@@ -37,6 +37,25 @@
           <button id="loginSubmit" class="btn btn-success login-submit" type="submit">Se connecter</button>
           <button id="forgotPasswordBtn" class="forgot-password-button" type="button">Mot de passe oublié ?</button>
           <p id="passwordResetMessage" class="password-reset-message" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+      <section id="passwordCard" class="login-card hidden" aria-labelledby="passwordTitle">
+        <div class="login-card-heading">
+          <span class="lock-mark" aria-hidden="true">●</span>
+          <div><h2 id="passwordTitle">Changer mon mot de passe</h2><p id="passwordPolicy"></p></div>
+        </div>
+        <form id="passwordForm" class="login-form">
+          <label for="changeLogin">Identifiant</label>
+          <div class="input-shell"><span aria-hidden="true">♙</span><input id="changeLogin" name="login" autocomplete="username" readonly></div>
+          <label for="currentPassword">Mot de passe actuel ou temporaire</label>
+          <div class="input-shell"><span aria-hidden="true">●</span><input id="currentPassword" name="currentPassword" type="password" autocomplete="current-password" required></div>
+          <label for="newPassword">Nouveau mot de passe</label>
+          <div class="input-shell"><span aria-hidden="true">●</span><input id="newPassword" name="newPassword" type="password" autocomplete="new-password" maxlength="72" aria-describedby="passwordPolicy" required></div>
+          <label for="confirmPassword">Confirmer le nouveau mot de passe</label>
+          <div class="input-shell"><span aria-hidden="true">●</span><input id="confirmPassword" name="confirmPassword" type="password" autocomplete="new-password" maxlength="72" required></div>
+          <p id="changeError" class="form-error" role="alert"></p>
+          <button id="changeSubmit" class="btn btn-success login-submit" type="submit">Enregistrer et accéder à ARGOS</button>
+          <button id="cancelChange" class="forgot-password-button" type="button">Annuler</button>
         </form>
       </section>
       <footer class="login-footer">Portail ARGOS · Police Municipale de Chalon-sur-Saône</footer>
@@ -66,6 +85,7 @@
         <div class="nav-primary"><span aria-hidden="true">▦</span><strong>Mes applications</strong></div>
         <div class="nav-actions">
           <button id="adminOpenBtn" class="nav-button hidden" type="button">Administration</button>
+          <button id="changePasswordBtn" class="nav-button hidden" type="button">Changer mon mot de passe</button>
           <button id="logoutBtn" class="nav-button" type="button">Déconnexion</button>
         </div>
       </div>

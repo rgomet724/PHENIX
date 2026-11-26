@@ -164,7 +164,7 @@ function mountSyrius(app, options) {
       const user = users().find(item => item.login === login);
       if (!user || typeof password !== 'string' || password.length > 100 || !user.passwordHash || !bcrypt.compareSync(password, user.passwordHash)) return res.status(401).json({ error: 'Identifiant ou mot de passe incorrect.' });
       if (!access(user).enabled) return res.status(403).json({ error: 'Votre accès à SYRIUS est désactivé.' });
-      if (options.passwordExpired?.(user)) return res.status(428).json({ error: 'Changez d’abord votre mot de passe depuis PHENIX.' });
+      if (options.passwordExpired?.(user)) return res.status(428).json({ error: 'Connectez-vous au portail ARGOS pour renouveler votre mot de passe.' });
       req.session.regenerate(error => {
         if (error) return next(error);
         req.session.userId = user.id;
@@ -177,7 +177,7 @@ function mountSyrius(app, options) {
     const user = req.session?.userId && userFor(req.session.userId);
     if (!user) return res.status(401).json({ error: 'Connectez-vous avec votre compte PHENIX.' });
     if (!access(user).enabled) return res.status(403).json({ error: 'Votre accès à SYRIUS est désactivé. Contactez votre administrateur.' });
-    if (options.passwordExpired?.(user)) return res.status(428).json({ error: 'Changez d’abord votre mot de passe depuis PHENIX.' });
+    if (options.passwordExpired?.(user)) return res.status(428).json({ error: 'Connectez-vous au portail ARGOS pour renouveler votre mot de passe.' });
     req.syriusUser = user;
     if (!req.session.csrfToken) req.session.csrfToken = crypto.randomBytes(32).toString('hex');
     if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
